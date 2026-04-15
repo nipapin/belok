@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  CANCELLED
+}
+
+enum BonusType {
+  EARNED
+  SPENT
+  EXPIRED
+  MANUAL
+}
+
+enum IngredientAction {
+  ADD
+  REMOVE
+}
+
+model User {
+  id             String             @id @default(uuid())
+  phone          String             @unique
+  name           String?
+  email          String?
+  role           Role               @default(USER)
+  bonusBalance   Float              @default(0)
+  totalSpent     Float              @default(0)
+  loyaltyLevel   LoyaltyLevel?      @relation(fields: [loyaltyLevelId], references: [id])
+  loyaltyLevelId String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  orders         Order[]
+  bonusTx        BonusTransaction[]
+  refreshTokens  RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+model LoyaltyLevel {
+  id              String @id @default(uuid())
+  name            String @unique
+  minSpent        Float
+  cashbackPercent Float
+  discountPercent Float
+  sortOrder       Int    @default(0)
+  users           User[]
+
+  @@map("loyalty_levels")
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String
+  image     String?
+  sortOrder Int       @default(0)
+  isActive  Boolean   @default(true)
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("categories")
+}
+
+model Product {
+  id           String              @id @default(uuid())
+  name         String
+  description  String?
+  price        Float
+  image        String?
+  categoryId   String
+  category     Category            @relation(fields: [categoryId], references: [id])
+  isAvailable  Boolean             @default(true)
+  calories     Float?
+  proteins     Float?
+  fats         Float?
+  carbs        Float?
+  sortOrder    Int                 @default(0)
+  ingredients  ProductIngredient[]
+  orderItems   OrderItem[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@map("products")
+}
+
+model Ingredient {
+  id          String              @id @default(uuid())
+  name        String
+  price       Float               @default(0)
+  isAvailable Boolean             @default(true)
+  products    ProductIngredient[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@map("ingredients")
+}
+
+model ProductIngredient {
+  id           String     @id @default(uuid())
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  isDefault    Boolean    @default(true)
+  isRemovable  Boolean    @default(true)
+  isExtra      Boolean    @default(false)
+
+  @@unique([productId, ingredientId])
+  @@map("product_ingredients")
+}
+
+model Order {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  status         OrderStatus   @default(PENDING)
+  total          Float
+  discountAmount Float         @default(0)
+  bonusUsed      Float         @default(0)
+  bonusEarned    Float         @default(0)
+  paymentStatus  PaymentStatus @default(PENDING)
+  paymentId      String?
+  comment        String?
+  items          OrderItem[]
+  bonusTx        BonusTransaction[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String                   @id @default(uuid())
+  orderId        String
+  order          Order                    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product                  @relation(fields: [productId], references: [id])
+  quantity       Int                      @default(1)
+  unitPrice      Float
+  customizations OrderItemCustomization[]
+
+  @@map("order_items")
+}
+
+model OrderItemCustomization {
+  id           String           @id @default(uuid())
+  orderItemId  String
+  orderItem    OrderItem        @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  ingredientId String
+  action       IngredientAction
+  priceDelta   Float            @default(0)
+
+  @@map("order_item_customizations")
+}
+
+model BonusTransaction {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  amount      Float
+  type        BonusType
+  orderId     String?
+  order       Order?    @relation(fields: [orderId], references: [id])
+  description String?
+  createdAt   DateTime  @default(now())
+
+  @@map("bonus_transactions")
+}
+
+model VerificationCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, code])
+  @@map("verification_codes")
+}
