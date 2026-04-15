@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Belok
 
-## Getting Started
+Веб-приложение для кафе: меню, корзина, заказы, бонусы и уровни лояльности. Клиент — [Next.js](https://nextjs.org) (App Router), данные — PostgreSQL через [Prisma](https://www.prisma.io).
 
-First, run the development server:
+Репозиторий: [github.com/nipapin/belok](https://github.com/nipapin/belok)
+
+## Возможности
+
+- Каталог блюд с категориями и кастомизацией ингредиентов
+- Заказы со статусами и оплатой ([ЮKassa](https://yookassa.ru))
+- Авторизация по телефону (код; в dev режиме код можно получить в ответе API)
+- Программа лояльности: бонусы, уровни, кешбэк
+- PWA (прогрессивное веб-приложение)
+- UI на [MUI](https://mui.com/) и [Tailwind CSS](https://tailwindcss.com/)
+
+## Требования
+
+- **Node.js** 20+ (рекомендуется LTS)
+- **PostgreSQL** (локально или облако)
+- **npm** (или совместимый менеджер пакетов)
+
+## Быстрый старт
+
+1. Клонировать репозиторий и перейти в каталог проекта.
+
+2. Установить зависимости:
+
+   ```bash
+   npm install
+   ```
+
+3. Создать файл `.env` в корне (см. раздел [Переменные окружения](#переменные-окружения)). Минимум для локальной разработки:
+
+   - `DATABASE_URL`
+   - `JWT_SECRET`, `JWT_REFRESH_SECRET`
+   - `NEXT_PUBLIC_APP_URL` (например `http://localhost:3000`)
+
+4. Применить схему к БД и при желании заполнить тестовыми данными:
+
+   ```bash
+   npm run db:migrate
+   npm run db:seed
+   ```
+
+   Альтернатива без миграций (удобно для прототипа): `npm run db:push`
+
+5. Запустить dev-сервер:
+
+   ```bash
+   npm run dev
+   ```
+
+   Открыть [http://localhost:3000](http://localhost:3000).
+
+## Переменные окружения
+
+| Переменная | Назначение |
+|------------|------------|
+| `DATABASE_URL` | Строка подключения PostgreSQL (обязательно для Prisma) |
+| `JWT_SECRET` | Секрет для access-токенов |
+| `JWT_REFRESH_SECRET` | Секрет для refresh-токенов |
+| `NEXT_PUBLIC_APP_URL` | Публичный URL приложения (редиректы после оплаты и т.п.) |
+| `USE_MOCK_DB` | Если `true` — режим без реальной БД (см. `src/lib/prisma.ts`) |
+| `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY` | ЮKassa (оплата) |
+| `SMS_RU_API_KEY` | SMS.RU для отправки кодов в production |
+| `GOOGLE_WALLET_ISSUER_EMAIL`, `GOOGLE_WALLET_ISSUER_ID` | Google Wallet (опционально) |
+| `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID` | Apple Wallet (опционально) |
+
+В development часть функций ослаблена намеренно (например, код из SMS может возвращаться в ответе API — не используйте так в production).
+
+## Скрипты
+
+| Команда | Описание |
+|---------|----------|
+| `npm run dev` | Разработка, hot reload |
+| `npm run build` | `prisma generate` + production-сборка Next.js |
+| `npm run start` | Запуск собранного приложения |
+| `npm run lint` | ESLint |
+| `npm run db:migrate` | Prisma Migrate (dev) |
+| `npm run db:push` | Синхронизация схемы с БД без миграций |
+| `npm run db:seed` | Заполнение БД из `prisma/seed.ts` |
+| `npm run db:studio` | Prisma Studio — просмотр и правка данных в браузере |
+
+## Сборка для production
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Убедитесь, что на сервере заданы все нужные переменные окружения и доступна PostgreSQL. Для миграций на проде обычно используют `npx prisma migrate deploy` (отдельно от `db:migrate`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Лицензия
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Приватный проект (`"private": true` в `package.json`). Условия распространения задайте при необходимости отдельно.
