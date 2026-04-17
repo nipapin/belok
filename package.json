@@ -12,9 +12,6 @@
     "db:push": "npx prisma db push",
     "db:studio": "npx prisma studio"
   },
-  "prisma": {
-    "seed": "node --loader ts-node/esm prisma/seed.ts"
-  },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
     "@hookform/resolvers": "^5.2.2",
@@ -48,6 +45,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "prisma": "^7.7.0",
+    "tsx": "^4.19.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
