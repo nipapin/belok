@@ -3,47 +3,34 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-  Box,
-  AppBar,
-  Toolbar,
-  Typography,
-  Drawer,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  IconButton,
-  useMediaQuery,
-  useTheme,
-} from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import RestaurantIcon from '@mui/icons-material/Restaurant';
-import CategoryIcon from '@mui/icons-material/Category';
-import KitchenIcon from '@mui/icons-material/Kitchen';
-import ReceiptIcon from '@mui/icons-material/Receipt';
-import PeopleIcon from '@mui/icons-material/People';
-import SettingsIcon from '@mui/icons-material/Settings';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+  ArrowLeft,
+  LayoutDashboard,
+  Menu,
+  UtensilsCrossed,
+  Tags,
+  ChefHat,
+  Receipt,
+  Users,
+  Settings,
+} from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-
-const drawerWidth = 260;
+import { useMdUp } from '@/hooks/useMdUp';
+import { brandMark } from '@/lib/brand';
 
 const menuItems = [
-  { label: 'Дашборд', icon: <DashboardIcon />, path: '/admin' },
-  { label: 'Товары', icon: <RestaurantIcon />, path: '/admin/products' },
-  { label: 'Категории', icon: <CategoryIcon />, path: '/admin/categories' },
-  { label: 'Ингредиенты', icon: <KitchenIcon />, path: '/admin/ingredients' },
-  { label: 'Заказы', icon: <ReceiptIcon />, path: '/admin/orders' },
-  { label: 'Пользователи', icon: <PeopleIcon />, path: '/admin/users' },
-  { label: 'Настройки', icon: <SettingsIcon />, path: '/admin/settings' },
+  { label: 'Дашборд', icon: LayoutDashboard, path: '/admin' },
+  { label: 'Товары', icon: UtensilsCrossed, path: '/admin/products' },
+  { label: 'Категории', icon: Tags, path: '/admin/categories' },
+  { label: 'Ингредиенты', icon: ChefHat, path: '/admin/ingredients' },
+  { label: 'Заказы', icon: Receipt, path: '/admin/orders' },
+  { label: 'Пользователи', icon: Users, path: '/admin/users' },
+  { label: 'Настройки', icon: Settings, path: '/admin/settings' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const mdUp = useMdUp();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, fetchUser, isLoading } = useAuthStore();
 
@@ -59,103 +46,89 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const drawer = (
-    <Box>
-      <Toolbar sx={{ justifyContent: 'center' }}>
-        <Typography variant="h6" sx={{ fontWeight: 800 }}>БЕЛОК Admin</Typography>
-      </Toolbar>
-      <List>
-        {menuItems.map((item) => (
-          <ListItemButton
-            key={item.path}
-            selected={pathname === item.path}
-            onClick={() => {
-              router.push(item.path);
-              if (isMobile) setMobileOpen(false);
-            }}
-            sx={{
-              mx: 1,
-              borderRadius: 2,
-              mb: 0.5,
-              '&.Mui-selected': {
-                bgcolor: 'primary.main',
-                color: 'white',
-                '& .MuiListItemIcon-root': { color: 'white' },
-                '&:hover': { bgcolor: 'primary.dark' },
-              },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        ))}
-      </List>
-    </Box>
+    <div className="flex h-full flex-col border-r border-white/40 bg-white/55 py-4 backdrop-blur-xl">
+      <div className="flex h-14 items-center justify-center px-2">
+        <p className="text-center text-sm font-extrabold tracking-tight text-zinc-900">
+          <span className="lowercase">{brandMark}</span>
+          <span className="block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+            админ
+          </span>
+        </p>
+      </div>
+      <nav className="mt-2 flex-1 space-y-0.5 px-2">
+        {menuItems.map((item) => {
+          const selected = pathname === item.path;
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.path}
+              type="button"
+              onClick={() => {
+                router.push(item.path);
+                if (!mdUp) setMobileOpen(false);
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+                selected
+                  ? 'bg-zinc-900 text-white shadow-md'
+                  : 'text-zinc-700 hover:bg-white/60'
+              }`}
+            >
+              <Icon className="size-5 shrink-0" strokeWidth={selected ? 2 : 1.75} />
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <AppBar
-        position="fixed"
-        color="inherit"
-        sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
-          bgcolor: 'background.paper',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-        }}
-        elevation={0}
-      >
-        <Toolbar>
-          {isMobile && (
-            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 2 }}>
-              <MenuIcon />
-            </IconButton>
-          )}
-          <IconButton onClick={() => router.push('/')} sx={{ mr: 1 }}>
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h6" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            Панель управления
-          </Typography>
-        </Toolbar>
-      </AppBar>
-
-      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
-        {isMobile ? (
-          <Drawer
-            variant="temporary"
-            open={mobileOpen}
-            onClose={() => setMobileOpen(false)}
-            ModalProps={{ keepMounted: true }}
-            sx={{ '& .MuiDrawer-paper': { width: drawerWidth } }}
+    <div className="flex min-h-screen bg-[#eef0f5]">
+      <header className="fixed left-0 right-0 top-0 z-[1300] flex h-14 items-center border-b border-white/50 bg-white/70 px-3 backdrop-blur-xl md:left-[260px]">
+        {!mdUp && (
+          <button
+            type="button"
+            className="btn-icon mr-2 size-9 md:hidden"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Меню"
           >
-            {drawer}
-          </Drawer>
-        ) : (
-          <Drawer
-            variant="permanent"
-            sx={{ '& .MuiDrawer-paper': { width: drawerWidth, borderRight: '1px solid', borderColor: 'divider' } }}
-            open
-          >
-            {drawer}
-          </Drawer>
+            <Menu className="size-5" />
+          </button>
         )}
-      </Box>
+        <button
+          type="button"
+          className="btn-icon mr-2 size-9"
+          onClick={() => router.push('/')}
+          aria-label="На сайт"
+        >
+          <ArrowLeft className="size-5" />
+        </button>
+        <h1 className="truncate text-base font-semibold text-zinc-900">Панель управления</h1>
+      </header>
 
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          mt: '64px',
-          minHeight: 'calc(100vh - 64px)',
-          bgcolor: '#F8F8F8',
-        }}
-      >
+      {!mdUp && mobileOpen && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[1250] bg-black/35 backdrop-blur-sm"
+            aria-label="Закрыть меню"
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside className="fixed left-0 top-0 z-[1260] h-full w-[260px] shadow-2xl">
+            {drawer}
+          </aside>
+        </>
+      )}
+
+      {mdUp && (
+        <aside className="fixed bottom-0 left-0 top-0 z-[1240] w-[260px] shadow-[4px_0_24px_rgba(0,0,0,0.04)]">
+          {drawer}
+        </aside>
+      )}
+
+      <main className="min-h-screen flex-1 px-4 pb-8 pt-[4.5rem] md:pl-[calc(260px+1rem)] md:pr-8">
         {children}
-      </Box>
-    </Box>
+      </main>
+    </div>
   );
 }

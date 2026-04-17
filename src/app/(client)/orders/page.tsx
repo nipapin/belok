@@ -1,19 +1,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import {
-  Box, Container, Typography, Paper, Chip, Skeleton,
-} from '@mui/material';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import { Receipt } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
-const statusMap: Record<string, { label: string; color: 'default' | 'warning' | 'info' | 'success' | 'error' }> = {
-  PENDING: { label: 'Ожидает', color: 'default' },
-  CONFIRMED: { label: 'Подтверждён', color: 'info' },
-  PREPARING: { label: 'Готовится', color: 'warning' },
-  READY: { label: 'Готов к выдаче', color: 'success' },
-  COMPLETED: { label: 'Выполнен', color: 'success' },
-  CANCELLED: { label: 'Отменён', color: 'error' },
+const statusMap: Record<string, { label: string; className: string }> = {
+  PENDING: { label: 'Ожидает', className: 'bg-zinc-100 text-zinc-700' },
+  CONFIRMED: { label: 'Подтверждён', className: 'bg-sky-100 text-sky-800' },
+  PREPARING: { label: 'Готовится', className: 'bg-amber-100 text-amber-900' },
+  READY: { label: 'Готов к выдаче', className: 'bg-emerald-100 text-emerald-800' },
+  COMPLETED: { label: 'Выполнен', className: 'bg-emerald-100 text-emerald-900' },
+  CANCELLED: { label: 'Отменён', className: 'bg-rose-100 text-rose-800' },
 };
 
 interface Order {
@@ -36,60 +33,59 @@ export default function OrdersPage() {
   const orders: Order[] = data?.orders ?? [];
 
   return (
-    <Container maxWidth="sm" sx={{ pt: 2, pb: 2 }}>
-      <Typography variant="h2" sx={{ mb: 2 }}>Мои заказы</Typography>
+    <div className="mx-auto max-w-md pb-4 pt-2">
+      <h1 className="heading-section mb-4">Мои заказы</h1>
 
-      {isLoading
-        ? Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} variant="rounded" height={100} sx={{ mb: 1.5, borderRadius: 3 }} />
-          ))
-        : orders.length === 0
-        ? (
-          <Box sx={{ textAlign: 'center', py: 8 }}>
-            <ReceiptLongIcon sx={{ fontSize: 64, color: 'text.secondary', opacity: 0.3, mb: 2 }} />
-            <Typography variant="h3" color="text.secondary">Заказов пока нет</Typography>
-          </Box>
-        )
-        : orders.map((order) => {
-            const s = statusMap[order.status] || { label: order.status, color: 'default' as const };
-            return (
-              <Paper
-                key={order.id}
-                elevation={0}
-                onClick={() => router.push(`/orders/${order.id}`)}
-                sx={{
-                  p: 2,
-                  mb: 1.5,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 3,
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: '#FAFAFA' },
-                }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    Заказ #{order.id.slice(0, 8)}
-                  </Typography>
-                  <Chip label={s.label} size="small" color={s.color} />
-                </Box>
-                <Typography variant="caption" color="text.secondary">
-                  {order.items.map((i) => `${i.product.name} x${i.quantity}`).join(', ')}
-                </Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    {new Date(order.createdAt).toLocaleString('ru')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{order.total} ₽</Typography>
-                </Box>
-                {order.bonusEarned > 0 && (
-                  <Typography variant="caption" color="success.main">
-                    +{order.bonusEarned} бонусов
-                  </Typography>
-                )}
-              </Paper>
-            );
-          })}
-    </Container>
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="glass-tight h-[100px] animate-pulse" />
+          ))}
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="glass-panel py-14 text-center">
+          <Receipt className="mx-auto mb-3 size-14 text-zinc-300" strokeWidth={1.25} />
+          <p className="text-base font-medium text-zinc-600">Заказов пока нет</p>
+        </div>
+      ) : (
+        orders.map((order) => {
+          const s = statusMap[order.status] || {
+            label: order.status,
+            className: 'bg-zinc-100 text-zinc-700',
+          };
+          return (
+            <button
+              key={order.id}
+              type="button"
+              onClick={() => router.push(`/orders/${order.id}`)}
+              className="glass-panel mb-3 w-full cursor-pointer p-4 text-left transition hover:bg-white/60"
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <span className="text-sm font-semibold text-zinc-900">
+                  Заказ №{order.id.slice(0, 8)}
+                </span>
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${s.className}`}
+                >
+                  {s.label}
+                </span>
+              </div>
+              <p className="line-clamp-2 text-xs text-zinc-500">
+                {order.items.map((i) => `${i.product.name} ×${i.quantity}`).join(', ')}
+              </p>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-xs text-zinc-500">
+                  {new Date(order.createdAt).toLocaleString('ru-RU')}
+                </span>
+                <span className="text-sm font-bold text-zinc-900">{order.total} ₽</span>
+              </div>
+              {order.bonusEarned > 0 && (
+                <p className="mt-1 text-xs font-medium text-emerald-700">+{order.bonusEarned} бонусов</p>
+              )}
+            </button>
+          );
+        })
+      )}
+    </div>
   );
 }

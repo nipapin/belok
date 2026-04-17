@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { createPayment } from '@/lib/yookassa';
+import { brandMark } from '@/lib/brand';
 
 export async function GET() {
   try {
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
       const payment = await createPayment({
         amount: total,
         orderId: order.id,
-        description: `Заказ #${order.id.slice(0, 8)} в кафе Белок`,
+        description: `Заказ №${order.id.slice(0, 8)} — ${brandMark}`,
         returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/orders/${order.id}`,
       });
 

@@ -1,6 +1,5 @@
 'use client';
 
-import { Box } from '@mui/material';
 import Header from '@/components/layout/Header';
 import BottomNav from '@/components/layout/BottomNav';
 import { useAuthStore } from '@/store/authStore';
@@ -14,26 +13,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }, [fetchUser]);
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        bgcolor: 'background.default',
-        px: 2,
-      }}
-    >
+    <div className="flex min-h-dvh flex-col px-4">
       <Header />
-      <Box
-        component="main"
-        sx={{
-          flex: 1,
-          pb: 'calc(100px + env(safe-area-inset-bottom, 0px))',
-        }}
-      >
-        {children}
-      </Box>
+      <main className="flex-1 pb-[calc(100px+env(safe-area-inset-bottom,0px))]">{children}</main>
       <BottomNav />
-    </Box>
+    </div>
   );
 }

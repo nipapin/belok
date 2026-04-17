@@ -2,19 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  TextField,
-  Slider,
-  Divider,
-  Paper,
-  Alert,
-  CircularProgress,
-} from '@mui/material';
-import PaymentIcon from '@mui/icons-material/Payment';
+import { CreditCard, Loader2 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 
@@ -32,11 +20,14 @@ export default function CheckoutPage() {
   const discountPercent = user?.loyaltyLevel?.discountPercent || 0;
   const discountAmount = Math.round(subtotal * (discountPercent / 100));
   const afterDiscount = subtotal - discountAmount;
-  const maxBonus = Math.min(
-    Math.floor(afterDiscount * 0.3),
-    user?.bonusBalance || 0
-  );
+  const maxBonus = Math.min(Math.floor(afterDiscount * 0.3), user?.bonusBalance || 0);
   const total = afterDiscount - bonusUsed;
+
+  useEffect(() => {
+    if (items.length === 0) {
+      router.push('/cart');
+    }
+  }, [items.length, router]);
 
   const handleOrder = async () => {
     setError('');
@@ -60,7 +51,7 @@ export default function CheckoutPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Ошибка оформления заказа');
+        setError(data.error || 'Не удалось оформить заказ');
         return;
       }
 
@@ -78,123 +69,106 @@ export default function CheckoutPage() {
     }
   };
 
-  useEffect(() => {
-    if (items.length === 0) {
-      router.push('/cart');
-    }
-  }, [items.length, router]);
-
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <Container maxWidth="sm" sx={{ pt: 2, pb: 2 }}>
-      <Typography variant="h2" sx={{ mb: 3 }}>Оформление заказа</Typography>
+    <div className="mx-auto max-w-md pb-4 pt-2">
+      <h1 className="heading-section mb-6">Оформление заказа</h1>
 
-      {/* Order summary */}
-      <Paper elevation={0} sx={{ p: 2, mb: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
-        <Typography variant="h4" sx={{ mb: 1.5 }}>Ваш заказ</Typography>
+      <div className="glass-panel mb-4 p-4">
+        <h2 className="mb-3 text-base font-semibold text-zinc-900">Ваш заказ</h2>
         {items.map((item) => (
-          <Box key={item.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-            <Typography variant="body2">
-              {item.name} x{item.quantity}
-            </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {getItemPrice(item)} ₽
-            </Typography>
-          </Box>
+          <div key={item.id} className="flex justify-between gap-2 py-1.5 text-sm">
+            <span className="text-zinc-700">
+              {item.name} ×{item.quantity}
+            </span>
+            <span className="shrink-0 font-semibold text-zinc-900">{getItemPrice(item)} ₽</span>
+          </div>
         ))}
-        <Divider sx={{ my: 1.5 }} />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="body2">Подытог</Typography>
-          <Typography variant="body2">{subtotal} ₽</Typography>
-        </Box>
-
+        <hr className="my-3 border-zinc-900/10" />
+        <div className="flex justify-between text-sm">
+          <span className="text-zinc-600">Подытог</span>
+          <span>{subtotal} ₽</span>
+        </div>
         {discountAmount > 0 && (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-            <Typography variant="body2" color="success.main">
+          <div className="mt-1 flex justify-between text-sm text-emerald-700">
+            <span>
               Скидка {discountPercent}% ({user?.loyaltyLevel?.name})
-            </Typography>
-            <Typography variant="body2" color="success.main">
-              -{discountAmount} ₽
-            </Typography>
-          </Box>
+            </span>
+            <span>−{discountAmount} ₽</span>
+          </div>
         )}
-
         {bonusUsed > 0 && (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-            <Typography variant="body2" color="warning.main">Бонусы</Typography>
-            <Typography variant="body2" color="warning.main">-{bonusUsed} ₽</Typography>
-          </Box>
+          <div className="mt-1 flex justify-between text-sm text-amber-800">
+            <span>Бонусы</span>
+            <span>−{bonusUsed} ₽</span>
+          </div>
         )}
+        <hr className="my-3 border-zinc-900/10" />
+        <div className="flex justify-between text-base font-semibold">
+          <span>Итого</span>
+          <span>{total} ₽</span>
+        </div>
+      </div>
 
-        <Divider sx={{ my: 1.5 }} />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="h4">Итого</Typography>
-          <Typography variant="h4">{total} ₽</Typography>
-        </Box>
-      </Paper>
-
-      {/* Bonus slider */}
       {user && maxBonus > 0 && (
-        <Paper elevation={0} sx={{ p: 2, mb: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
-          <Typography variant="h4" sx={{ mb: 1 }}>
-            Использовать бонусы
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Доступно: {user.bonusBalance} бонусов (макс. 30% от суммы)
-          </Typography>
-          <Slider
-            value={bonusUsed}
-            onChange={(_, v) => setBonusUsed(v as number)}
+        <div className="glass-panel mb-4 p-4">
+          <h2 className="mb-1 text-base font-semibold text-zinc-900">Списать бонусы</h2>
+          <p className="mb-3 text-sm text-zinc-500">
+            Доступно: {user.bonusBalance} (не более 30% от суммы после скидки)
+          </p>
+          <input
+            type="range"
             min={0}
             max={maxBonus}
             step={1}
-            valueLabelDisplay="auto"
-            sx={{ color: 'primary.main' }}
+            value={bonusUsed}
+            onChange={(e) => setBonusUsed(Number(e.target.value))}
+            className="mb-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-200 accent-zinc-900"
           />
-          <Typography variant="body2" sx={{ textAlign: 'center' }}>
-            Списать: {bonusUsed} бонусов
-          </Typography>
-        </Paper>
+          <p className="text-center text-sm text-zinc-600">Списать: {bonusUsed}</p>
+        </div>
       )}
 
-      {/* Comment */}
-      <TextField
-        fullWidth
-        multiline
-        rows={2}
-        label="Комментарий к заказу"
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        placeholder="Пожелания по заказу..."
-        sx={{ mb: 3 }}
-      />
+      <label className="mb-4 block">
+        <span className="mb-1.5 block text-sm font-medium text-zinc-700">Комментарий к заказу</span>
+        <textarea
+          className="min-h-[88px] w-full resize-none rounded-2xl border border-zinc-900/10 bg-white/70 px-4 py-3 text-sm text-zinc-900 shadow-inner backdrop-blur-md outline-none placeholder:text-zinc-500 focus:border-zinc-900/25 focus:ring-2 focus:ring-zinc-900/10"
+          rows={2}
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Пожелания по заказу…"
+        />
+      </label>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+        <div className="mb-4 rounded-2xl border border-rose-200/80 bg-rose-50/90 px-4 py-3 text-sm text-rose-800 backdrop-blur-sm">
+          {error}
+        </div>
       )}
 
-      {/* Cashback info */}
       {user?.loyaltyLevel && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          За этот заказ вам будет начислен кэшбэк {user.loyaltyLevel.cashbackPercent}%
-          (~{Math.round(total * (user.loyaltyLevel.cashbackPercent / 100))} бонусов)
-        </Alert>
+        <div className="mb-4 rounded-2xl border border-sky-200/80 bg-sky-50/90 px-4 py-3 text-sm text-sky-950 backdrop-blur-sm">
+          После оплаты начислим кэшбэк {user.loyaltyLevel.cashbackPercent}% (≈
+          {Math.round(total * (user.loyaltyLevel.cashbackPercent / 100))} бонусов)
+        </div>
       )}
 
-      <Button
-        fullWidth
-        variant="contained"
-        size="large"
+      <button
+        type="button"
+        className="btn-primary w-full py-3.5"
         onClick={handleOrder}
         disabled={loading}
-        startIcon={loading ? <CircularProgress size={20} /> : <PaymentIcon />}
-        sx={{ py: 1.5 }}
       >
-        {loading ? 'Оформляем...' : `Оплатить ${total} ₽`}
-      </Button>
-    </Container>
+        {loading ? (
+          <Loader2 className="size-5 animate-spin" />
+        ) : (
+          <CreditCard className="size-5" strokeWidth={1.75} />
+        )}
+        {loading ? 'Оформляем…' : `Оплатить ${total} ₽`}
+      </button>
+    </div>
   );
 }

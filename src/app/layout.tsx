@@ -1,16 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import ThemeRegistry from "@/theme/ThemeRegistry";
+import { Geologica } from "next/font/google";
 import QueryProvider from "@/lib/QueryProvider";
+import { brandMark } from "@/lib/brand";
 import "./globals.css";
 
+const geologica = Geologica({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-geologica",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Белок — Кафе здорового питания",
-  description: "Заказ здоровой еды онлайн. Кастомизация блюд, бонусная программа, доставка.",
+  title: `${brandMark} — кафе здорового питания`,
+  description:
+    "Заказ здоровой еды онлайн: меню, кастомизация блюд, бонусы и доставка.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Белок",
+    title: brandMark,
   },
   icons: {
     icon: "/icons/icon-192x192.png",
@@ -19,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#E8F3EB",
+  themeColor: "#eceef3",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -32,13 +40,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="ru" className={geologica.variable}>
       <body>
-        <ThemeRegistry>
-          <QueryProvider>
-            {children}
-          </QueryProvider>
-        </ThemeRegistry>
+        <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
   );

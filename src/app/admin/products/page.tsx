@@ -1,38 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Switch,
-  FormControlLabel,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  Chip,
-  Alert,
-  Checkbox,
-  ListItemText,
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Modal from '@/components/ui/Modal';
 
 interface Ingredient {
   id: string;
@@ -71,9 +42,18 @@ interface Category {
 }
 
 const emptyForm = {
-  name: '', description: '', price: '', image: '', categoryId: '',
-  isAvailable: true, calories: '', proteins: '', fats: '', carbs: '',
-  sortOrder: 0, ingredientIds: [] as string[],
+  name: '',
+  description: '',
+  price: '',
+  image: '',
+  categoryId: '',
+  isAvailable: true,
+  calories: '',
+  proteins: '',
+  fats: '',
+  carbs: '',
+  sortOrder: 0,
+  ingredientIds: [] as string[],
 };
 
 export default function AdminProductsPage() {
@@ -103,6 +83,15 @@ export default function AdminProductsPage() {
   const categories: Category[] = categoriesData?.categories ?? [];
   const ingredients: Ingredient[] = ingredientsData?.ingredients ?? [];
 
+  const toggleIngredient = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      ingredientIds: f.ingredientIds.includes(id)
+        ? f.ingredientIds.filter((x) => x !== id)
+        : [...f.ingredientIds, id],
+    }));
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (data: typeof form & { image?: string }) => {
       let imageUrl = data.image || editing?.image || '';
@@ -118,8 +107,8 @@ export default function AdminProductsPage() {
       const body = {
         ...data,
         image: imageUrl,
-        ingredients: data.ingredientIds.map((id: string) => ({
-          ingredientId: id,
+        ingredients: data.ingredientIds.map((ingredientId: string) => ({
+          ingredientId,
           isDefault: true,
           isRemovable: true,
           isExtra: false,
@@ -187,171 +176,214 @@ export default function AdminProductsPage() {
   };
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h2">Товары</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()}>
+    <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="heading-section m-0">Товары</h1>
+        <button type="button" className="btn-primary gap-2 py-2.5 text-sm" onClick={() => handleOpen()}>
+          <Plus className="size-4" />
           Добавить
-        </Button>
-      </Box>
+        </button>
+      </div>
 
-      <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Название</TableCell>
-              <TableCell>Категория</TableCell>
-              <TableCell>Цена</TableCell>
-              <TableCell>Доступен</TableCell>
-              <TableCell align="right">Действия</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      <div className="admin-table-wrap overflow-x-auto">
+        <table className="admin-table min-w-[720px]">
+          <thead>
+            <tr>
+              <th>Название</th>
+              <th>Категория</th>
+              <th>Цена</th>
+              <th>В меню</th>
+              <th className="text-right">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
             {products.map((product) => (
-              <TableRow key={product.id}>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <tr key={product.id}>
+                <td>
+                  <div className="flex items-center gap-2">
                     {product.image && (
-                      <Box
-                        component="img"
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
                         src={product.image}
-                        sx={{ width: 40, height: 40, borderRadius: 1, objectFit: 'cover' }}
+                        alt=""
+                        className="size-10 rounded-xl object-cover"
                       />
                     )}
-                    {product.name}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Chip label={product.category.name} size="small" />
-                </TableCell>
-                <TableCell>{product.price} ₽</TableCell>
-                <TableCell>
-                  <Chip
-                    label={product.isAvailable ? 'Да' : 'Нет'}
-                    size="small"
-                    color={product.isAvailable ? 'success' : 'default'}
-                  />
-                </TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" onClick={() => handleOpen(product)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={() => {
-                      if (confirm('Удалить товар?')) deleteMutation.mutate(product.id);
-                    }}
+                    <span className="font-medium">{product.name}</span>
+                  </div>
+                </td>
+                <td>
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700">
+                    {product.category.name}
+                  </span>
+                </td>
+                <td>{product.price} ₽</td>
+                <td>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      product.isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-600'
+                    }`}
                   >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
+                    {product.isAvailable ? 'Да' : 'Нет'}
+                  </span>
+                </td>
+                <td className="text-right">
+                  <button
+                    type="button"
+                    className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-zinc-100"
+                    onClick={() => handleOpen(product)}
+                    aria-label="Изменить"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
+                    onClick={() => {
+                      if (window.confirm('Удалить товар?')) deleteMutation.mutate(product.id);
+                    }}
+                    aria-label="Удалить"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </tbody>
+        </table>
+      </div>
 
-      {/* Product Dialog */}
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{editing ? 'Редактировать товар' : 'Новый товар'}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            {error && <Alert severity="error">{error}</Alert>}
-            <TextField
-              label="Название" required fullWidth
-              value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+      <Modal
+        wide
+        open={open}
+        onClose={handleClose}
+        title={editing ? 'Редактировать товар' : 'Новый товар'}
+        footer={
+          <>
+            <button type="button" className="btn-ghost" onClick={handleClose}>
+              Отмена
+            </button>
+            <button
+              type="button"
+              className="btn-primary px-5 py-2 text-sm"
+              onClick={() => saveMutation.mutate(form)}
+              disabled={!form.name || !form.price || !form.categoryId}
+            >
+              {editing ? 'Сохранить' : 'Создать'}
+            </button>
+          </>
+        }
+      >
+        <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1">
+          {error && (
+            <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>
+          )}
+          <label className="text-sm font-medium text-zinc-700">
+            Название <span className="text-rose-600">*</span>
+            <input
+              className="input-pill mt-1"
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
-            <TextField
-              label="Описание" multiline rows={2} fullWidth
-              value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+          </label>
+          <label className="text-sm font-medium text-zinc-700">
+            Описание
+            <textarea
+              className="mt-1 min-h-[72px] w-full resize-none rounded-2xl border border-zinc-900/10 bg-white/70 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-zinc-900/10"
+              rows={2}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="Цена (₽)" required type="number" sx={{ flex: 1 }}
-                value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })}
-              />
-              <FormControl sx={{ flex: 1 }}>
-                <InputLabel>Категория</InputLabel>
-                <Select
-                  value={form.categoryId} label="Категория"
-                  onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                >
-                  {categories.map((c) => (
-                    <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="Ккал" type="number" sx={{ flex: 1 }}
-                value={form.calories} onChange={(e) => setForm({ ...form, calories: e.target.value })}
-              />
-              <TextField
-                label="Белки" type="number" sx={{ flex: 1 }}
-                value={form.proteins} onChange={(e) => setForm({ ...form, proteins: e.target.value })}
-              />
-              <TextField
-                label="Жиры" type="number" sx={{ flex: 1 }}
-                value={form.fats} onChange={(e) => setForm({ ...form, fats: e.target.value })}
-              />
-              <TextField
-                label="Углев." type="number" sx={{ flex: 1 }}
-                value={form.carbs} onChange={(e) => setForm({ ...form, carbs: e.target.value })}
-              />
-            </Box>
-            <FormControl fullWidth>
-              <InputLabel>Ингредиенты</InputLabel>
-              <Select
-                multiple
-                value={form.ingredientIds}
-                onChange={(e) => setForm({ ...form, ingredientIds: e.target.value as string[] })}
-                label="Ингредиенты"
-                renderValue={(selected) =>
-                  selected
-                    .map((id) => ingredients.find((i) => i.id === id)?.name || id)
-                    .join(', ')
-                }
-              >
-                {ingredients.map((ing) => (
-                  <MenuItem key={ing.id} value={ing.id}>
-                    <Checkbox checked={form.ingredientIds.includes(ing.id)} />
-                    <ListItemText primary={`${ing.name} (+${ing.price}₽)`} />
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Box>
-              <Typography variant="body2" sx={{ mb: 1 }}>Изображение</Typography>
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-medium text-zinc-700">
+              Цена (₽) <span className="text-rose-600">*</span>
               <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                className="input-pill mt-1"
+                type="number"
+                required
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
               />
-            </Box>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={form.isAvailable}
-                  onChange={(e) => setForm({ ...form, isAvailable: e.target.checked })}
+            </label>
+            <label className="text-sm font-medium text-zinc-700">
+              Категория <span className="text-rose-600">*</span>
+              <select
+                className="input-pill mt-1 cursor-pointer"
+                value={form.categoryId}
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+              >
+                <option value="">Выберите…</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {(
+              [
+                ['calories', 'Ккал'],
+                ['proteins', 'Белки, г'],
+                ['fats', 'Жиры, г'],
+                ['carbs', 'Углеводы, г'],
+              ] as const
+            ).map(([field, label]) => (
+              <label key={field} className="text-xs font-medium text-zinc-700">
+                {label}
+                <input
+                  className="input-pill mt-1 py-2 text-sm"
+                  type="number"
+                  value={form[field]}
+                  onChange={(e) => setForm({ ...form, [field]: e.target.value })}
                 />
-              }
-              label="Доступен для заказа"
+              </label>
+            ))}
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium text-zinc-700">Ингредиенты в составе</p>
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-2xl border border-zinc-900/10 bg-white/50 p-2">
+              {ingredients.map((ing) => (
+                <label
+                  key={ing.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-sm hover:bg-zinc-900/5"
+                >
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border-zinc-300 accent-zinc-900"
+                    checked={form.ingredientIds.includes(ing.id)}
+                    onChange={() => toggleIngredient(ing.id)}
+                  />
+                  <span>
+                    {ing.name} <span className="text-zinc-500">(+{ing.price} ₽)</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-1 text-sm font-medium text-zinc-700">Изображение</p>
+            <input
+              type="file"
+              accept="image/*"
+              className="text-sm text-zinc-600 file:mr-3 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
             />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Отмена</Button>
-          <Button
-            variant="contained"
-            onClick={() => saveMutation.mutate(form)}
-            disabled={!form.name || !form.price || !form.categoryId}
-          >
-            {editing ? 'Сохранить' : 'Создать'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
+            <input
+              type="checkbox"
+              className="size-4 rounded border-zinc-300 accent-zinc-900"
+              checked={form.isAvailable}
+              onChange={(e) => setForm({ ...form, isAvailable: e.target.checked })}
+            />
+            Доступен для заказа
+          </label>
+        </div>
+      </Modal>
+    </div>
   );
 }

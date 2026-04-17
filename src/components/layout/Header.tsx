@@ -1,49 +1,40 @@
 'use client';
 
-import { AppBar, Toolbar, Typography, IconButton, Badge, Box } from '@mui/material';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import { ShoppingCart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
+import { brandMark } from '@/lib/brand';
 
 export default function Header() {
   const router = useRouter();
   const totalItems = useCartStore((s) => s.getTotalItems());
 
   return (
-    <AppBar position="sticky" elevation={0} color="transparent">
-      <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 0, sm: 1 }, py: 0.5 }}>
-        <Box
+    <header className="sticky top-0 z-[1100] pt-1">
+      <div className="flex items-center justify-between py-2">
+        <button
+          type="button"
           onClick={() => router.push('/')}
-          sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1 }}
+          className="rounded-2xl px-1 text-left transition hover:bg-white/30"
         >
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              fontSize: '1.35rem',
-              color: 'text.primary',
-            }}
-          >
-            БЕЛОК
-          </Typography>
-        </Box>
-        <IconButton
+          <span className="heading-display lowercase tracking-[-0.04em] text-zinc-900">
+            {brandMark}
+          </span>
+        </button>
+        <button
+          type="button"
           onClick={() => router.push('/cart')}
-          sx={{
-            bgcolor: 'background.paper',
-            color: 'text.primary',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-            border: '1px solid',
-            borderColor: 'divider',
-            '&:hover': { bgcolor: 'grey.50' },
-          }}
+          className="btn-icon relative border-zinc-900/8 bg-white/60"
+          aria-label="Корзина"
         >
-          <Badge badgeContent={totalItems} color="error">
-            <ShoppingCartIcon />
-          </Badge>
-        </IconButton>
-      </Toolbar>
-    </AppBar>
+          <ShoppingCart className="size-[22px]" strokeWidth={1.75} />
+          {totalItems > 0 && (
+            <span className="absolute -right-1 -top-1 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-bold text-white shadow-sm">
+              {totalItems > 99 ? '99+' : totalItems}
+            </span>
+          )}
+        </button>
+      </div>
+    </header>
   );
 }

@@ -1,20 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  IconButton,
-  Divider,
-  Paper,
-  Chip,
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 
 export default function CartPage() {
@@ -23,110 +10,91 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <Container maxWidth="sm" sx={{ pt: 8, textAlign: 'center' }}>
-        <ShoppingCartIcon sx={{ fontSize: 80, color: 'text.secondary', opacity: 0.3, mb: 2 }} />
-        <Typography variant="h3" sx={{ mb: 1 }}>
-          Корзина пуста
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Добавьте блюда из меню
-        </Typography>
-        <Button variant="contained" onClick={() => router.push('/menu')}>
+      <div className="mx-auto max-w-md py-16 text-center">
+        <ShoppingCart className="mx-auto mb-4 size-20 text-zinc-300" strokeWidth={1.25} />
+        <h1 className="heading-section mb-2">Корзина пуста</h1>
+        <p className="mb-6 text-sm text-zinc-500">Добавьте блюда из меню</p>
+        <button type="button" className="btn-primary" onClick={() => router.push('/menu')}>
           Перейти в меню
-        </Button>
-      </Container>
+        </button>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="sm" sx={{ pt: 2, pb: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h2">Корзина</Typography>
-        <Button size="small" color="error" onClick={clearCart}>
+    <div className="mx-auto max-w-md pb-4 pt-2">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="heading-section m-0">Корзина</h1>
+        <button type="button" className="btn-ghost text-rose-600 hover:bg-rose-50" onClick={clearCart}>
           Очистить
-        </Button>
-      </Box>
+        </button>
+      </div>
 
       {items.map((item) => (
-        <Paper
-          key={item.id}
-          elevation={0}
-          sx={{
-            p: 2,
-            mb: 1.5,
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: 4,
-            bgcolor: 'background.paper',
-          }}
-        >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                {item.name}
-              </Typography>
+        <div key={item.id} className="glass-panel mb-3 p-4">
+          <div className="flex justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-zinc-900">{item.name}</p>
               {item.customizations.length > 0 && (
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   {item.customizations.map((c, i) => (
-                    <Chip
+                    <span
                       key={i}
-                      label={`${c.action === 'REMOVE' ? 'Без: ' : '+'}${c.ingredientName}${c.priceDelta ? ` +${c.priceDelta}₽` : ''}`}
-                      size="small"
-                      variant="outlined"
-                      sx={{ fontSize: '0.7rem', height: 24 }}
-                    />
+                      className="rounded-full border border-zinc-900/10 bg-white/50 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
+                    >
+                      {c.action === 'REMOVE' ? 'Без: ' : '+'}
+                      {c.ingredientName}
+                      {c.priceDelta ? ` +${c.priceDelta} ₽` : ''}
+                    </span>
                   ))}
-                </Box>
+                </div>
               )}
-            </Box>
-            <IconButton size="small" onClick={() => removeItem(item.id)} color="error">
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Box>
+            </div>
+            <button
+              type="button"
+              className="btn-icon size-9 border-rose-200/60 text-rose-600 hover:bg-rose-50"
+              onClick={() => removeItem(item.id)}
+              aria-label="Удалить"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <IconButton
-                size="small"
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-icon size-9"
                 onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                sx={{ border: '1px solid', borderColor: 'divider', width: 32, height: 32 }}
+                aria-label="Меньше"
               >
-                <RemoveIcon fontSize="small" />
-              </IconButton>
-              <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 24, textAlign: 'center' }}>
-                {item.quantity}
-              </Typography>
-              <IconButton
-                size="small"
+                <Minus className="size-4" />
+              </button>
+              <span className="min-w-[1.5rem] text-center text-sm font-bold tabular-nums">{item.quantity}</span>
+              <button
+                type="button"
+                className="btn-icon size-9"
                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                sx={{ border: '1px solid', borderColor: 'divider', width: 32, height: 32 }}
+                aria-label="Больше"
               >
-                <AddIcon fontSize="small" />
-              </IconButton>
-            </Box>
-            <Typography variant="body1" sx={{ fontWeight: 700 }}>
-              {getItemPrice(item)} ₽
-            </Typography>
-          </Box>
-        </Paper>
+                <Plus className="size-4" />
+              </button>
+            </div>
+            <p className="text-base font-bold text-zinc-900">{getItemPrice(item)} ₽</p>
+          </div>
+        </div>
       ))}
 
-      <Divider sx={{ my: 2 }} />
+      <hr className="my-6 border-t border-zinc-900/10" />
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h3">Итого</Typography>
-        <Typography variant="h3">{getTotalPrice()} ₽</Typography>
-      </Box>
+      <div className="mb-6 flex items-center justify-between">
+        <span className="text-lg font-semibold text-zinc-800">Итого</span>
+        <span className="text-xl font-bold text-zinc-900">{getTotalPrice()} ₽</span>
+      </div>
 
-      <Button
-        fullWidth
-        variant="contained"
-        size="large"
-        onClick={() => router.push('/checkout')}
-        sx={{ py: 1.5 }}
-      >
+      <button type="button" className="btn-primary w-full py-3.5" onClick={() => router.push('/checkout')}>
         Оформить заказ
-      </Button>
-    </Container>
+      </button>
+    </div>
   );
 }

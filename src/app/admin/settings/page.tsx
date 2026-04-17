@@ -1,11 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import {
-  Box, Typography, Paper, TextField, Button, Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-} from '@mui/material';
-import SaveIcon from '@mui/icons-material/Save';
+import { useState } from 'react';
+import { Save } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface LoyaltyLevel {
@@ -19,7 +15,6 @@ interface LoyaltyLevel {
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
-  const [levels, setLevels] = useState<LoyaltyLevel[]>([]);
   const [saved, setSaved] = useState(false);
 
   const { data } = useQuery({
@@ -27,9 +22,9 @@ export default function AdminSettingsPage() {
     queryFn: () => fetch('/api/admin/settings').then((r) => r.json()),
   });
 
-  useEffect(() => {
-    if (data?.levels) setLevels(data.levels);
-  }, [data]);
+  const [dirtyLevels, setDirtyLevels] = useState<LoyaltyLevel[] | null>(null);
+  const levels: LoyaltyLevel[] = dirtyLevels ?? (data?.levels as LoyaltyLevel[] | undefined) ?? [];
+  const setLevels = (next: LoyaltyLevel[]) => setDirtyLevels(next);
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -40,101 +35,101 @@ export default function AdminSettingsPage() {
       }).then((r) => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      setDirtyLevels(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     },
   });
 
-  const updateLevel = (index: number, field: string, value: string) => {
-    setLevels((prev) => prev.map((l, i) => i === index ? { ...l, [field]: value } : l));
+  const updateLevel = (index: number, field: keyof LoyaltyLevel, value: string) => {
+    setLevels(
+      levels.map((l: LoyaltyLevel, i: number) =>
+        i === index ? { ...l, [field]: value } : l
+      )
+    );
   };
 
   return (
-    <Box>
-      <Typography variant="h2" sx={{ mb: 3 }}>Настройки бонусной программы</Typography>
+    <div>
+      <h1 className="heading-section mb-6">Настройки бонусной программы</h1>
 
-      {saved && <Alert severity="success" sx={{ mb: 2 }}>Настройки сохранены</Alert>}
+      {saved && (
+        <div className="mb-4 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          Настройки сохранены
+        </div>
+      )}
 
-      <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', mb: 3 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Уровень</TableCell>
-              <TableCell>Мин. потрачено (₽)</TableCell>
-              <TableCell>Кэшбэк (%)</TableCell>
-              <TableCell>Скидка (%)</TableCell>
-              <TableCell>Пользователей</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      <div className="admin-table-wrap mb-6 overflow-x-auto">
+        <table className="admin-table min-w-[720px]">
+          <thead>
+            <tr>
+              <th>Уровень</th>
+              <th>Мин. сумма, ₽</th>
+              <th>Кэшбэк, %</th>
+              <th>Скидка, %</th>
+              <th>Клиентов</th>
+            </tr>
+          </thead>
+          <tbody>
             {levels.map((level, i) => (
-              <TableRow key={level.id}>
-                <TableCell>
-                  <TextField
-                    size="small"
+              <tr key={level.id}>
+                <td>
+                  <input
+                    className="input-pill max-w-[180px] py-2 text-sm"
                     value={level.name}
                     onChange={(e) => updateLevel(i, 'name', e.target.value)}
-                    sx={{ width: 150 }}
                   />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
+                </td>
+                <td>
+                  <input
+                    className="input-pill max-w-[120px] py-2 text-sm"
                     type="number"
                     value={level.minSpent}
                     onChange={(e) => updateLevel(i, 'minSpent', e.target.value)}
-                    sx={{ width: 120 }}
                   />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
+                </td>
+                <td>
+                  <input
+                    className="input-pill max-w-[100px] py-2 text-sm"
                     type="number"
                     value={level.cashbackPercent}
                     onChange={(e) => updateLevel(i, 'cashbackPercent', e.target.value)}
-                    sx={{ width: 100 }}
                   />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
+                </td>
+                <td>
+                  <input
+                    className="input-pill max-w-[100px] py-2 text-sm"
                     type="number"
                     value={level.discountPercent}
                     onChange={(e) => updateLevel(i, 'discountPercent', e.target.value)}
-                    sx={{ width: 100 }}
                   />
-                </TableCell>
-                <TableCell>{level._count?.users ?? 0}</TableCell>
-              </TableRow>
+                </td>
+                <td>{level._count?.users ?? 0}</td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </tbody>
+        </table>
+      </div>
 
-      <Button
-        variant="contained"
-        startIcon={<SaveIcon />}
+      <button
+        type="button"
+        className="btn-primary gap-2 py-2.5 text-sm"
         onClick={() => saveMutation.mutate()}
         disabled={saveMutation.isPending}
       >
+        <Save className="size-4" />
         Сохранить настройки
-      </Button>
+      </button>
 
-      <Paper elevation={0} sx={{ p: 3, mt: 4, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
-        <Typography variant="h4" sx={{ mb: 2 }}>Правила бонусной программы</Typography>
-        <Typography variant="body2" color="text.secondary">
-          1. Бонусами можно оплатить до 30% стоимости заказа.
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          2. 1 бонус = 1 рубль.
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          3. Кэшбэк начисляется после успешной оплаты.
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          4. Уровень лояльности повышается автоматически при достижении суммы покупок.
-        </Typography>
-      </Paper>
-    </Box>
+      <div className="glass-panel mt-8 p-5">
+        <h2 className="mb-3 text-base font-semibold text-zinc-900">Правила программы</h2>
+        <ul className="list-inside list-disc space-y-2 text-sm text-zinc-600">
+          <li>Бонусами можно оплатить до 30% стоимости заказа.</li>
+          <li>1 бонус равен 1 ₽.</li>
+          <li>Кэшбэк начисляется после успешной оплаты.</li>
+          <li>Уровень лояльности повышается при достижении суммы покупок.</li>
+        </ul>
+      </div>
+    </div>
   );
 }

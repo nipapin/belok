@@ -2,22 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  Chip,
-  Switch,
-  Divider,
-  IconButton,
-  Skeleton,
-  Paper,
-} from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import { ArrowLeft, Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useCartStore, type CartItemCustomization } from '@/store/cartStore';
 
@@ -45,6 +30,24 @@ interface Product {
   carbs: number | null;
   category: { name: string };
   ingredients: ProductIngredient[];
+}
+
+function Toggle({
+  checked,
+  onChange,
+  id,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  id: string;
+}) {
+  return (
+    <label htmlFor={id} className="relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center">
+      <input id={id} type="checkbox" className="peer sr-only" checked={checked} onChange={onChange} />
+      <span className="pointer-events-none absolute inset-0 rounded-full bg-zinc-200 transition peer-checked:bg-zinc-900" />
+      <span className="pointer-events-none absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-[1.25rem]" />
+    </label>
+  );
 }
 
 export default function ProductDetailPage() {
@@ -127,23 +130,22 @@ export default function ProductDetailPage() {
 
   if (isLoading) {
     return (
-      <Container maxWidth="sm" sx={{ pt: 2 }}>
-        <Skeleton variant="rounded" height={250} sx={{ borderRadius: 3, mb: 2 }} />
-        <Skeleton width="60%" height={40} />
-        <Skeleton width="40%" />
-        <Skeleton width="100%" height={100} sx={{ mt: 2 }} />
-      </Container>
+      <div className="mx-auto max-w-lg pt-2">
+        <div className="glass-tight mb-4 h-[250px] animate-pulse" />
+        <div className="h-8 w-[60%] max-w-xs animate-pulse rounded-lg bg-white/40" />
+        <div className="mt-2 h-4 w-2/5 animate-pulse rounded bg-white/30" />
+      </div>
     );
   }
 
   if (!product) {
     return (
-      <Container maxWidth="sm" sx={{ pt: 4, textAlign: 'center' }}>
-        <Typography variant="h3">Товар не найден</Typography>
-        <Button onClick={() => router.push('/menu')} sx={{ mt: 2 }}>
+      <div className="mx-auto max-w-lg py-16 text-center">
+        <p className="text-lg font-semibold text-zinc-700">Товар не найден</p>
+        <button type="button" className="btn-primary mt-4" onClick={() => router.push('/menu')}>
           Вернуться в меню
-        </Button>
-      </Container>
+        </button>
+      </div>
     );
   }
 
@@ -151,206 +153,133 @@ export default function ProductDetailPage() {
   const extraIngredients = product.ingredients.filter((pi) => pi.isExtra);
 
   return (
-    <Box>
-      {/* Image */}
-      <Box sx={{ position: 'relative' }}>
-        <Box
-          sx={{
-            height: 280,
-            bgcolor: '#F0F0F0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
+    <div className="pb-28">
+      <div className="relative -mx-4">
+        <div className="flex h-[280px] items-center justify-center bg-zinc-200/60">
           {product.image ? (
-            <Box
-              component="img"
-              src={product.image}
-              alt={product.name}
-              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={product.image} alt="" className="h-full w-full object-cover" />
           ) : (
-            <Typography variant="h1" color="text.secondary" sx={{ opacity: 0.15, fontSize: '6rem' }}>
-              {product.name[0]}
-            </Typography>
+            <span className="text-[6rem] font-bold leading-none text-zinc-300/90">{product.name[0]}</span>
           )}
-        </Box>
-        <IconButton
+        </div>
+        <button
+          type="button"
           onClick={() => router.back()}
-          sx={{
-            position: 'absolute',
-            top: 12,
-            left: 12,
-            bgcolor: 'white',
-            boxShadow: 2,
-            '&:hover': { bgcolor: '#F5F5F5' },
-          }}
+          className="btn-icon absolute left-4 top-4 border-white/70 bg-white/85 shadow-md"
+          aria-label="Назад"
         >
-          <ArrowBackIcon />
-        </IconButton>
-      </Box>
+          <ArrowLeft className="size-5" strokeWidth={1.75} />
+        </button>
+      </div>
 
-      <Container maxWidth="sm" sx={{ pt: 2, pb: 2 }}>
-        {/* Title & Price */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-          <Box>
-            <Chip label={product.category.name} size="small" sx={{ mb: 1 }} />
-            <Typography variant="h2">{product.name}</Typography>
-          </Box>
-          <Typography variant="h2" color="primary">
-            {product.price} ₽
-          </Typography>
-        </Box>
+      <div className="mx-auto max-w-lg pt-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <span className="mb-2 inline-block rounded-full border border-white/50 bg-white/55 px-3 py-1 text-xs font-semibold text-zinc-600 backdrop-blur-md">
+              {product.category.name}
+            </span>
+            <h1 className="heading-section text-balance">{product.name}</h1>
+          </div>
+          <p className="shrink-0 text-xl font-bold tracking-tight text-zinc-900">{product.price} ₽</p>
+        </div>
 
         {product.description && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {product.description}
-          </Typography>
+          <p className="mb-4 text-sm leading-relaxed text-zinc-600">{product.description}</p>
         )}
 
-        {/* КБЖУ */}
-        {product.calories && (
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 2,
-              p: 2,
-              bgcolor: '#F8F8F8',
-              borderRadius: 3,
-              mb: 3,
-              justifyContent: 'space-around',
-            }}
-          >
+        {product.calories != null && (
+          <div className="glass-tight mb-6 flex justify-around gap-2 px-2 py-4">
             {[
               { label: 'Ккал', value: product.calories },
-              { label: 'Белки', value: product.proteins },
-              { label: 'Жиры', value: product.fats },
-              { label: 'Углеводы', value: product.carbs },
+              { label: 'Белки, г', value: product.proteins },
+              { label: 'Жиры, г', value: product.fats },
+              { label: 'Углеводы, г', value: product.carbs },
             ].map((item) => (
-              <Box key={item.label} sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" sx={{ fontSize: '1.1rem' }}>{item.value}</Typography>
-                <Typography variant="caption" color="text.secondary">{item.label}</Typography>
-              </Box>
+              <div key={item.label} className="min-w-0 flex-1 text-center">
+                <p className="text-base font-bold text-zinc-900">{item.value ?? '—'}</p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">{item.label}</p>
+              </div>
             ))}
-          </Box>
+          </div>
         )}
 
-        {/* Default ingredients - removable */}
         {defaultIngredients.length > 0 && (
           <>
-            <Typography variant="h4" sx={{ mb: 1.5 }}>Состав</Typography>
-            {defaultIngredients.map((pi) => (
-              <Box
-                key={pi.id}
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  py: 1,
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    textDecoration: removedIngredients.has(pi.ingredient.id)
-                      ? 'line-through'
-                      : 'none',
-                    color: removedIngredients.has(pi.ingredient.id)
-                      ? 'text.secondary'
-                      : 'text.primary',
-                  }}
-                >
-                  {pi.ingredient.name}
-                </Typography>
-                {pi.isRemovable && (
-                  <Switch
-                    checked={!removedIngredients.has(pi.ingredient.id)}
-                    onChange={() => toggleRemove(pi.ingredient.id)}
-                    size="small"
-                  />
-                )}
-              </Box>
-            ))}
-            <Divider sx={{ my: 2 }} />
+            <h2 className="mb-2 text-base font-semibold text-zinc-900">Состав</h2>
+            <div className="glass-panel mb-4 divide-y divide-zinc-900/6 p-1">
+              {defaultIngredients.map((pi) => (
+                <div key={pi.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <span
+                    className={`text-sm ${
+                      removedIngredients.has(pi.ingredient.id)
+                        ? 'text-zinc-400 line-through'
+                        : 'text-zinc-800'
+                    }`}
+                  >
+                    {pi.ingredient.name}
+                  </span>
+                  {pi.isRemovable && (
+                    <Toggle
+                      id={`ing-${pi.id}`}
+                      checked={!removedIngredients.has(pi.ingredient.id)}
+                      onChange={() => toggleRemove(pi.ingredient.id)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           </>
         )}
 
-        {/* Extra ingredients - addable */}
         {extraIngredients.length > 0 && (
           <>
-            <Typography variant="h4" sx={{ mb: 1.5 }}>Добавить</Typography>
-            {extraIngredients.map((pi) => (
-              <Box
-                key={pi.id}
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  py: 1,
-                }}
-              >
-                <Box>
-                  <Typography variant="body2">{pi.ingredient.name}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    +{pi.ingredient.price} ₽
-                  </Typography>
-                </Box>
-                <Switch
-                  checked={addedExtras.has(pi.ingredient.id)}
-                  onChange={() => toggleExtra(pi.ingredient.id)}
-                  size="small"
-                />
-              </Box>
-            ))}
-            <Divider sx={{ my: 2 }} />
+            <h2 className="mb-2 text-base font-semibold text-zinc-900">Добавить</h2>
+            <div className="glass-panel mb-6 divide-y divide-zinc-900/6 p-1">
+              {extraIngredients.map((pi) => (
+                <div key={pi.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-800">{pi.ingredient.name}</p>
+                    <p className="text-xs text-zinc-500">+{pi.ingredient.price} ₽</p>
+                  </div>
+                  <Toggle
+                    id={`ex-${pi.id}`}
+                    checked={addedExtras.has(pi.ingredient.id)}
+                    onChange={() => toggleExtra(pi.ingredient.id)}
+                  />
+                </div>
+              ))}
+            </div>
           </>
         )}
 
-        {/* Quantity */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, my: 3 }}>
-          <IconButton
+        <div className="mb-6 flex items-center justify-center gap-4">
+          <button
+            type="button"
+            className="btn-icon"
             onClick={() => setQuantity(Math.max(1, quantity - 1))}
-            sx={{ border: '1px solid', borderColor: 'divider' }}
+            aria-label="Меньше"
           >
-            <RemoveIcon />
-          </IconButton>
-          <Typography variant="h3" sx={{ minWidth: 40, textAlign: 'center' }}>
-            {quantity}
-          </Typography>
-          <IconButton
+            <Minus className="size-4" />
+          </button>
+          <span className="min-w-[2.5rem] text-center text-xl font-bold tabular-nums">{quantity}</span>
+          <button
+            type="button"
+            className="btn-icon"
             onClick={() => setQuantity(quantity + 1)}
-            sx={{ border: '1px solid', borderColor: 'divider' }}
+            aria-label="Больше"
           >
-            <AddIcon />
-          </IconButton>
-        </Box>
+            <Plus className="size-4" />
+          </button>
+        </div>
 
-        {/* Add to cart */}
-        <Paper
-          elevation={0}
-          sx={{
-            position: 'sticky',
-            bottom: 80,
-            p: 2,
-            bgcolor: 'white',
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            borderRadius: 3,
-          }}
-        >
-          <Button
-            fullWidth
-            variant="contained"
-            size="large"
-            onClick={handleAddToCart}
-            startIcon={<ShoppingCartIcon />}
-            sx={{ py: 1.5 }}
-          >
+        <div className="glass-panel-strong sticky bottom-[calc(88px+env(safe-area-inset-bottom,0px))] border-zinc-900/8 p-4">
+          <button type="button" className="btn-primary w-full" onClick={handleAddToCart}>
+            <ShoppingCart className="size-5" strokeWidth={1.75} />
             В корзину · {calcPrice()} ₽
-          </Button>
-        </Paper>
-      </Container>
-    </Box>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

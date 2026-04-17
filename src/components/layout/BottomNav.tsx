@@ -1,17 +1,13 @@
 'use client';
 
+import { Home, UtensilsCrossed, ShoppingCart, User } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Box, Typography } from '@mui/material';
-import HomeIcon from '@mui/icons-material/Home';
-import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import PersonIcon from '@mui/icons-material/Person';
 
 const navItems = [
-  { label: 'Главная', icon: HomeIcon, path: '/' },
-  { label: 'Меню', icon: RestaurantMenuIcon, path: '/menu' },
-  { label: 'Корзина', icon: ShoppingCartIcon, path: '/cart' },
-  { label: 'Профиль', icon: PersonIcon, path: '/profile' },
+  { label: 'Главная', icon: Home, path: '/' },
+  { label: 'Меню', icon: UtensilsCrossed, path: '/menu' },
+  { label: 'Корзина', icon: ShoppingCart, path: '/cart' },
+  { label: 'Профиль', icon: User, path: '/profile' },
 ];
 
 export default function BottomNav() {
@@ -25,87 +21,32 @@ export default function BottomNav() {
   );
 
   return (
-    <Box
-      sx={{
-        position: 'fixed',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 1200,
-        display: 'flex',
-        justifyContent: 'center',
-        pointerEvents: 'none',
-        pb: 'max(12px, env(safe-area-inset-bottom, 0px))',
-        px: 2,
-      }}
-    >
-      <Box
+    <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-[1200] flex justify-center px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))]">
+      <nav
         role="navigation"
         aria-label="Основная навигация"
-        sx={{
-          pointerEvents: 'auto',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 0.5,
-          width: '100%',
-          maxWidth: 400,
-          px: 1,
-          py: 0.75,
-          bgcolor: '#1A1A1A',
-          borderRadius: 9999,
-          boxShadow: '0 10px 40px rgba(0,0,0,0.18)',
-        }}
+        className="pointer-events-auto flex w-full max-w-[400px] items-center justify-between gap-0.5 rounded-full border border-white/25 bg-zinc-900/55 px-2 py-2 shadow-[0_12px_48px_rgba(0,0,0,0.22)] backdrop-blur-2xl backdrop-saturate-150"
       >
         {navItems.map((item, index) => {
           const selected = currentValue === index;
           const Icon = item.icon;
           return (
-            <Box
+            <button
               key={item.path}
-              component="button"
               type="button"
               onClick={() => router.push(item.path)}
-              sx={{
-                flex: 1,
-                minWidth: 0,
-                border: 'none',
-                cursor: 'pointer',
-                bgcolor: selected ? '#FFFFFF' : 'transparent',
-                color: selected ? '#1A1A1A' : 'rgba(255,255,255,0.55)',
-                borderRadius: 9999,
-                py: 0.75,
-                px: 0.5,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 0.25,
-                transition: 'background-color 0.2s, color 0.2s',
-                font: 'inherit',
-                '&:hover': {
-                  color: selected ? '#1A1A1A' : 'rgba(255,255,255,0.85)',
-                },
-              }}
+              className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full py-2.5 text-[0.65rem] font-semibold leading-none transition ${
+                selected
+                  ? 'bg-white text-zinc-900 shadow-sm'
+                  : 'text-white/55 hover:text-white/90'
+              }`}
             >
-              <Icon sx={{ fontSize: 22 }} />
-              <Typography
-                variant="caption"
-                sx={{
-                  fontSize: '0.65rem',
-                  fontWeight: selected ? 600 : 500,
-                  lineHeight: 1,
-                  maxWidth: '100%',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {item.label}
-              </Typography>
-            </Box>
+              <Icon className="size-[22px]" strokeWidth={selected ? 2 : 1.65} />
+              <span className="max-w-full truncate px-0.5">{item.label}</span>
+            </button>
           );
         })}
-      </Box>
-    </Box>
+      </nav>
+    </div>
   );
 }

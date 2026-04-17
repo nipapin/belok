@@ -1,15 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Switch, FormControlLabel, Chip,
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Modal from '@/components/ui/Modal';
 
 interface Ingredient {
   id: string;
@@ -64,63 +58,122 @@ export default function AdminIngredientsPage() {
     setOpen(true);
   };
 
-  const handleClose = () => { setOpen(false); setEditing(null); };
+  const handleClose = () => {
+    setOpen(false);
+    setEditing(null);
+  };
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h2">Ингредиенты</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()}>Добавить</Button>
-      </Box>
+    <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="heading-section m-0">Ингредиенты</h1>
+        <button type="button" className="btn-primary gap-2 py-2.5 text-sm" onClick={() => handleOpen()}>
+          <Plus className="size-4" />
+          Добавить
+        </button>
+      </div>
 
-      <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Название</TableCell>
-              <TableCell>Цена</TableCell>
-              <TableCell>Используется</TableCell>
-              <TableCell>Статус</TableCell>
-              <TableCell align="right">Действия</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      <div className="admin-table-wrap overflow-x-auto">
+        <table className="admin-table min-w-[640px]">
+          <thead>
+            <tr>
+              <th>Название</th>
+              <th>Цена</th>
+              <th>В блюдах</th>
+              <th>Статус</th>
+              <th className="text-right">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
             {ingredients.map((ing) => (
-              <TableRow key={ing.id}>
-                <TableCell>{ing.name}</TableCell>
-                <TableCell>{ing.price} ₽</TableCell>
-                <TableCell>{ing._count.products} товаров</TableCell>
-                <TableCell>
-                  <Chip label={ing.isAvailable ? 'Доступен' : 'Недоступен'} size="small" color={ing.isAvailable ? 'success' : 'default'} />
-                </TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" onClick={() => handleOpen(ing)}><EditIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => {
-                    if (confirm('Удалить?')) deleteMutation.mutate(ing.id);
-                  }}><DeleteIcon fontSize="small" /></IconButton>
-                </TableCell>
-              </TableRow>
+              <tr key={ing.id}>
+                <td>{ing.name}</td>
+                <td>{ing.price} ₽</td>
+                <td>{ing._count.products}</td>
+                <td>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      ing.isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-600'
+                    }`}
+                  >
+                    {ing.isAvailable ? 'Доступен' : 'Скрыт'}
+                  </span>
+                </td>
+                <td className="text-right">
+                  <button
+                    type="button"
+                    className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-zinc-100"
+                    onClick={() => handleOpen(ing)}
+                    aria-label="Изменить"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
+                    onClick={() => {
+                      if (window.confirm('Удалить ингредиент?')) deleteMutation.mutate(ing.id);
+                    }}
+                    aria-label="Удалить"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </tbody>
+        </table>
+      </div>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-        <DialogTitle>{editing ? 'Редактировать' : 'Новый ингредиент'}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <TextField label="Название" fullWidth value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <TextField label="Цена (₽)" type="number" fullWidth value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
-            <FormControlLabel control={<Switch checked={form.isAvailable} onChange={(e) => setForm({ ...form, isAvailable: e.target.checked })} />} label="Доступен" />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Отмена</Button>
-          <Button variant="contained" onClick={() => saveMutation.mutate(form)} disabled={!form.name}>
-            {editing ? 'Сохранить' : 'Создать'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      <Modal
+        open={open}
+        onClose={handleClose}
+        title={editing ? 'Редактировать ингредиент' : 'Новый ингредиент'}
+        footer={
+          <>
+            <button type="button" className="btn-ghost" onClick={handleClose}>
+              Отмена
+            </button>
+            <button
+              type="button"
+              className="btn-primary px-5 py-2 text-sm"
+              onClick={() => saveMutation.mutate(form)}
+              disabled={!form.name}
+            >
+              {editing ? 'Сохранить' : 'Создать'}
+            </button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <label className="text-sm font-medium text-zinc-700">
+            Название
+            <input
+              className="input-pill mt-1"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+          </label>
+          <label className="text-sm font-medium text-zinc-700">
+            Цена (₽)
+            <input
+              className="input-pill mt-1"
+              type="number"
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
+            />
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
+            <input
+              type="checkbox"
+              className="size-4 rounded border-zinc-300 accent-zinc-900"
+              checked={form.isAvailable}
+              onChange={(e) => setForm({ ...form, isAvailable: e.target.checked })}
+            />
+            Доступен для заказа
+          </label>
+        </div>
+      </Modal>
+    </div>
   );
 }

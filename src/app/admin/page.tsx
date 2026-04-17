@@ -1,16 +1,12 @@
 'use client';
 
-import { Box, Typography, Paper, Grid, Skeleton } from '@mui/material';
-import ReceiptIcon from '@mui/icons-material/Receipt';
-import PeopleIcon from '@mui/icons-material/People';
-import RestaurantIcon from '@mui/icons-material/Restaurant';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import { Banknote, Receipt, Users, UtensilsCrossed } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 interface StatCard {
   label: string;
   value: string | number;
-  icon: React.ReactNode;
+  icon: typeof Receipt;
 }
 
 export default function AdminDashboard() {
@@ -42,71 +38,61 @@ export default function AdminDashboard() {
   const isLoading = loadingOrders || loadingUsers || loadingProducts;
 
   const stats: StatCard[] = [
-    { label: 'Заказов сегодня', value: todayOrders.length, icon: <ReceiptIcon sx={{ fontSize: 40 }} /> },
-    { label: 'Выручка сегодня', value: `${todayRevenue} ₽`, icon: <AttachMoneyIcon sx={{ fontSize: 40 }} /> },
-    { label: 'Всего пользователей', value: users.length, icon: <PeopleIcon sx={{ fontSize: 40 }} /> },
-    { label: 'Товаров в меню', value: products.length, icon: <RestaurantIcon sx={{ fontSize: 40 }} /> },
+    { label: 'Заказов сегодня', value: todayOrders.length, icon: Receipt },
+    { label: 'Выручка сегодня', value: `${todayRevenue} ₽`, icon: Banknote },
+    { label: 'Пользователей', value: users.length, icon: Users },
+    { label: 'Позиций в меню', value: products.length, icon: UtensilsCrossed },
   ];
 
   return (
-    <Box>
-      <Typography variant="h2" sx={{ mb: 3 }}>Дашборд</Typography>
+    <div>
+      <h1 className="heading-section mb-6">Дашборд</h1>
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {stats.map((stat, i) => (
-          <Grid key={i} size={{ xs: 6, md: 3 }}>
-            {isLoading ? (
-              <Skeleton variant="rounded" height={120} sx={{ borderRadius: 3 }} />
-            ) : (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  textAlign: 'center',
-                }}
-              >
-                <Box sx={{ color: 'primary.main', mb: 1 }}>{stat.icon}</Box>
-                <Typography variant="h3">{stat.value}</Typography>
-                <Typography variant="body2" color="text.secondary">{stat.label}</Typography>
-              </Paper>
-            )}
-          </Grid>
-        ))}
-      </Grid>
+      <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        {stats.map((stat, i) => {
+          const Icon = stat.icon;
+          return (
+            <div key={i} className="glass-panel p-4 text-center sm:p-5">
+              {isLoading ? (
+                <div className="h-[120px] animate-pulse rounded-xl bg-white/40" />
+              ) : (
+                <>
+                  <Icon className="mx-auto mb-2 size-9 text-zinc-800" strokeWidth={1.5} />
+                  <p className="text-xl font-bold text-zinc-900">{stat.value}</p>
+                  <p className="mt-1 text-xs font-medium text-zinc-500">{stat.label}</p>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-      {/* Recent orders */}
-      <Typography variant="h3" sx={{ mb: 2 }}>Последние заказы</Typography>
-      {orders.slice(0, 5).map((order: {
-        id: string;
-        status: string;
-        total: number;
-        createdAt: string;
-        user: { phone: string; name: string | null };
-      }) => (
-        <Paper
-          key={order.id}
-          elevation={0}
-          sx={{ p: 2, mb: 1, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
-        >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                #{order.id.slice(0, 8)}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {order.user?.name || order.user?.phone} · {new Date(order.createdAt).toLocaleString('ru')}
-              </Typography>
-            </Box>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{order.total} ₽</Typography>
-              <Typography variant="caption" color="text.secondary">{order.status}</Typography>
-            </Box>
-          </Box>
-        </Paper>
-      ))}
-    </Box>
+      <h2 className="mb-3 text-lg font-semibold text-zinc-900">Последние заказы</h2>
+      <div className="space-y-2">
+        {orders.slice(0, 5).map(
+          (order: {
+            id: string;
+            status: string;
+            total: number;
+            createdAt: string;
+            user: { phone: string; name: string | null };
+          }) => (
+            <div key={order.id} className="glass-panel flex flex-wrap items-center justify-between gap-2 p-4">
+              <div>
+                <p className="text-sm font-semibold text-zinc-900">№{order.id.slice(0, 8)}</p>
+                <p className="text-xs text-zinc-500">
+                  {order.user?.name || order.user?.phone} ·{' '}
+                  {new Date(order.createdAt).toLocaleString('ru-RU')}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-zinc-900">{order.total} ₽</p>
+                <p className="text-xs text-zinc-500">{order.status}</p>
+              </div>
+            </div>
+          )
+        )}
+      </div>
+    </div>
   );
 }

@@ -11,6 +11,8 @@
 //
 // This file provides helpers that work in both development (mock) and production modes.
 
+import { brandMark } from '@/lib/brand';
+
 export interface WalletCardData {
   userId: string;
   userName: string;
@@ -64,9 +66,9 @@ export function generateApplePassJson(data: WalletCardData) {
     passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.cafe.belok.loyalty',
     serialNumber: `belok-${data.userId}`,
     teamIdentifier: process.env.APPLE_TEAM_ID || 'XXXXXXXXXX',
-    organizationName: 'Белок',
-    description: 'Карта лояльности Белок',
-    logoText: 'БЕЛОК',
+    organizationName: brandMark,
+    description: `Карта лояльности ${brandMark}`,
+    logoText: brandMark,
     foregroundColor: 'rgb(26, 26, 26)',
     backgroundColor: 'rgb(255, 255, 255)',
     labelColor: 'rgb(107, 107, 107)',
@@ -74,26 +76,26 @@ export function generateApplePassJson(data: WalletCardData) {
       primaryFields: [
         {
           key: 'balance',
-          label: 'БОНУСЫ',
+          label: 'Бонусы',
           value: Math.floor(data.bonusBalance),
         },
       ],
       secondaryFields: [
         {
           key: 'level',
-          label: 'УРОВЕНЬ',
+          label: 'Уровень',
           value: data.loyaltyLevel,
         },
         {
           key: 'spent',
-          label: 'ПОТРАЧЕНО',
+          label: 'Потрачено',
           value: `${data.totalSpent} ₽`,
         },
       ],
       auxiliaryFields: [
         {
           key: 'name',
-          label: 'ИМЯ',
+          label: 'Имя',
           value: data.userName || 'Гость',
         },
       ],

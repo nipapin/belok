@@ -1,11 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import {
-  Box, Container, Typography, Paper, Chip, Divider, Button, Skeleton,
-  Stepper, Step, StepLabel,
-} from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 const statusSteps = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'COMPLETED'];
@@ -16,6 +12,13 @@ const statusLabels: Record<string, string> = {
   READY: 'Готов',
   COMPLETED: 'Выполнен',
   CANCELLED: 'Отменён',
+};
+
+const paymentLabel = (s: string) => {
+  if (s === 'SUCCEEDED') return 'Оплачен';
+  if (s === 'PENDING') return 'Ожидает оплаты';
+  if (s === 'CANCELLED') return 'Платёж отменён';
+  return s;
 };
 
 interface OrderItem {
@@ -53,114 +56,124 @@ export default function OrderDetailPage() {
 
   if (isLoading) {
     return (
-      <Container maxWidth="sm" sx={{ pt: 2 }}>
-        <Skeleton variant="rounded" height={200} sx={{ borderRadius: 3 }} />
-      </Container>
+      <div className="mx-auto max-w-md pt-2">
+        <div className="glass-tight h-[200px] animate-pulse" />
+      </div>
     );
   }
 
   if (!order) {
     return (
-      <Container maxWidth="sm" sx={{ pt: 4, textAlign: 'center' }}>
-        <Typography variant="h3">Заказ не найден</Typography>
-        <Button onClick={() => router.push('/orders')} sx={{ mt: 2 }}>Назад</Button>
-      </Container>
+      <div className="mx-auto max-w-md py-16 text-center">
+        <p className="text-lg font-semibold text-zinc-700">Заказ не найден</p>
+        <button type="button" className="btn-primary mt-4" onClick={() => router.push('/orders')}>
+          К заказам
+        </button>
+      </div>
     );
   }
 
-  const activeStep = order.status === 'CANCELLED'
-    ? -1
-    : statusSteps.indexOf(order.status);
+  const activeStep = order.status === 'CANCELLED' ? -1 : statusSteps.indexOf(order.status);
 
   return (
-    <Container maxWidth="sm" sx={{ pt: 2, pb: 2 }}>
-      <Button
-        startIcon={<ArrowBackIcon />}
+    <div className="mx-auto max-w-md pb-6 pt-2">
+      <button
+        type="button"
         onClick={() => router.push('/orders')}
-        sx={{ mb: 2 }}
+        className="btn-ghost mb-4 gap-1.5 pl-0"
       >
+        <ArrowLeft className="size-4" />
         Назад
-      </Button>
+      </button>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h2">Заказ #{order.id.slice(0, 8)}</Typography>
-        <Chip
-          label={statusLabels[order.status]}
-          color={order.status === 'CANCELLED' ? 'error' : order.status === 'COMPLETED' ? 'success' : 'info'}
-        />
-      </Box>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="heading-section m-0">Заказ №{order.id.slice(0, 8)}</h1>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+            order.status === 'CANCELLED'
+              ? 'bg-rose-100 text-rose-800'
+              : order.status === 'COMPLETED'
+                ? 'bg-emerald-100 text-emerald-900'
+                : 'bg-sky-100 text-sky-900'
+          }`}
+        >
+          {statusLabels[order.status]}
+        </span>
+      </div>
 
-      {/* Progress stepper */}
       {order.status !== 'CANCELLED' && (
-        <Paper elevation={0} sx={{ p: 2, mb: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
-          <Stepper activeStep={activeStep} alternativeLabel>
-            {statusSteps.map((step) => (
-              <Step key={step}>
-                <StepLabel>{statusLabels[step]}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Paper>
+        <div className="glass-panel mb-4 overflow-x-auto p-4">
+          <div className="flex min-w-[280px] justify-between gap-1">
+            {statusSteps.map((step, i) => {
+              const done = i <= activeStep;
+              return (
+                <div key={step} className="flex min-w-0 flex-1 flex-col items-center text-center">
+                  <span
+                    className={`mb-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                      done ? 'bg-zinc-900' : 'bg-zinc-300'
+                    }`}
+                  />
+                  <span className="text-[10px] font-medium leading-tight text-zinc-600">
+                    {statusLabels[step]}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      {/* Items */}
-      <Paper elevation={0} sx={{ p: 2, mb: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
-        <Typography variant="h4" sx={{ mb: 1.5 }}>Состав заказа</Typography>
+      <div className="glass-panel mb-4 p-4">
+        <h2 className="mb-3 text-base font-semibold text-zinc-900">Состав заказа</h2>
         {order.items.map((item) => (
-          <Box key={item.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 1 }}>
-            <Box>
-              <Typography variant="body2">{item.product.name} x{item.quantity}</Typography>
+          <div key={item.id} className="flex justify-between gap-2 border-b border-zinc-900/5 py-2 last:border-0">
+            <div>
+              <p className="text-sm text-zinc-800">
+                {item.product.name} ×{item.quantity}
+              </p>
               {item.customizations.length > 0 && (
-                <Typography variant="caption" color="text.secondary">
-                  {item.customizations.map((c) =>
-                    c.action === 'REMOVE' ? `Без: ${c.ingredientId}` : `+${c.ingredientId}`
-                  ).join(', ')}
-                </Typography>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  {item.customizations.map((c) => (c.action === 'REMOVE' ? 'Без ' : '+ ') + c.ingredientId).join(', ')}
+                </p>
               )}
-            </Box>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            </div>
+            <p className="shrink-0 text-sm font-semibold text-zinc-900">
               {item.unitPrice * item.quantity} ₽
-            </Typography>
-          </Box>
+            </p>
+          </div>
         ))}
-
-        <Divider sx={{ my: 1.5 }} />
-
+        <hr className="my-3 border-zinc-900/10" />
         {order.discountAmount > 0 && (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="body2" color="success.main">Скидка</Typography>
-            <Typography variant="body2" color="success.main">-{order.discountAmount} ₽</Typography>
-          </Box>
+          <div className="flex justify-between text-sm text-emerald-700">
+            <span>Скидка</span>
+            <span>−{order.discountAmount} ₽</span>
+          </div>
         )}
         {order.bonusUsed > 0 && (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="body2" color="warning.main">Бонусы</Typography>
-            <Typography variant="body2" color="warning.main">-{order.bonusUsed} ₽</Typography>
-          </Box>
+          <div className="mt-1 flex justify-between text-sm text-amber-800">
+            <span>Бонусы</span>
+            <span>−{order.bonusUsed} ₽</span>
+          </div>
         )}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-          <Typography variant="h4">Итого</Typography>
-          <Typography variant="h4">{order.total} ₽</Typography>
-        </Box>
+        <div className="mt-3 flex justify-between text-base font-semibold">
+          <span>Итого</span>
+          <span>{order.total} ₽</span>
+        </div>
         {order.bonusEarned > 0 && (
-          <Typography variant="caption" color="success.main">
-            Начислено бонусов: +{order.bonusEarned}
-          </Typography>
+          <p className="mt-2 text-xs font-medium text-emerald-700">Начислено бонусов: +{order.bonusEarned}</p>
         )}
-      </Paper>
+      </div>
 
       {order.comment && (
-        <Paper elevation={0} sx={{ p: 2, mb: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
-          <Typography variant="h4" sx={{ mb: 0.5 }}>Комментарий</Typography>
-          <Typography variant="body2" color="text.secondary">{order.comment}</Typography>
-        </Paper>
+        <div className="glass-panel mb-4 p-4">
+          <h2 className="mb-1 text-base font-semibold text-zinc-900">Комментарий</h2>
+          <p className="text-sm text-zinc-600">{order.comment}</p>
+        </div>
       )}
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>
-        Оплата: {order.paymentStatus === 'SUCCEEDED' ? 'Оплачен' : order.paymentStatus}
-        {' · '}
-        {new Date(order.createdAt).toLocaleString('ru')}
-      </Typography>
-    </Container>
+      <p className="text-center text-xs text-zinc-500">
+        Оплата: {paymentLabel(order.paymentStatus)} · {new Date(order.createdAt).toLocaleString('ru-RU')}
+      </p>
+    </div>
   );
 }

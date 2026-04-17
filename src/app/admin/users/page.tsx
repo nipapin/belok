@@ -1,13 +1,9 @@
 'use client';
 
-import {
-  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Chip, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, Button, TextField, Select, MenuItem, FormControl, InputLabel,
-} from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
 import { useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Modal from '@/components/ui/Modal';
 
 interface User {
   id: string;
@@ -34,11 +30,6 @@ export default function AdminUsersPage() {
   });
   const users: User[] = data?.users ?? [];
 
-  const { data: levelsData } = useQuery({
-    queryKey: ['admin-levels'],
-    queryFn: () => fetch('/api/admin/settings').then((r) => r.json()),
-  });
-
   const updateMutation = useMutation({
     mutationFn: async (body: Record<string, unknown>) => {
       const res = await fetch(`/api/admin/users/${editUser?.id}`, {
@@ -56,101 +47,130 @@ export default function AdminUsersPage() {
   });
 
   return (
-    <Box>
-      <Typography variant="h2" sx={{ mb: 3 }}>Пользователи</Typography>
+    <div>
+      <h1 className="heading-section mb-6">Пользователи</h1>
 
-      <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Телефон</TableCell>
-              <TableCell>Имя</TableCell>
-              <TableCell>Роль</TableCell>
-              <TableCell>Уровень</TableCell>
-              <TableCell>Бонусы</TableCell>
-              <TableCell>Потрачено</TableCell>
-              <TableCell>Заказы</TableCell>
-              <TableCell align="right">Действия</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      <div className="admin-table-wrap overflow-x-auto">
+        <table className="admin-table min-w-[960px]">
+          <thead>
+            <tr>
+              <th>Телефон</th>
+              <th>Имя</th>
+              <th>Роль</th>
+              <th>Уровень</th>
+              <th>Бонусы</th>
+              <th>Потрачено</th>
+              <th>Заказы</th>
+              <th className="text-right">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
             {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>{user.phone}</TableCell>
-                <TableCell>{user.name || '—'}</TableCell>
-                <TableCell>
-                  <Chip label={user.role} size="small" color={user.role === 'ADMIN' ? 'error' : 'default'} />
-                </TableCell>
-                <TableCell>{user.loyaltyLevel?.name || '—'}</TableCell>
-                <TableCell>{user.bonusBalance}</TableCell>
-                <TableCell>{user.totalSpent} ₽</TableCell>
-                <TableCell>{user._count.orders}</TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" onClick={() => {
-                    setEditUser(user);
-                    setBonusAdjustment('');
-                    setBonusReason('');
-                  }}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
+              <tr key={user.id}>
+                <td>{user.phone}</td>
+                <td>{user.name || '—'}</td>
+                <td>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      user.role === 'ADMIN' ? 'bg-rose-100 text-rose-800' : 'bg-zinc-100 text-zinc-700'
+                    }`}
+                  >
+                    {user.role === 'ADMIN' ? 'Админ' : 'Клиент'}
+                  </span>
+                </td>
+                <td>{user.loyaltyLevel?.name || '—'}</td>
+                <td>{user.bonusBalance}</td>
+                <td>{user.totalSpent} ₽</td>
+                <td>{user._count.orders}</td>
+                <td className="text-right">
+                  <button
+                    type="button"
+                    className="btn-icon inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-zinc-100"
+                    onClick={() => {
+                      setEditUser(user);
+                      setBonusAdjustment('');
+                      setBonusReason('');
+                    }}
+                    aria-label="Изменить"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </tbody>
+        </table>
+      </div>
 
-      <Dialog open={!!editUser} onClose={() => setEditUser(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Редактировать пользователя</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <Typography variant="body2">Телефон: {editUser?.phone}</Typography>
-            <FormControl fullWidth>
-              <InputLabel>Роль</InputLabel>
-              <Select
-                value={editUser?.role || 'USER'}
-                label="Роль"
-                onChange={(e) => setEditUser(editUser ? { ...editUser, role: e.target.value } : null)}
+      <Modal
+        open={!!editUser}
+        onClose={() => setEditUser(null)}
+        title="Редактировать пользователя"
+        footer={
+          <>
+            <button type="button" className="btn-ghost" onClick={() => setEditUser(null)}>
+              Отмена
+            </button>
+            <button
+              type="button"
+              className="btn-primary px-5 py-2 text-sm"
+              onClick={() => {
+                const body: Record<string, unknown> = { role: editUser?.role };
+                if (bonusAdjustment) {
+                  const adj = parseFloat(bonusAdjustment);
+                  body.bonusBalance = (editUser?.bonusBalance || 0) + adj;
+                  body.bonusAdjustment = adj;
+                  body.bonusReason = bonusReason;
+                }
+                updateMutation.mutate(body);
+              }}
+            >
+              Сохранить
+            </button>
+          </>
+        }
+      >
+        {editUser && (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-zinc-600">
+              Телефон: <span className="font-medium text-zinc-900">{editUser.phone}</span>
+            </p>
+            <label className="text-sm font-medium text-zinc-700">
+              Роль
+              <select
+                className="input-pill mt-1 cursor-pointer"
+                value={editUser.role}
+                onChange={(e) =>
+                  setEditUser(editUser ? { ...editUser, role: e.target.value } : null)
+                }
               >
-                <MenuItem value="USER">Пользователь</MenuItem>
-                <MenuItem value="ADMIN">Администратор</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              label="Корректировка бонусов (+/-)"
-              type="number"
-              value={bonusAdjustment}
-              onChange={(e) => setBonusAdjustment(e.target.value)}
-              helperText={`Текущий баланс: ${editUser?.bonusBalance}`}
-            />
-            {bonusAdjustment && (
-              <TextField
-                label="Причина"
-                value={bonusReason}
-                onChange={(e) => setBonusReason(e.target.value)}
+                <option value="USER">Клиент</option>
+                <option value="ADMIN">Администратор</option>
+              </select>
+            </label>
+            <label className="text-sm font-medium text-zinc-700">
+              Корректировка бонусов (+/−)
+              <input
+                className="input-pill mt-1"
+                type="number"
+                value={bonusAdjustment}
+                onChange={(e) => setBonusAdjustment(e.target.value)}
               />
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditUser(null)}>Отмена</Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              const body: Record<string, unknown> = { role: editUser?.role };
-              if (bonusAdjustment) {
-                const adj = parseFloat(bonusAdjustment);
-                body.bonusBalance = (editUser?.bonusBalance || 0) + adj;
-                body.bonusAdjustment = adj;
-                body.bonusReason = bonusReason;
-              }
-              updateMutation.mutate(body);
-            }}
-          >
-            Сохранить
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            </label>
+            <p className="text-xs text-zinc-500">Текущий баланс: {editUser.bonusBalance}</p>
+            {bonusAdjustment ? (
+              <label className="text-sm font-medium text-zinc-700">
+                Причина
+                <input
+                  className="input-pill mt-1"
+                  value={bonusReason}
+                  onChange={(e) => setBonusReason(e.target.value)}
+                />
+              </label>
+            ) : null}
+          </div>
+        )}
+      </Modal>
+    </div>
   );
 }

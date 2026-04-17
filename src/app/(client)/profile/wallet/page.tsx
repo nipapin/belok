@@ -1,12 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Box, Container, Typography, Button, Paper, Alert, CircularProgress,
-} from '@mui/material';
-import AppleIcon from '@mui/icons-material/Apple';
-import AndroidIcon from '@mui/icons-material/Android';
+import { Apple, Loader2, Smartphone } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { brandMark } from '@/lib/brand';
 
 export default function WalletPage() {
   const user = useAuthStore((s) => s.user);
@@ -23,9 +20,11 @@ export default function WalletPage() {
         setError(data.error);
         return;
       }
-      alert('Для полноценной работы Apple Wallet требуются сертификаты Apple Developer. Структура карты готова.');
+      window.alert(
+        'Для полноценной работы Apple Wallet нужны сертификаты Apple Developer. Структура карты подготовлена.'
+      );
     } catch {
-      setError('Ошибка получения карты');
+      setError('Не удалось получить карту');
     } finally {
       setLoading(null);
     }
@@ -43,99 +42,73 @@ export default function WalletPage() {
       }
       window.open(data.link, '_blank');
     } catch {
-      setError('Ошибка получения ссылки');
+      setError('Не удалось получить ссылку');
     } finally {
       setLoading(null);
     }
   };
 
   return (
-    <Container maxWidth="sm" sx={{ pt: 2, pb: 2 }}>
-      <Typography variant="h2" sx={{ mb: 2 }}>Карта в Wallet</Typography>
+    <div className="mx-auto max-w-md pb-4 pt-2">
+      <h1 className="heading-section mb-4">Карта в Wallet</h1>
 
-      {/* Preview card */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          mb: 3,
-          borderRadius: 4,
-          background: 'linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 50%, #1A1A1A 100%)',
-          color: 'white',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <Box sx={{
-          position: 'absolute',
-          top: -30,
-          right: -30,
-          width: 120,
-          height: 120,
-          borderRadius: '50%',
-          background: 'rgba(255,255,255,0.05)',
-        }} />
-        <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: 2, mb: 3 }}>
-          БЕЛОК
-        </Typography>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Box>
-            <Typography variant="caption" sx={{ opacity: 0.6 }}>БОНУСЫ</Typography>
-            <Typography variant="h3" sx={{ fontWeight: 700 }}>
-              {Math.floor(user?.bonusBalance || 0)}
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography variant="caption" sx={{ opacity: 0.6 }}>УРОВЕНЬ</Typography>
-            <Typography variant="h3" sx={{ fontWeight: 700 }}>
-              {user?.loyaltyLevel?.name || 'Бронза'}
-            </Typography>
-          </Box>
-        </Box>
-        <Typography variant="body2" sx={{ opacity: 0.6 }}>
+      <div className="glass-panel-strong relative mb-6 overflow-hidden rounded-[1.5rem] border-zinc-900/10 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-6 text-white shadow-xl">
+        <div className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-white/5" />
+        <p className="relative mb-6 text-2xl font-extrabold tracking-[0.15em]">{brandMark}</p>
+        <div className="relative mb-4 flex justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/55">Бонусы</p>
+            <p className="text-2xl font-bold tabular-nums">{Math.floor(user?.bonusBalance || 0)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/55">Уровень</p>
+            <p className="text-2xl font-bold">{user?.loyaltyLevel?.name || 'Старт'}</p>
+          </div>
+        </div>
+        <p className="relative text-sm text-white/55">
           {user?.name || 'Гость'} · {user?.phone}
-        </Typography>
-      </Paper>
+        </p>
+      </div>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
-        Добавьте карту лояльности в Wallet для быстрого доступа к бонусам
-      </Typography>
+      <p className="mb-4 text-center text-sm text-zinc-500">
+        Добавьте карту лояльности в кошелёк телефона для быстрого доступа к бонусам
+      </p>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <div className="mb-4 rounded-2xl border border-rose-200/80 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          {error}
+        </div>
+      )}
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Button
-          fullWidth
-          variant="contained"
-          size="large"
-          startIcon={loading === 'apple' ? <CircularProgress size={20} color="inherit" /> : <AppleIcon />}
+      <div className="flex flex-col gap-3">
+        <button
+          type="button"
+          className="btn-primary w-full bg-zinc-950 py-3.5 hover:bg-zinc-900"
           onClick={handleAppleWallet}
           disabled={loading !== null}
-          sx={{
-            bgcolor: '#000',
-            '&:hover': { bgcolor: '#333' },
-            py: 1.5,
-          }}
         >
+          {loading === 'apple' ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <Apple className="size-5" strokeWidth={1.75} />
+          )}
           Добавить в Apple Wallet
-        </Button>
+        </button>
 
-        <Button
-          fullWidth
-          variant="contained"
-          size="large"
-          startIcon={loading === 'google' ? <CircularProgress size={20} color="inherit" /> : <AndroidIcon />}
+        <button
+          type="button"
+          className="btn-primary w-full bg-[#4285F4] py-3.5 hover:bg-[#3367d6]"
           onClick={handleGoogleWallet}
           disabled={loading !== null}
-          sx={{
-            bgcolor: '#4285F4',
-            '&:hover': { bgcolor: '#3367D6' },
-            py: 1.5,
-          }}
         >
+          {loading === 'google' ? (
+            <Loader2 className="size-5 animate-spin text-white" />
+          ) : (
+            <Smartphone className="size-5" strokeWidth={1.75} />
+          )}
           Добавить в Google Wallet
-        </Button>
-      </Box>
-    </Container>
+        </button>
+      </div>
+    </div>
   );
 }

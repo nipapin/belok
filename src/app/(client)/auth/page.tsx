@@ -1,32 +1,20 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Box,
-  Container,
-  Typography,
-  TextField,
-  Button,
-  Paper,
-  CircularProgress,
-  Alert,
-  InputAdornment,
-} from '@mui/material';
-import PhoneIcon from '@mui/icons-material/Phone';
-import LockIcon from '@mui/icons-material/Lock';
+import { useSearchParams } from 'next/navigation';
+import { Loader2, Lock, Phone } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { brandMark } from '@/lib/brand';
 
 export default function AuthPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="py-20 text-center text-zinc-500">Загрузка…</div>}>
       <AuthPageInner />
     </Suspense>
   );
 }
 
 function AuthPageInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
   const { setUser } = useAuthStore();
@@ -100,113 +88,77 @@ function AuthPageInner() {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ pt: 8, pb: 4 }}>
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Typography
-          variant="h1"
-          sx={{ fontSize: '2.5rem', fontWeight: 800, mb: 1 }}
-        >
-          Белок
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Кафе здорового питания
-        </Typography>
-      </Box>
+    <div className="mx-auto max-w-md px-2 pb-8 pt-12">
+      <div className="mb-8 text-center">
+        <h1 className="heading-display lowercase text-zinc-900">{brandMark}</h1>
+        <p className="mt-2 text-sm font-medium text-zinc-500">кафе здорового питания</p>
+      </div>
 
-      <Paper
-        elevation={0}
-        sx={{
-          p: 4,
-          borderRadius: 3,
-          border: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
+      <div className="glass-panel-strong p-6 sm:p-8">
         {step === 'phone' ? (
           <>
-            <Typography variant="h3" sx={{ mb: 3 }}>
-              Вход по номеру телефона
-            </Typography>
-            <TextField
-              fullWidth
-              label="Номер телефона"
-              value={phone}
-              onChange={(e) => setPhone(formatPhone(e.target.value))}
-              placeholder="+7 (___) ___-__-__"
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PhoneIcon />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-              sx={{ mb: 3 }}
-            />
+            <h2 className="mb-4 text-lg font-semibold text-zinc-900">Вход по номеру телефона</h2>
+            <div className="relative mb-4">
+              <Phone className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-zinc-400" />
+              <input
+                className="input-pill pl-11"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="+7…"
+                value={phone}
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
+                aria-label="Номер телефона"
+              />
+            </div>
             {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
+              <div className="mb-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>
             )}
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
+            <button
+              type="button"
+              className="btn-primary w-full"
               onClick={handleSendCode}
               disabled={loading || phone.length < 12}
             >
-              {loading ? <CircularProgress size={24} /> : 'Получить код'}
-            </Button>
+              {loading ? <Loader2 className="size-5 animate-spin" /> : null}
+              Получить код
+            </button>
           </>
         ) : (
           <>
-            <Typography variant="h3" sx={{ mb: 1 }}>
-              Введите код
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Код отправлен на {phone}
-            </Typography>
+            <h2 className="mb-1 text-lg font-semibold text-zinc-900">Введите код</h2>
+            <p className="mb-4 text-sm text-zinc-500">Код отправлен на {phone}</p>
             {devCode && (
-              <Alert severity="info" sx={{ mb: 2 }}>
-                DEV: код — {devCode}
-              </Alert>
+              <div className="mb-4 rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-950">
+                Для разработки: код — {devCode}
+              </div>
             )}
-            <TextField
-              fullWidth
-              label="Код из SMS"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockIcon />
-                    </InputAdornment>
-                  ),
-                },
-                htmlInput: { inputMode: 'numeric', maxLength: 4 },
-              }}
-              sx={{ mb: 3 }}
-            />
+            <div className="relative mb-4">
+              <Lock className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-zinc-400" />
+              <input
+                className="input-pill pl-11 tracking-widest"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="••••"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                aria-label="Код из SMS"
+              />
+            </div>
             {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
+              <div className="mb-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>
             )}
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
+            <button
+              type="button"
+              className="btn-primary mb-3 w-full"
               onClick={handleVerifyCode}
               disabled={loading || code.length < 4}
-              sx={{ mb: 2 }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Подтвердить'}
-            </Button>
-            <Button
-              fullWidth
-              variant="text"
+              {loading ? <Loader2 className="size-5 animate-spin" /> : null}
+              Подтвердить
+            </button>
+            <button
+              type="button"
+              className="btn-ghost mb-2 w-full"
               onClick={() => {
                 if (countdown === 0) {
                   handleSendCode();
@@ -214,23 +166,22 @@ function AuthPageInner() {
               }}
               disabled={countdown > 0}
             >
-              {countdown > 0 ? `Повторно через ${countdown}с` : 'Отправить код повторно'}
-            </Button>
-            <Button
-              fullWidth
-              variant="text"
+              {countdown > 0 ? `Повторно через ${countdown} с` : 'Отправить код повторно'}
+            </button>
+            <button
+              type="button"
+              className="btn-ghost w-full"
               onClick={() => {
                 setStep('phone');
                 setCode('');
                 setError('');
               }}
-              sx={{ mt: 1 }}
             >
               Изменить номер
-            </Button>
+            </button>
           </>
         )}
-      </Paper>
-    </Container>
+      </div>
+    </div>
   );
 }

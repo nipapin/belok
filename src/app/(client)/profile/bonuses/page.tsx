@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  Box, Container, Typography, Paper, Chip, Skeleton,
-} from '@mui/material';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 interface BonusTransaction {
@@ -25,74 +21,58 @@ export default function BonusesPage() {
   const balance: number = data?.balance ?? 0;
 
   return (
-    <Container maxWidth="sm" sx={{ pt: 2, pb: 2 }}>
-      <Typography variant="h2" sx={{ mb: 2 }}>Детализация бонусов</Typography>
+    <div className="mx-auto max-w-md pb-4 pt-2">
+      <h1 className="heading-section mb-4">Детализация бонусов</h1>
 
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          mb: 3,
-          borderRadius: 3,
-          textAlign: 'center',
-          background: 'linear-gradient(135deg, #1A1A1A 0%, #333333 100%)',
-          color: 'white',
-        }}
-      >
-        <Typography variant="body2" sx={{ opacity: 0.7, mb: 0.5 }}>Баланс</Typography>
-        <Typography variant="h1" sx={{ fontSize: '2.5rem', fontWeight: 800 }}>
-          {Math.floor(balance)} бонусов
-        </Typography>
-      </Paper>
+      <div className="glass-panel-strong mb-6 rounded-[1.5rem] border-zinc-900/10 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-6 text-center text-white shadow-xl">
+        <p className="mb-1 text-sm font-medium text-white/65">Баланс</p>
+        <p className="text-3xl font-bold tracking-tight">{Math.floor(balance)} бонусов</p>
+      </div>
 
-      <Typography variant="h4" sx={{ mb: 1.5 }}>История операций</Typography>
+      <h2 className="mb-3 text-base font-semibold text-zinc-900">История операций</h2>
 
-      {isLoading
-        ? Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} variant="rounded" height={70} sx={{ mb: 1, borderRadius: 2 }} />
-          ))
-        : transactions.length === 0
-        ? (
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-            Пока нет операций
-          </Typography>
-        )
-        : transactions.map((tx) => (
-            <Paper
-              key={tx.id}
-              elevation={0}
-              sx={{
-                p: 2,
-                mb: 1,
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 2,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                {tx.amount > 0 ? (
-                  <ArrowUpwardIcon color="success" fontSize="small" />
-                ) : (
-                  <ArrowDownwardIcon color="error" fontSize="small" />
-                )}
-                <Box>
-                  <Typography variant="body2">{tx.description || tx.type}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {new Date(tx.createdAt).toLocaleString('ru')}
-                  </Typography>
-                </Box>
-              </Box>
-              <Chip
-                label={`${tx.amount > 0 ? '+' : ''}${tx.amount}`}
-                size="small"
-                color={tx.amount > 0 ? 'success' : 'error'}
-                variant="outlined"
-              />
-            </Paper>
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="glass-tight h-[72px] animate-pulse" />
           ))}
-    </Container>
+        </div>
+      ) : transactions.length === 0 ? (
+        <p className="py-10 text-center text-sm text-zinc-500">Пока нет операций</p>
+      ) : (
+        transactions.map((tx) => (
+          <div
+            key={tx.id}
+            className="glass-panel mb-2 flex items-center justify-between gap-3 p-3 sm:p-4"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              {tx.amount > 0 ? (
+                <ArrowUp className="size-4 shrink-0 text-emerald-600" strokeWidth={2} />
+              ) : (
+                <ArrowDown className="size-4 shrink-0 text-rose-600" strokeWidth={2} />
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-zinc-900">
+                  {tx.description || tx.type}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {new Date(tx.createdAt).toLocaleString('ru-RU')}
+                </p>
+              </div>
+            </div>
+            <span
+              className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold ${
+                tx.amount > 0
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : 'border-rose-200 bg-rose-50 text-rose-800'
+              }`}
+            >
+              {tx.amount > 0 ? '+' : ''}
+              {tx.amount}
+            </span>
+          </div>
+        ))
+      )}
+    </div>
   );
 }

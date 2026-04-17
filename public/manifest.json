@@ -1,11 +1,11 @@
 {
-  "name": "Белок — Кафе здорового питания",
-  "short_name": "Белок",
+  "name": "бело\u0301к — кафе здорового питания",
+  "short_name": "бело\u0301к",
   "description": "Кафе здорового питания. Заказ еды, бонусная программа, доставка.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FFFFFF",
-  "theme_color": "#1A1A1A",
+  "background_color": "#eceef3",
+  "theme_color": "#18181b",
   "orientation": "portrait",
   "categories": ["food", "lifestyle"],
   "icons": [

@@ -1,18 +1,14 @@
 'use client';
 
-import {
-  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Select, MenuItem, Chip,
-} from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-const statusLabels: Record<string, { label: string; color: 'default' | 'warning' | 'info' | 'success' | 'error' }> = {
-  PENDING: { label: 'Ожидает', color: 'default' },
-  CONFIRMED: { label: 'Подтверждён', color: 'info' },
-  PREPARING: { label: 'Готовится', color: 'warning' },
-  READY: { label: 'Готов', color: 'success' },
-  COMPLETED: { label: 'Выполнен', color: 'success' },
-  CANCELLED: { label: 'Отменён', color: 'error' },
+const statusLabels: Record<string, { label: string; chip: string }> = {
+  PENDING: { label: 'Ожидает', chip: 'bg-zinc-100 text-zinc-700' },
+  CONFIRMED: { label: 'Подтверждён', chip: 'bg-sky-100 text-sky-800' },
+  PREPARING: { label: 'Готовится', chip: 'bg-amber-100 text-amber-900' },
+  READY: { label: 'Готов', chip: 'bg-emerald-100 text-emerald-800' },
+  COMPLETED: { label: 'Выполнен', chip: 'bg-emerald-100 text-emerald-900' },
+  CANCELLED: { label: 'Отменён', chip: 'bg-rose-100 text-rose-800' },
 };
 
 interface Order {
@@ -47,80 +43,73 @@ export default function AdminOrdersPage() {
   });
 
   return (
-    <Box>
-      <Typography variant="h2" sx={{ mb: 3 }}>Заказы</Typography>
+    <div>
+      <h1 className="heading-section mb-6">Заказы</h1>
 
-      <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Клиент</TableCell>
-              <TableCell>Состав</TableCell>
-              <TableCell>Сумма</TableCell>
-              <TableCell>Оплата</TableCell>
-              <TableCell>Дата</TableCell>
-              <TableCell>Статус</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      <div className="admin-table-wrap overflow-x-auto">
+        <table className="admin-table min-w-[900px]">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Клиент</th>
+              <th>Состав</th>
+              <th>Сумма</th>
+              <th>Оплата</th>
+              <th>Дата</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody>
             {orders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell sx={{ fontFamily: 'monospace' }}>
-                  {order.id.slice(0, 8)}
-                </TableCell>
-                <TableCell>{order.user?.name || order.user?.phone}</TableCell>
-                <TableCell>
+              <tr key={order.id}>
+                <td className="font-mono text-xs">{order.id.slice(0, 8)}</td>
+                <td>{order.user?.name || order.user?.phone}</td>
+                <td>
                   {order.items.map((item, i) => (
-                    <Typography key={i} variant="caption" sx={{ display: 'block' }}>
-                      {item.product.name} x{item.quantity}
-                    </Typography>
+                    <span key={i} className="block text-xs text-zinc-600">
+                      {item.product.name} ×{item.quantity}
+                    </span>
                   ))}
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{order.total} ₽</Typography>
+                </td>
+                <td>
+                  <span className="font-semibold">{order.total} ₽</span>
                   {order.bonusUsed > 0 && (
-                    <Typography variant="caption" color="warning.main">
-                      Бонусы: -{order.bonusUsed}₽
-                    </Typography>
+                    <span className="mt-0.5 block text-xs text-amber-700">Бонусы: −{order.bonusUsed} ₽</span>
                   )}
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={order.paymentStatus === 'SUCCEEDED' ? 'Оплачен' : order.paymentStatus}
-                    size="small"
-                    color={order.paymentStatus === 'SUCCEEDED' ? 'success' : 'default'}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Typography variant="caption">
-                    {new Date(order.createdAt).toLocaleString('ru')}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Select
-                    size="small"
+                </td>
+                <td>
+                  <span
+                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      order.paymentStatus === 'SUCCEEDED'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-zinc-100 text-zinc-600'
+                    }`}
+                  >
+                    {order.paymentStatus === 'SUCCEEDED' ? 'Оплачен' : order.paymentStatus}
+                  </span>
+                </td>
+                <td className="text-xs text-zinc-600">
+                  {new Date(order.createdAt).toLocaleString('ru-RU')}
+                </td>
+                <td>
+                  <select
+                    className="input-pill max-w-[160px] cursor-pointer py-2 text-xs font-medium"
                     value={order.status}
                     onChange={(e) => updateStatus.mutate({ id: order.id, status: e.target.value })}
-                    sx={{ minWidth: 140 }}
-                    renderValue={(v) => (
-                      <Chip
-                        label={statusLabels[v]?.label || v}
-                        size="small"
-                        color={statusLabels[v]?.color || 'default'}
-                      />
-                    )}
+                    aria-label="Статус заказа"
                   >
                     {Object.entries(statusLabels).map(([key, val]) => (
-                      <MenuItem key={key} value={key}>{val.label}</MenuItem>
+                      <option key={key} value={key}>
+                        {val.label}
+                      </option>
                     ))}
-                  </Select>
-                </TableCell>
-              </TableRow>
+                  </select>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
