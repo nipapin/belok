@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const drawer = (
-    <div className="flex h-full flex-col border-r border-white/40 bg-white/55 py-4 backdrop-blur-xl">
+    <div className="flex h-full flex-col border-r border-surface-edge bg-white/55 py-4 backdrop-blur-xl">
       <div className="flex h-14 items-center justify-center px-2">
         <p className="text-center text-sm font-extrabold tracking-tight text-zinc-900">
           <span className="lowercase">{brandMark}</span>
@@ -67,10 +67,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 router.push(item.path);
                 if (!mdUp) setMobileOpen(false);
               }}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+              className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition ${
                 selected
-                  ? 'bg-zinc-900 text-white shadow-md'
-                  : 'text-zinc-700 hover:bg-white/60'
+                  ? 'border-surface-edge-strong bg-zinc-900 text-white shadow-md'
+                  : 'border-surface-edge text-zinc-700 hover:border-surface-edge-strong hover:bg-white/60'
               }`}
             >
               <Icon className="size-5 shrink-0" strokeWidth={selected ? 2 : 1.75} />
@@ -84,7 +84,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen bg-[#eef0f5]">
-      <header className="fixed left-0 right-0 top-0 z-[1300] flex h-14 items-center border-b border-white/50 bg-white/70 px-3 backdrop-blur-xl md:left-[260px]">
+      <header className="fixed left-0 right-0 top-0 z-[1300] flex h-14 items-center border-b border-surface-edge bg-white/70 px-3 backdrop-blur-xl md:left-[260px]">
         {!mdUp && (
           <button
             type="button"

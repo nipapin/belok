@@ -1,29 +1,13 @@
-'use client';
+"use client";
 
-import { ArrowRight, Flame } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { useAuthStore } from '@/store/authStore';
-import { brandMark } from '@/lib/brand';
-
-interface Product {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  image: string | null;
-  calories: number | null;
-  proteins: number | null;
-  category: { name: string };
-}
-
-interface Category {
-  id: string;
-  name: string;
-  image: string | null;
-  _count: { products: number };
-}
+import { ArrowRight, Flame } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useAuthStore } from "@/store/authStore";
+import { brandMark } from "@/lib/brand";
+import CategoryChip from "@/components/ui/category-chip";
+import { Category, Product } from "@/types";
 
 export default function HomePage() {
   const router = useRouter();
@@ -34,13 +18,13 @@ export default function HomePage() {
   }, [fetchUser]);
 
   const { data: productsData, isLoading: loadingProducts } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => fetch('/api/products').then((r) => r.json()),
+    queryKey: ["products"],
+    queryFn: () => fetch("/api/products").then((r) => r.json()),
   });
 
   const { data: categoriesData, isLoading: loadingCategories } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => fetch('/api/products/categories').then((r) => r.json()),
+    queryKey: ["categories"],
+    queryFn: () => fetch("/api/products/categories").then((r) => r.json()),
   });
 
   const products: Product[] = productsData?.products?.slice(0, 4) ?? [];
@@ -48,7 +32,7 @@ export default function HomePage() {
 
   return (
     <div className="pt-2">
-      <section className="glass-panel mb-6 px-5 py-8 text-center sm:py-10">
+      {/* <section className="glass-panel mb-6 px-5 py-8 text-center sm:py-10">
         <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">
           кафе здорового питания
         </p>
@@ -60,41 +44,26 @@ export default function HomePage() {
           Смотреть меню
           <ArrowRight className="size-4" strokeWidth={2} />
         </button>
-      </section>
+      </section> */}
 
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl px-4">
         <h2 className="heading-section mb-3">Категории</h2>
-        <div className="-mx-1 mb-6 flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-1 mb-6 flex gap-2 overflow-x-auto scrollbar-hide rounded-xl">
           {loadingCategories
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-11 w-[120px] shrink-0 animate-pulse rounded-full bg-white/40"
-                />
+                <div key={i} className="h-11 w-[120px] shrink-0 animate-pulse rounded-full bg-white/40" />
               ))
-            : categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => router.push(`/menu?category=${cat.id}`)}
-                  className="shrink-0 rounded-full border border-white/50 bg-white/55 px-4 py-2.5 text-sm font-medium text-zinc-800 shadow-sm backdrop-blur-md transition hover:bg-white/75"
-                >
-                  {cat.name}{' '}
-                  <span className="text-zinc-500">({cat._count.products})</span>
-                </button>
-              ))}
+            : categories.map((cat) => <CategoryChip key={cat.id} category={cat} />)}
         </div>
 
         <div className="mb-3 flex items-center gap-2">
-          <Flame className="size-6 text-rose-500" strokeWidth={1.75} />
+          <Flame className="size-6 text-white/80" strokeWidth={1.75} />
           <h2 className="heading-section m-0">Популярное</h2>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           {loadingProducts
-            ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="glass-tight h-[220px] animate-pulse" />
-              ))
+            ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass-tight h-[220px] animate-pulse" />)
             : products.map((product) => (
                 <button
                   key={product.id}
@@ -105,20 +74,14 @@ export default function HomePage() {
                   <div className="relative flex h-[140px] items-center justify-center bg-zinc-100/80">
                     {product.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={product.image}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
+                      <img src={product.image} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <span className="text-4xl font-bold text-zinc-300">{product.name[0]}</span>
                     )}
                   </div>
                   <div className="flex flex-1 flex-col p-3">
                     <p className="truncate text-sm font-semibold text-zinc-900">{product.name}</p>
-                    {product.calories != null && (
-                      <p className="text-xs text-zinc-500">{product.calories} ккал</p>
-                    )}
+                    {product.calories != null && <p className="text-xs text-zinc-500">{product.calories} ккал</p>}
                     <p className="mt-auto pt-1 text-sm font-bold text-zinc-900">{product.price} ₽</p>
                   </div>
                 </button>
@@ -126,7 +89,7 @@ export default function HomePage() {
         </div>
 
         <div className="mt-8 mb-4 text-center">
-          <button type="button" className="btn-outline px-8" onClick={() => router.push('/menu')}>
+          <button type="button" className="btn-outline px-8" onClick={() => router.push("/menu")}>
             Всё меню
             <ArrowRight className="size-4" strokeWidth={2} />
           </button>

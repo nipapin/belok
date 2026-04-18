@@ -157,7 +157,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="glass-panel-strong mb-4 border-emerald-200/30 bg-gradient-to-br from-white/70 via-emerald-50/40 to-white/60 p-5">
+      <div className="glass-panel-strong mb-4 bg-gradient-to-br from-white/70 via-emerald-50/40 to-white/60 p-5">
         <div className="mb-1 flex items-center gap-2 text-emerald-900">
           <Gift className="size-5" strokeWidth={1.75} />
           <h2 className="text-base font-semibold">Бонусный баланс</h2>

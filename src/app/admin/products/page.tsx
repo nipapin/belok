@@ -276,7 +276,9 @@ export default function AdminProductsPage() {
       >
         <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1">
           {error && (
-            <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>
+            <div className="rounded-2xl border border-surface-edge bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              {error}
+            </div>
           )}
           <label className="text-sm font-medium text-zinc-700">
             Название <span className="text-rose-600">*</span>
@@ -290,7 +292,7 @@ export default function AdminProductsPage() {
           <label className="text-sm font-medium text-zinc-700">
             Описание
             <textarea
-              className="mt-1 min-h-[72px] w-full resize-none rounded-2xl border border-zinc-900/10 bg-white/70 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-zinc-900/10"
+              className="mt-1 min-h-[72px] w-full resize-none rounded-2xl border border-surface-edge bg-white/70 px-4 py-3 text-sm outline-none focus:border-surface-edge-strong focus:ring-2 focus:ring-zinc-900/10"
               rows={2}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -345,7 +347,7 @@ export default function AdminProductsPage() {
           </div>
           <div>
             <p className="mb-2 text-sm font-medium text-zinc-700">Ингредиенты в составе</p>
-            <div className="max-h-40 space-y-1 overflow-y-auto rounded-2xl border border-zinc-900/10 bg-white/50 p-2">
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-2xl border border-surface-edge bg-white/50 p-2">
               {ingredients.map((ing) => (
                 <label
                   key={ing.id}

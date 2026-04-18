@@ -166,7 +166,7 @@ export default function ProductDetailPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="btn-icon absolute left-4 top-4 border-white/70 bg-white/85 shadow-md"
+          className="btn-icon absolute left-4 top-4 border-surface-edge-strong bg-white/85 shadow-md"
           aria-label="Назад"
         >
           <ArrowLeft className="size-5" strokeWidth={1.75} />
@@ -176,7 +176,7 @@ export default function ProductDetailPage() {
       <div className="mx-auto max-w-lg pt-4">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <span className="mb-2 inline-block rounded-full border border-white/50 bg-white/55 px-3 py-1 text-xs font-semibold text-zinc-600 backdrop-blur-md">
+            <span className="mb-2 inline-block rounded-full border border-surface-edge bg-white/55 px-3 py-1 text-xs font-semibold text-zinc-600 backdrop-blur-md">
               {product.category.name}
             </span>
             <h1 className="heading-section text-balance">{product.name}</h1>
@@ -273,7 +273,7 @@ export default function ProductDetailPage() {
           </button>
         </div>
 
-        <div className="glass-panel-strong sticky bottom-[calc(88px+env(safe-area-inset-bottom,0px))] border-zinc-900/8 p-4">
+        <div className="glass-panel-strong sticky bottom-[calc(88px+env(safe-area-inset-bottom,0px))] p-4">
           <button type="button" className="btn-primary w-full" onClick={handleAddToCart}>
             <ShoppingCart className="size-5" strokeWidth={1.75} />
             В корзину · {calcPrice()} ₽

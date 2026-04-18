@@ -66,8 +66,8 @@ function MenuPageInner() {
   const chip = (active: boolean) =>
     `shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
       active
-        ? 'bg-zinc-900 text-white shadow-md'
-        : 'border border-white/50 bg-white/50 text-zinc-800 backdrop-blur-md hover:bg-white/70'
+        ? 'border border-surface-edge-strong bg-zinc-900 text-white shadow-md'
+        : 'border border-surface-edge bg-white/50 text-zinc-800 backdrop-blur-md hover:border-surface-edge-strong hover:bg-white/70'
     }`;
 
   return (

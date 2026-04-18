@@ -111,7 +111,9 @@ function AuthPageInner() {
               />
             </div>
             {error && (
-              <div className="mb-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>
+              <div className="mb-4 rounded-2xl border border-surface-edge bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                {error}
+              </div>
             )}
             <button
               type="button"
@@ -128,7 +130,7 @@ function AuthPageInner() {
             <h2 className="mb-1 text-lg font-semibold text-zinc-900">Введите код</h2>
             <p className="mb-4 text-sm text-zinc-500">Код отправлен на {phone}</p>
             {devCode && (
-              <div className="mb-4 rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-950">
+              <div className="mb-4 rounded-2xl border border-surface-edge bg-sky-50 px-4 py-3 text-sm text-sky-950">
                 Для разработки: код — {devCode}
               </div>
             )}
@@ -145,7 +147,9 @@ function AuthPageInner() {
               />
             </div>
             {error && (
-              <div className="mb-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>
+              <div className="mb-4 rounded-2xl border border-surface-edge bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                {error}
+              </div>
             )}
             <button
               type="button"

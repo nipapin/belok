@@ -40,7 +40,7 @@ export default function CartPage() {
                   {item.customizations.map((c, i) => (
                     <span
                       key={i}
-                      className="rounded-full border border-zinc-900/10 bg-white/50 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
+                      className="rounded-full border border-surface-edge bg-white/50 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
                     >
                       {c.action === 'REMOVE' ? 'Без: ' : '+'}
                       {c.ingredientName}

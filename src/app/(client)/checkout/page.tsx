@@ -135,7 +135,7 @@ export default function CheckoutPage() {
       <label className="mb-4 block">
         <span className="mb-1.5 block text-sm font-medium text-zinc-700">Комментарий к заказу</span>
         <textarea
-          className="min-h-[88px] w-full resize-none rounded-2xl border border-zinc-900/10 bg-white/70 px-4 py-3 text-sm text-zinc-900 shadow-inner backdrop-blur-md outline-none placeholder:text-zinc-500 focus:border-zinc-900/25 focus:ring-2 focus:ring-zinc-900/10"
+          className="min-h-[88px] w-full resize-none rounded-2xl border border-surface-edge bg-white/70 px-4 py-3 text-sm text-zinc-900 shadow-inner backdrop-blur-md outline-none placeholder:text-zinc-500 focus:border-surface-edge-strong focus:ring-2 focus:ring-zinc-900/10"
           rows={2}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
