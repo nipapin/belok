@@ -92,9 +92,11 @@ export default function AdminIngredientsPage() {
                 <td>{ing._count.products}</td>
                 <td>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      ing.isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-600'
-                    }`}
+                    className={
+                      ing.isAvailable
+                        ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
+                        : 'admin-chip-neutral'
+                    }
                   >
                     {ing.isAvailable ? 'Доступен' : 'Скрыт'}
                   </span>
@@ -102,7 +104,7 @@ export default function AdminIngredientsPage() {
                 <td className="text-right">
                   <button
                     type="button"
-                    className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-zinc-100"
+                    className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
                     onClick={() => handleOpen(ing)}
                     aria-label="Изменить"
                   >
@@ -146,7 +148,7 @@ export default function AdminIngredientsPage() {
         }
       >
         <div className="flex flex-col gap-3">
-          <label className="text-sm font-medium text-zinc-700">
+          <label className="text-sm font-medium text-(--lg-text)">
             Название
             <input
               className="input-pill mt-1"
@@ -154,7 +156,7 @@ export default function AdminIngredientsPage() {
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </label>
-          <label className="text-sm font-medium text-zinc-700">
+          <label className="text-sm font-medium text-(--lg-text)">
             Цена (₽)
             <input
               className="input-pill mt-1"
@@ -163,10 +165,10 @@ export default function AdminIngredientsPage() {
               onChange={(e) => setForm({ ...form, price: e.target.value })}
             />
           </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-(--lg-text)">
             <input
               type="checkbox"
-              className="size-4 rounded border-zinc-300 accent-zinc-900"
+              className="size-4 rounded border-(--lg-ring) accent-[#18181b]"
               checked={form.isAvailable}
               onChange={(e) => setForm({ ...form, isAvailable: e.target.checked })}
             />

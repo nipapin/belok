@@ -54,12 +54,12 @@ export default function AdminDashboard() {
           return (
             <div key={i} className="glass-panel p-4 text-center sm:p-5">
               {isLoading ? (
-                <div className="h-[120px] animate-pulse rounded-xl bg-white/40" />
+                <div className="h-[120px] animate-pulse rounded-xl bg-[color-mix(in_srgb,var(--lg-text)_8%,transparent)]" />
               ) : (
                 <>
-                  <Icon className="mx-auto mb-2 size-9 text-zinc-800" strokeWidth={1.5} />
-                  <p className="text-xl font-bold text-zinc-900">{stat.value}</p>
-                  <p className="mt-1 text-xs font-medium text-zinc-500">{stat.label}</p>
+                  <Icon className="mx-auto mb-2 size-9 text-(--lg-text)" strokeWidth={1.5} />
+                  <p className="text-xl font-bold text-(--lg-text)">{stat.value}</p>
+                  <p className="mt-1 text-xs font-medium text-(--lg-text-muted)">{stat.label}</p>
                 </>
               )}
             </div>
@@ -67,7 +67,7 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      <h2 className="mb-3 text-lg font-semibold text-zinc-900">Последние заказы</h2>
+      <h2 className="mb-3 text-lg font-semibold text-(--lg-text)">Последние заказы</h2>
       <div className="space-y-2">
         {orders.slice(0, 5).map(
           (order: {
@@ -79,15 +79,15 @@ export default function AdminDashboard() {
           }) => (
             <div key={order.id} className="glass-panel flex flex-wrap items-center justify-between gap-2 p-4">
               <div>
-                <p className="text-sm font-semibold text-zinc-900">№{order.id.slice(0, 8)}</p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-sm font-semibold text-(--lg-text)">№{order.id.slice(0, 8)}</p>
+                <p className="text-xs text-(--lg-text-muted)">
                   {order.user?.name || order.user?.phone} ·{' '}
                   {new Date(order.createdAt).toLocaleString('ru-RU')}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold text-zinc-900">{order.total} ₽</p>
-                <p className="text-xs text-zinc-500">{order.status}</p>
+                <p className="text-sm font-bold text-(--lg-text)">{order.total} ₽</p>
+                <p className="text-xs text-(--lg-text-muted)">{order.status}</p>
               </div>
             </div>
           )

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { requireAdmin } from '@/lib/adminAuth';
+import { savePublicImage } from '@/lib/uploadStorage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,26 +13,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Файл не найден' }, { status: 400 });
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Допустимы только изображения (JPEG, PNG, WebP, GIF)' }, { status: 400 });
+    let url: string;
+    try {
+      url = await savePublicImage(file, 'products');
+    } catch (e) {
+      const code = (e as Error).message;
+      if (code === 'TYPE') {
+        return NextResponse.json(
+          { error: 'Допустимы только изображения (JPEG, PNG, WebP, GIF)' },
+          { status: 400 }
+        );
+      }
+      if (code === 'SIZE') {
+        return NextResponse.json({ error: 'Максимальный размер файла — 5 МБ' }, { status: 400 });
+      }
+      throw e;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Максимальный размер файла — 5 МБ' }, { status: 400 });
-    }
-
-    const ext = file.name.split('.').pop() || 'jpg';
-    const filename = `${uuidv4()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-
-    await mkdir(uploadDir, { recursive: true });
-
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await writeFile(path.join(uploadDir, filename), buffer);
-
-    return NextResponse.json({ url: `/uploads/${filename}` });
+    return NextResponse.json({ url });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
       return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });

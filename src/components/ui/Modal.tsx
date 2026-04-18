@@ -38,7 +38,7 @@ export default function Modal({ open, onClose, title, children, footer, wide }: 
         aria-labelledby="modal-title"
         className={`glass-panel-strong relative z-[1] w-full rounded-[1.5rem] p-6 shadow-2xl ${wide ? 'max-w-2xl' : 'max-w-lg'}`}
       >
-        <h2 id="modal-title" className="text-lg font-semibold tracking-tight text-zinc-900">
+        <h2 id="modal-title" className="text-lg font-semibold tracking-tight text-(--lg-text)">
           {title}
         </h2>
         <div className="mt-4">{children}</div>

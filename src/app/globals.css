@@ -75,7 +75,7 @@ html[data-theme="light"] {
 
 @layer components {
 
-  /* Admin shell: light surfaces + dark text (overrides global dark theme tokens) */
+  /* Admin shell: same gradient + glass tokens as html[data-theme="light"] client app */
   .admin-surface {
     --lg-text: #18181b;
     --lg-text-muted: #52525b;
@@ -88,6 +88,33 @@ html[data-theme="light"] {
     --lg-shadow-strong: 0 10px 32px rgba(15, 23, 42, 0.1);
     --lg-backdrop-bright: 0.98;
     --lg-backdrop-sat: 140%;
+    --lg-bg-image: linear-gradient(to bottom, #e8eef7 0%, #f6f8fc 100%);
+    background-image: var(--lg-bg-image);
+    background-attachment: fixed;
+  }
+
+  .admin-surface .admin-drawer-panel {
+    border-right: 1px solid var(--lg-ring);
+    background-color: var(--lg-fill);
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: var(--lg-shadow);
+  }
+
+  .admin-surface .admin-header-bar {
+    border-bottom: 1px solid var(--lg-ring);
+    background-color: color-mix(in srgb, var(--lg-fill) 88%, transparent);
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: var(--lg-shadow);
+  }
+
+  /* Neutral status chip inside admin (replaces raw zinc-100) */
+  .admin-chip-neutral {
+    @apply rounded-full border px-2 py-0.5 text-xs font-semibold;
+    border-color: var(--lg-ring);
+    background-color: var(--lg-fill);
+    color: var(--lg-text-muted);
   }
 
   .scrollbar-hide {

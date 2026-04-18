@@ -122,8 +122,8 @@ export default function AdminSettingsPage() {
       </button>
 
       <div className="glass-panel mt-8 p-5">
-        <h2 className="mb-3 text-base font-semibold text-zinc-900">Правила программы</h2>
-        <ul className="list-inside list-disc space-y-2 text-sm text-zinc-600">
+        <h2 className="mb-3 text-base font-semibold text-(--lg-text)">Правила программы</h2>
+        <ul className="list-inside list-disc space-y-2 text-sm text-(--lg-text-muted)">
           <li>Бонусами можно оплатить до 30% стоимости заказа.</li>
           <li>1 бонус равен 1 ₽.</li>
           <li>Кэшбэк начисляется после успешной оплаты.</li>

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import {
   CreditCard,
   Gift,
+  LayoutDashboard,
   Loader2,
   LogOut,
   Receipt,
@@ -283,6 +284,17 @@ export default function ProfilePage() {
       </div>
 
       <hr className="profile-divider" />
+
+      {user.role === 'ADMIN' && (
+        <button
+          type="button"
+          onClick={() => router.push('/admin')}
+          className="glass-panel-strong lg-interactive mb-2 flex w-full cursor-pointer items-center gap-3 border border-(--lg-ring) p-4 text-left"
+        >
+          <LayoutDashboard className="size-5 shrink-0 text-(--lg-text)" strokeWidth={1.75} />
+          <span className="font-semibold text-(--lg-text)">Админ-панель</span>
+        </button>
+      )}
 
       {[
         { label: 'История заказов', icon: Receipt, path: '/orders' },

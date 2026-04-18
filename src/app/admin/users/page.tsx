@@ -71,9 +71,11 @@ export default function AdminUsersPage() {
                 <td>{user.name || '—'}</td>
                 <td>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      user.role === 'ADMIN' ? 'bg-rose-100 text-rose-800' : 'bg-zinc-100 text-zinc-700'
-                    }`}
+                    className={
+                      user.role === 'ADMIN'
+                        ? 'rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800'
+                        : 'admin-chip-neutral'
+                    }
                   >
                     {user.role === 'ADMIN' ? 'Админ' : 'Клиент'}
                   </span>
@@ -85,7 +87,7 @@ export default function AdminUsersPage() {
                 <td className="text-right">
                   <button
                     type="button"
-                    className="btn-icon inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-zinc-100"
+                    className="btn-icon inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
                     onClick={() => {
                       setEditUser(user);
                       setBonusAdjustment('');
@@ -132,10 +134,10 @@ export default function AdminUsersPage() {
       >
         {editUser && (
           <div className="flex flex-col gap-3">
-            <p className="text-sm text-zinc-600">
-              Телефон: <span className="font-medium text-zinc-900">{editUser.phone}</span>
+            <p className="text-sm text-(--lg-text-muted)">
+              Телефон: <span className="font-medium text-(--lg-text)">{editUser.phone}</span>
             </p>
-            <label className="text-sm font-medium text-zinc-700">
+            <label className="text-sm font-medium text-(--lg-text)">
               Роль
               <select
                 className="input-pill mt-1 cursor-pointer"
@@ -148,7 +150,7 @@ export default function AdminUsersPage() {
                 <option value="ADMIN">Администратор</option>
               </select>
             </label>
-            <label className="text-sm font-medium text-zinc-700">
+            <label className="text-sm font-medium text-(--lg-text)">
               Корректировка бонусов (+/−)
               <input
                 className="input-pill mt-1"
@@ -157,9 +159,9 @@ export default function AdminUsersPage() {
                 onChange={(e) => setBonusAdjustment(e.target.value)}
               />
             </label>
-            <p className="text-xs text-zinc-500">Текущий баланс: {editUser.bonusBalance}</p>
+            <p className="text-xs text-(--lg-text-muted)">Текущий баланс: {editUser.bonusBalance}</p>
             {bonusAdjustment ? (
-              <label className="text-sm font-medium text-zinc-700">
+              <label className="text-sm font-medium text-(--lg-text)">
                 Причина
                 <input
                   className="input-pill mt-1"

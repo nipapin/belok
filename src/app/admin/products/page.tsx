@@ -213,16 +213,16 @@ export default function AdminProductsPage() {
                   </div>
                 </td>
                 <td>
-                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700">
-                    {product.category.name}
-                  </span>
+                  <span className="admin-chip-neutral font-medium">{product.category.name}</span>
                 </td>
                 <td>{product.price} ₽</td>
                 <td>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      product.isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-600'
-                    }`}
+                    className={
+                      product.isAvailable
+                        ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
+                        : 'admin-chip-neutral'
+                    }
                   >
                     {product.isAvailable ? 'Да' : 'Нет'}
                   </span>
@@ -230,7 +230,7 @@ export default function AdminProductsPage() {
                 <td className="text-right">
                   <button
                     type="button"
-                    className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-zinc-100"
+                    className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
                     onClick={() => handleOpen(product)}
                     aria-label="Изменить"
                   >
@@ -275,12 +275,8 @@ export default function AdminProductsPage() {
         }
       >
         <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1">
-          {error && (
-            <div className="rounded-2xl border border-surface-edge bg-rose-50 px-4 py-3 text-sm text-rose-800">
-              {error}
-            </div>
-          )}
-          <label className="text-sm font-medium text-zinc-700">
+          {error && <div className="auth-alert-error">{error}</div>}
+          <label className="text-sm font-medium text-(--lg-text)">
             Название <span className="text-rose-600">*</span>
             <input
               className="input-pill mt-1"
@@ -289,17 +285,17 @@ export default function AdminProductsPage() {
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </label>
-          <label className="text-sm font-medium text-zinc-700">
+          <label className="text-sm font-medium text-(--lg-text)">
             Описание
             <textarea
-              className="mt-1 min-h-[72px] w-full resize-none rounded-2xl border border-surface-edge bg-white/70 px-4 py-3 text-sm outline-none focus:border-surface-edge-strong focus:ring-2 focus:ring-zinc-900/10"
+              className="glass-tight mt-1 min-h-[72px] w-full resize-none px-4 py-3 text-sm text-(--lg-text) outline-none focus:border-(--lg-ring-strong) focus:ring-2 focus:ring-[color-mix(in_srgb,var(--lg-text)_10%,transparent)]"
               rows={2}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm font-medium text-zinc-700">
+            <label className="text-sm font-medium text-(--lg-text)">
               Цена (₽) <span className="text-rose-600">*</span>
               <input
                 className="input-pill mt-1"
@@ -309,7 +305,7 @@ export default function AdminProductsPage() {
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
               />
             </label>
-            <label className="text-sm font-medium text-zinc-700">
+            <label className="text-sm font-medium text-(--lg-text)">
               Категория <span className="text-rose-600">*</span>
               <select
                 className="input-pill mt-1 cursor-pointer"
@@ -334,7 +330,7 @@ export default function AdminProductsPage() {
                 ['carbs', 'Углеводы, г'],
               ] as const
             ).map(([field, label]) => (
-              <label key={field} className="text-xs font-medium text-zinc-700">
+              <label key={field} className="text-xs font-medium text-(--lg-text)">
                 {label}
                 <input
                   className="input-pill mt-1 py-2 text-sm"
@@ -346,39 +342,39 @@ export default function AdminProductsPage() {
             ))}
           </div>
           <div>
-            <p className="mb-2 text-sm font-medium text-zinc-700">Ингредиенты в составе</p>
-            <div className="max-h-40 space-y-1 overflow-y-auto rounded-2xl border border-surface-edge bg-white/50 p-2">
+            <p className="mb-2 text-sm font-medium text-(--lg-text)">Ингредиенты в составе</p>
+            <div className="glass-tight max-h-40 space-y-1 overflow-y-auto p-2">
               {ingredients.map((ing) => (
                 <label
                   key={ing.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-sm hover:bg-zinc-900/5"
+                  className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-sm hover:bg-[color-mix(in_srgb,var(--lg-text)_5%,transparent)]"
                 >
                   <input
                     type="checkbox"
-                    className="size-4 rounded border-zinc-300 accent-zinc-900"
+                    className="size-4 rounded border-(--lg-ring) accent-[#18181b]"
                     checked={form.ingredientIds.includes(ing.id)}
                     onChange={() => toggleIngredient(ing.id)}
                   />
                   <span>
-                    {ing.name} <span className="text-zinc-500">(+{ing.price} ₽)</span>
+                    {ing.name} <span className="text-(--lg-text-muted)">(+{ing.price} ₽)</span>
                   </span>
                 </label>
               ))}
             </div>
           </div>
           <div>
-            <p className="mb-1 text-sm font-medium text-zinc-700">Изображение</p>
+            <p className="mb-1 text-sm font-medium text-(--lg-text)">Изображение</p>
             <input
               type="file"
               accept="image/*"
-              className="text-sm text-zinc-600 file:mr-3 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+              className="text-sm text-(--lg-text-muted) file:mr-3 file:rounded-full file:border-0 file:bg-[#18181b] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
               onChange={(e) => setImageFile(e.target.files?.[0] || null)}
             />
           </div>
-          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-(--lg-text)">
             <input
               type="checkbox"
-              className="size-4 rounded border-zinc-300 accent-zinc-900"
+              className="size-4 rounded border-(--lg-ring) accent-[#18181b]"
               checked={form.isAvailable}
               onChange={(e) => setForm({ ...form, isAvailable: e.target.checked })}
             />

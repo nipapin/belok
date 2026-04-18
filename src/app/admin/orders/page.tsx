@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const statusLabels: Record<string, { label: string; chip: string }> = {
-  PENDING: { label: 'Ожидает', chip: 'bg-zinc-100 text-zinc-700' },
+  PENDING: { label: 'Ожидает', chip: 'admin-chip-neutral' },
   CONFIRMED: { label: 'Подтверждён', chip: 'bg-sky-100 text-sky-800' },
   PREPARING: { label: 'Готовится', chip: 'bg-amber-100 text-amber-900' },
   READY: { label: 'Готов', chip: 'bg-emerald-100 text-emerald-800' },
@@ -66,7 +66,7 @@ export default function AdminOrdersPage() {
                 <td>{order.user?.name || order.user?.phone}</td>
                 <td>
                   {order.items.map((item, i) => (
-                    <span key={i} className="block text-xs text-zinc-600">
+                    <span key={i} className="block text-xs text-(--lg-text-muted)">
                       {item.product.name} ×{item.quantity}
                     </span>
                   ))}
@@ -79,16 +79,16 @@ export default function AdminOrdersPage() {
                 </td>
                 <td>
                   <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    className={
                       order.paymentStatus === 'SUCCEEDED'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-zinc-100 text-zinc-600'
-                    }`}
+                        ? 'inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
+                        : 'admin-chip-neutral'
+                    }
                   >
                     {order.paymentStatus === 'SUCCEEDED' ? 'Оплачен' : order.paymentStatus}
                   </span>
                 </td>
-                <td className="text-xs text-zinc-600">
+                <td className="text-xs text-(--lg-text-muted)">
                   {new Date(order.createdAt).toLocaleString('ru-RU')}
                 </td>
                 <td>

@@ -46,11 +46,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const drawer = (
-    <div className="flex h-full flex-col border-r border-surface-edge bg-white/55 py-4 backdrop-blur-xl">
+    <div className="admin-drawer-panel flex h-full flex-col py-4">
       <div className="flex h-14 items-center justify-center px-2">
-        <p className="text-center text-sm font-extrabold tracking-tight text-zinc-900">
+        <p className="text-center text-sm font-extrabold tracking-tight text-(--lg-text)">
           <span className="lowercase">{brandMark}</span>
-          <span className="block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+          <span className="block text-[10px] font-semibold uppercase tracking-widest text-(--lg-text-muted)">
             админ
           </span>
         </p>
@@ -69,8 +69,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               }}
               className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition ${
                 selected
-                  ? 'border-surface-edge-strong bg-zinc-900 text-white shadow-md'
-                  : 'border-surface-edge text-zinc-700 hover:border-surface-edge-strong hover:bg-white/60'
+                  ? 'border-(--lg-ring-strong) bg-[#18181b] text-white shadow-(--lg-shadow)'
+                  : 'border-(--lg-ring) text-(--lg-text) hover:border-(--lg-ring-strong) hover:bg-(--lg-fill-hover)'
               }`}
             >
               <Icon className="size-5 shrink-0" strokeWidth={selected ? 2 : 1.75} />
@@ -83,8 +83,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   return (
-    <div className="admin-surface flex min-h-screen bg-[#eef0f5]">
-      <header className="fixed left-0 right-0 top-0 z-[1300] flex h-14 items-center border-b border-surface-edge bg-white/70 px-3 backdrop-blur-xl md:left-[260px]">
+    <div className="admin-surface flex min-h-screen">
+      <header className="admin-header-bar fixed left-0 right-0 top-0 z-[1300] flex h-14 items-center px-3 md:left-[260px]">
         {!mdUp && (
           <button
             type="button"
@@ -103,7 +103,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         >
           <ArrowLeft className="size-5" />
         </button>
-        <h1 className="truncate text-base font-semibold text-zinc-900">Панель управления</h1>
+        <h1 className="truncate text-base font-semibold text-(--lg-text)">Панель управления</h1>
       </header>
 
       {!mdUp && mobileOpen && (

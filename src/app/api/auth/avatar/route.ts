@@ -1,42 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mkdir, unlink, writeFile } from 'fs/promises';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { getCurrentUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { deletePublicImage, savePublicImage } from '@/lib/uploadStorage';
 import { toClientUser } from '@/lib/userClient';
-
-const UPLOADS_SEGMENT = `${path.sep}public${path.sep}uploads`;
-
-function safeUnlinkUploadFile(publicUrl: string | null) {
-  if (!publicUrl?.startsWith('/uploads/')) return;
-  const relative = publicUrl.replace(/^\/+/, '').split('/').filter(Boolean);
-  if (relative[0] !== 'uploads') return;
-  const base = path.join(process.cwd(), 'public', 'uploads');
-  const resolved = path.join(process.cwd(), 'public', ...relative);
-  if (!resolved.startsWith(base)) return;
-  return unlink(resolved).catch(() => undefined);
-}
-
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const MAX_BYTES = 5 * 1024 * 1024;
-
-async function saveAvatarFile(file: File): Promise<string> {
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    throw new Error('TYPE');
-  }
-  if (file.size > MAX_BYTES) {
-    throw new Error('SIZE');
-  }
-  const ext = file.name.split('.').pop()?.toLowerCase();
-  const safeExt = ext && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
-  const filename = `${uuidv4()}.${safeExt}`;
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-  await mkdir(uploadDir, { recursive: true });
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(uploadDir, filename), buffer);
-  return `/uploads/${filename}`;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     let url: string;
     try {
-      url = await saveAvatarFile(file);
+      url = await savePublicImage(file, 'avatars');
     } catch (e) {
       const code = (e as Error).message;
       if (code === 'TYPE') {
@@ -74,7 +40,7 @@ export async function POST(request: NextRequest) {
       include: { loyaltyLevel: true },
     });
 
-    await safeUnlinkUploadFile(user.avatarUrl);
+    await deletePublicImage(user.avatarUrl);
 
     return NextResponse.json({ user: toClientUser(updated) });
   } catch (error) {
@@ -97,7 +63,7 @@ export async function DELETE() {
       include: { loyaltyLevel: true },
     });
 
-    await safeUnlinkUploadFile(prev);
+    await deletePublicImage(prev);
 
     return NextResponse.json({ user: toClientUser(updated) });
   } catch (error) {
