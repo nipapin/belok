@@ -44,7 +44,7 @@ function Toggle({
   return (
     <label htmlFor={id} className="relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center">
       <input id={id} type="checkbox" className="peer sr-only" checked={checked} onChange={onChange} />
-      <span className="pointer-events-none absolute inset-0 rounded-full bg-zinc-200 transition peer-checked:bg-zinc-900" />
+      <span className="pointer-events-none absolute inset-0 rounded-full bg-[color-mix(in_srgb,var(--lg-text)_12%,transparent)] transition peer-checked:bg-emerald-600" />
       <span className="pointer-events-none absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-[1.25rem]" />
     </label>
   );
@@ -130,18 +130,18 @@ export default function ProductDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-lg pt-2">
+      <div className="mx-auto max-w-lg px-4 pt-2">
         <div className="glass-tight mb-4 h-[250px] animate-pulse" />
-        <div className="h-8 w-[60%] max-w-xs animate-pulse rounded-lg bg-white/40" />
-        <div className="mt-2 h-4 w-2/5 animate-pulse rounded bg-white/30" />
+        <div className="h-8 w-[60%] max-w-xs animate-pulse rounded-lg bg-[color-mix(in_srgb,var(--lg-fill)_70%,transparent)]" />
+        <div className="mt-2 h-4 w-2/5 animate-pulse rounded bg-[color-mix(in_srgb,var(--lg-fill)_50%,transparent)]" />
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="mx-auto max-w-lg py-16 text-center">
-        <p className="text-lg font-semibold text-zinc-700">Товар не найден</p>
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <p className="text-lg font-semibold text-[var(--lg-text)]">Товар не найден</p>
         <button type="button" className="btn-primary mt-4" onClick={() => router.push('/menu')}>
           Вернуться в меню
         </button>
@@ -153,20 +153,20 @@ export default function ProductDetailPage() {
   const extraIngredients = product.ingredients.filter((pi) => pi.isExtra);
 
   return (
-    <div className="pb-28">
+    <div className="px-4 pb-28">
       <div className="relative -mx-4">
-        <div className="flex h-[280px] items-center justify-center bg-zinc-200/60">
+        <div className="flex h-[280px] items-center justify-center bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={product.image} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="text-[6rem] font-bold leading-none text-zinc-300/90">{product.name[0]}</span>
+            <span className="text-[6rem] font-bold leading-none text-[var(--lg-text-muted)]">{product.name[0]}</span>
           )}
         </div>
         <button
           type="button"
           onClick={() => router.back()}
-          className="btn-icon absolute left-4 top-4 border-surface-edge-strong bg-white/85 shadow-md"
+          className="btn-icon absolute left-4 top-4"
           aria-label="Назад"
         >
           <ArrowLeft className="size-5" strokeWidth={1.75} />
@@ -176,16 +176,16 @@ export default function ProductDetailPage() {
       <div className="mx-auto max-w-lg pt-4">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <span className="mb-2 inline-block rounded-full border border-surface-edge bg-white/55 px-3 py-1 text-xs font-semibold text-zinc-600 backdrop-blur-md">
+            <span className="mb-2 inline-block rounded-full border border-[var(--lg-ring)] bg-[color-mix(in_srgb,var(--lg-fill)_90%,transparent)] px-3 py-1 text-xs font-semibold text-[var(--lg-text-muted)] backdrop-blur-md">
               {product.category.name}
             </span>
             <h1 className="heading-section text-balance">{product.name}</h1>
           </div>
-          <p className="shrink-0 text-xl font-bold tracking-tight text-zinc-900">{product.price} ₽</p>
+          <p className="shrink-0 text-xl font-bold tracking-tight tabular-nums text-[var(--lg-text)]">{product.price} ₽</p>
         </div>
 
         {product.description && (
-          <p className="mb-4 text-sm leading-relaxed text-zinc-600">{product.description}</p>
+          <p className="mb-4 text-sm leading-relaxed text-[var(--lg-text-muted)]">{product.description}</p>
         )}
 
         {product.calories != null && (
@@ -197,8 +197,8 @@ export default function ProductDetailPage() {
               { label: 'Углеводы, г', value: product.carbs },
             ].map((item) => (
               <div key={item.label} className="min-w-0 flex-1 text-center">
-                <p className="text-base font-bold text-zinc-900">{item.value ?? '—'}</p>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">{item.label}</p>
+                <p className="text-base font-bold text-[var(--lg-text)]">{item.value ?? '—'}</p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--lg-text-muted)]">{item.label}</p>
               </div>
             ))}
           </div>
@@ -206,15 +206,15 @@ export default function ProductDetailPage() {
 
         {defaultIngredients.length > 0 && (
           <>
-            <h2 className="mb-2 text-base font-semibold text-zinc-900">Состав</h2>
-            <div className="glass-panel mb-4 divide-y divide-zinc-900/6 p-1">
+            <h2 className="mb-2 text-base font-semibold text-[var(--lg-text)]">Состав</h2>
+            <div className="glass-panel mb-4 divide-y divide-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] p-1">
               {defaultIngredients.map((pi) => (
                 <div key={pi.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                   <span
                     className={`text-sm ${
                       removedIngredients.has(pi.ingredient.id)
-                        ? 'text-zinc-400 line-through'
-                        : 'text-zinc-800'
+                        ? 'text-[var(--lg-text-muted)] line-through opacity-70'
+                        : 'text-[var(--lg-text)]'
                     }`}
                   >
                     {pi.ingredient.name}
@@ -234,13 +234,13 @@ export default function ProductDetailPage() {
 
         {extraIngredients.length > 0 && (
           <>
-            <h2 className="mb-2 text-base font-semibold text-zinc-900">Добавить</h2>
-            <div className="glass-panel mb-6 divide-y divide-zinc-900/6 p-1">
+            <h2 className="mb-2 text-base font-semibold text-[var(--lg-text)]">Добавить</h2>
+            <div className="glass-panel mb-6 divide-y divide-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] p-1">
               {extraIngredients.map((pi) => (
                 <div key={pi.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                   <div>
-                    <p className="text-sm font-medium text-zinc-800">{pi.ingredient.name}</p>
-                    <p className="text-xs text-zinc-500">+{pi.ingredient.price} ₽</p>
+                    <p className="text-sm font-medium text-[var(--lg-text)]">{pi.ingredient.name}</p>
+                    <p className="text-xs text-[var(--lg-text-muted)]">+{pi.ingredient.price} ₽</p>
                   </div>
                   <Toggle
                     id={`ex-${pi.id}`}
@@ -262,7 +262,7 @@ export default function ProductDetailPage() {
           >
             <Minus className="size-4" />
           </button>
-          <span className="min-w-[2.5rem] text-center text-xl font-bold tabular-nums">{quantity}</span>
+          <span className="min-w-10 text-center text-xl font-bold tabular-nums text-[var(--lg-text)]">{quantity}</span>
           <button
             type="button"
             className="btn-icon"

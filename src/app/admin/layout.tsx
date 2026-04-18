@@ -83,7 +83,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   return (
-    <div className="flex min-h-screen bg-[#eef0f5]">
+    <div className="admin-surface flex min-h-screen bg-[#eef0f5]">
       <header className="fixed left-0 right-0 top-0 z-[1300] flex h-14 items-center border-b border-surface-edge bg-white/70 px-3 backdrop-blur-xl md:left-[260px]">
         {!mdUp && (
           <button

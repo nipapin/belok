@@ -43,14 +43,14 @@ const ingredients = [
 ];
 
 const products = [
-  { id: 'prod-protein-bowl', name: 'Протеиновый боул', description: 'Сытный боул с куриной грудкой, киноа, авокадо и свежими овощами', price: 490, image: null, categoryId: 'cat-bowls', isAvailable: true, calories: 520, proteins: 42, fats: 18, carbs: 48, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
-  { id: 'prod-salmon-bowl', name: 'Боул с лососем', description: 'Нежный лосось на подушке из бурого риса с эдамаме и авокадо', price: 650, image: null, categoryId: 'cat-bowls', isAvailable: true, calories: 580, proteins: 38, fats: 24, carbs: 52, sortOrder: 1, createdAt: new Date(), updatedAt: new Date() },
-  { id: 'prod-tofu-bowl', name: 'Веган-боул с тофу', description: 'Маринованный тофу, киноа, хумус и свежие овощи', price: 420, image: null, categoryId: 'cat-bowls', isAvailable: true, calories: 440, proteins: 28, fats: 16, carbs: 50, sortOrder: 2, createdAt: new Date(), updatedAt: new Date() },
-  { id: 'prod-green-smoothie', name: 'Зелёный смузи', description: 'Шпинат, банан, семена чиа и миндальное молоко', price: 320, image: null, categoryId: 'cat-smoothies', isAvailable: true, calories: 220, proteins: 8, fats: 6, carbs: 34, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
-  { id: 'prod-berry-smoothie', name: 'Ягодный смузи', description: 'Микс лесных ягод с бананом и протеином', price: 350, image: null, categoryId: 'cat-smoothies', isAvailable: true, calories: 260, proteins: 18, fats: 4, carbs: 40, sortOrder: 1, createdAt: new Date(), updatedAt: new Date() },
-  { id: 'prod-caesar-salad', name: 'Цезарь с курицей', description: 'Классический салат Цезарь с куриной грудкой гриль', price: 390, image: null, categoryId: 'cat-salads', isAvailable: true, calories: 380, proteins: 32, fats: 20, carbs: 18, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
-  { id: 'prod-granola-bar', name: 'Гранола-бар', description: 'Домашний батончик с орехами, мёдом и семенами', price: 180, image: null, categoryId: 'cat-snacks', isAvailable: true, calories: 250, proteins: 8, fats: 12, carbs: 30, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
-  { id: 'prod-protein-shake', name: 'Протеиновый шейк', description: 'Молочный шейк с двойной порцией протеина и бананом', price: 290, image: null, categoryId: 'cat-drinks', isAvailable: true, calories: 300, proteins: 30, fats: 6, carbs: 32, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
+  { id: 'prod-protein-bowl', name: 'Протеиновый боул', description: 'Сытный боул с куриной грудкой, киноа, авокадо и свежими овощами', price: 490, image: '/products/protein-bowl.jpg', categoryId: 'cat-bowls', isAvailable: true, calories: 520, proteins: 42, fats: 18, carbs: 48, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
+  { id: 'prod-salmon-bowl', name: 'Боул с лососем', description: 'Нежный лосось на подушке из бурого риса с эдамаме и авокадо', price: 650, image: '/products/salmon-bowl.jpg', categoryId: 'cat-bowls', isAvailable: true, calories: 580, proteins: 38, fats: 24, carbs: 52, sortOrder: 1, createdAt: new Date(), updatedAt: new Date() },
+  { id: 'prod-tofu-bowl', name: 'Веган-боул с тофу', description: 'Маринованный тофу, киноа, хумус и свежие овощи', price: 420, image: '/products/tofu-bowl.jpg', categoryId: 'cat-bowls', isAvailable: true, calories: 440, proteins: 28, fats: 16, carbs: 50, sortOrder: 2, createdAt: new Date(), updatedAt: new Date() },
+  { id: 'prod-green-smoothie', name: 'Зелёный смузи', description: 'Шпинат, банан, семена чиа и миндальное молоко', price: 320, image: '/products/green-smoothie.jpg', categoryId: 'cat-smoothies', isAvailable: true, calories: 220, proteins: 8, fats: 6, carbs: 34, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
+  { id: 'prod-berry-smoothie', name: 'Ягодный смузи', description: 'Микс лесных ягод с бананом и протеином', price: 350, image: '/products/berry-smoothie.jpg', categoryId: 'cat-smoothies', isAvailable: true, calories: 260, proteins: 18, fats: 4, carbs: 40, sortOrder: 1, createdAt: new Date(), updatedAt: new Date() },
+  { id: 'prod-caesar-salad', name: 'Цезарь с курицей', description: 'Классический салат Цезарь с куриной грудкой гриль', price: 390, image: '/products/caesar-salad.jpg', categoryId: 'cat-salads', isAvailable: true, calories: 380, proteins: 32, fats: 20, carbs: 18, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
+  { id: 'prod-granola-bar', name: 'Гранола-бар', description: 'Домашний батончик с орехами, мёдом и семенами', price: 180, image: '/products/granola-bar.jpg', categoryId: 'cat-snacks', isAvailable: true, calories: 250, proteins: 8, fats: 12, carbs: 30, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
+  { id: 'prod-protein-shake', name: 'Протеиновый шейк', description: 'Молочный шейк с двойной порцией протеина и бананом', price: 290, image: '/products/protein-shake.jpg', categoryId: 'cat-drinks', isAvailable: true, calories: 300, proteins: 30, fats: 6, carbs: 32, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
 ];
 
 const productIngredients = [
@@ -97,6 +97,8 @@ const productIngredients = [
 
 const users: any[] = [
   { id: 'user-admin', phone: '+70000000000', name: 'Администратор', email: null, role: 'ADMIN', bonusBalance: 500, totalSpent: 8500, loyaltyLevelId: 'll-silver', createdAt: new Date('2024-01-01'), updatedAt: new Date() },
+  { id: 'user-admin-bypass-1', phone: '+79527941013', name: 'Администратор', email: null, role: 'ADMIN', bonusBalance: 0, totalSpent: 0, loyaltyLevelId: 'll-bronze', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'user-admin-bypass-2', phone: '+79258112653', name: 'Администратор', email: null, role: 'ADMIN', bonusBalance: 0, totalSpent: 0, loyaltyLevelId: 'll-bronze', createdAt: new Date(), updatedAt: new Date() },
   { id: 'user-demo', phone: '+79991234567', name: 'Демо Пользователь', email: 'demo@belok.cafe', role: 'USER', bonusBalance: 245, totalSpent: 3200, loyaltyLevelId: 'll-bronze', createdAt: new Date('2024-06-15'), updatedAt: new Date() },
 ];
 
@@ -257,6 +259,16 @@ function createCrudModel(store: any[], resolveFn?: (item: any, opts?: any) => an
       const key = Object.keys(opts.where)[0];
       const item = store.find(i => i[key] === opts.where[key]);
       return item ? resolve(item, opts) : null;
+    },
+    findUniqueOrThrow: async (opts?: any) => {
+      const key = Object.keys(opts.where)[0];
+      const item = store.find(i => i[key] === opts.where[key]);
+      if (!item) {
+        const err = new Error('Record to find does not exist.') as Error & { code?: string };
+        err.code = 'P2025';
+        throw err;
+      }
+      return resolve(item, opts);
     },
     findFirst: async (opts?: any) => {
       let result = store.filter(item => matchWhere(item, opts?.where));

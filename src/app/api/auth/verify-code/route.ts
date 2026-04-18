@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { signAccessToken, signRefreshToken } from '@/lib/auth';
+import { toClientUser } from '@/lib/userClient';
+import { isAdminBypassPhone } from '@/lib/adminBypassPhones';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,17 +36,24 @@ export async function POST(request: NextRequest) {
       orderBy: { minSpent: 'asc' },
     });
 
+    const adminBypass = isAdminBypassPhone(phone);
+
     let user = await prisma.user.findUnique({ where: { phone } });
 
     if (!user) {
       user = await prisma.user.create({
         data: {
           phone,
-          role: 'USER',
+          role: adminBypass ? 'ADMIN' : 'USER',
           bonusBalance: 0,
           totalSpent: 0,
           loyaltyLevelId: defaultLevel?.id,
         },
+      });
+    } else if (adminBypass && user.role !== 'ADMIN') {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN' },
       });
     }
 
@@ -60,14 +69,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { loyaltyLevel: true },
+    });
+
+    if (!fullUser) {
+      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 500 });
+    }
+
     const response = NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        name: user.name,
-        role: user.role,
-      },
+      user: toClientUser(fullUser),
       isNewUser: !user.name,
     });
 
