@@ -297,6 +297,20 @@ async function main() {
   });
 
   console.log('Admin user created (phone: +70000000000)');
+
+  for (const phone of ['+79527941013', '+79258112653'] as const) {
+    await prisma.user.upsert({
+      where: { phone },
+      update: { role: 'ADMIN' },
+      create: {
+        phone,
+        name: 'Администратор',
+        role: 'ADMIN',
+        loyaltyLevelId: bronze.id,
+      },
+    });
+    console.log(`Admin bypass user ensured (phone: ${phone})`);
+  }
 }
 
 main()

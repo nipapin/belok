@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { sendSms, generateCode } from '@/lib/sms';
 import { brandMark } from '@/lib/brand';
+import { isAdminBypassPhone } from '@/lib/adminBypassPhones';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,15 +37,20 @@ export async function POST(request: NextRequest) {
       data: { phone, code, expiresAt, isUsed: false },
     });
 
-    const sent = await sendSms(phone, `${brandMark}: ваш код подтверждения ${code}`);
+    const bypass = isAdminBypassPhone(phone);
 
-    if (!sent && process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ error: 'Не удалось отправить SMS' }, { status: 500 });
+    if (!bypass) {
+      const sent = await sendSms(phone, `${brandMark}: ваш код подтверждения ${code}`);
+
+      if (!sent && process.env.NODE_ENV === 'production') {
+        return NextResponse.json({ error: 'Не удалось отправить SMS' }, { status: 500 });
+      }
     }
 
     return NextResponse.json({
       success: true,
-      ...(process.env.NODE_ENV === 'development' ? { code } : {}),
+      ...(bypass ? { bypass: true, code } : {}),
+      ...(!bypass && process.env.NODE_ENV === 'development' ? { code } : {}),
     });
   } catch (error) {
     console.error('Send code error:', error);

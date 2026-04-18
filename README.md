@@ -61,12 +61,13 @@
 | `JWT_REFRESH_SECRET` | Секрет для refresh-токенов |
 | `NEXT_PUBLIC_APP_URL` | Публичный URL приложения (редиректы после оплаты и т.п.) |
 | `USE_MOCK_DB` | Если `true` — режим без реальной БД (см. `src/lib/prisma.ts`) |
+| `ADMIN_BYPASS_PHONES` | Через запятую: номера в формате `+7…` без SMS при входе (см. `src/lib/adminBypassPhones.ts`) |
 | `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY` | ЮKassa (оплата) |
 | `SMS_RU_API_KEY` | SMS.RU для отправки кодов в production |
 | `GOOGLE_WALLET_ISSUER_EMAIL`, `GOOGLE_WALLET_ISSUER_ID` | Google Wallet (опционально) |
 | `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID` | Apple Wallet (опционально) |
 
-В development часть функций ослаблена намеренно (например, код из SMS может возвращаться в ответе API — не используйте так в production).
+В development часть функций ослаблена намеренно (например, код из SMS может возвращаться в ответе API — не используйте так в production). Номера из `ADMIN_BYPASS_PHONES` получают код в ответе `send-code` для автоматического входа без SMS; держите список коротким и не коммитьте продакшен-секреты.
 
 ## Скрипты
 

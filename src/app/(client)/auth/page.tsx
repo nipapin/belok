@@ -48,6 +48,10 @@ function AuthPageInner() {
         setError(data.error);
         return;
       }
+      if (data.bypass && data.code) {
+        void handleVerifyCode(data.code);
+        return;
+      }
       if (data.code) setDevCode(data.code);
       setStep("code");
       setCountdown(60);
