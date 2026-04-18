@@ -97,6 +97,8 @@ const productIngredients = [
 
 const users: any[] = [
   { id: 'user-admin', phone: '+70000000000', name: 'Администратор', email: null, role: 'ADMIN', bonusBalance: 500, totalSpent: 8500, loyaltyLevelId: 'll-silver', createdAt: new Date('2024-01-01'), updatedAt: new Date() },
+  { id: 'user-admin-bypass-1', phone: '+79527941013', name: 'Администратор', email: null, role: 'ADMIN', bonusBalance: 0, totalSpent: 0, loyaltyLevelId: 'll-bronze', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'user-admin-bypass-2', phone: '+79258112653', name: 'Администратор', email: null, role: 'ADMIN', bonusBalance: 0, totalSpent: 0, loyaltyLevelId: 'll-bronze', createdAt: new Date(), updatedAt: new Date() },
   { id: 'user-demo', phone: '+79991234567', name: 'Демо Пользователь', email: 'demo@belok.cafe', role: 'USER', bonusBalance: 245, totalSpent: 3200, loyaltyLevelId: 'll-bronze', createdAt: new Date('2024-06-15'), updatedAt: new Date() },
 ];
 
