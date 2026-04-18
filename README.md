@@ -79,6 +79,8 @@
 | `npm run db:migrate` | Prisma Migrate (dev) |
 | `npm run db:push` | Синхронизация схемы с БД без миграций |
 | `npm run db:seed` | Заполнение БД из `prisma/seed.ts` |
+| `npm run db:deploy` | Применить **ожидающие** миграции к БД (production / CI) |
+| `npm run db:deploy:seed` | `migrate deploy`, затем seed — удобно после деплоя |
 | `npm run db:studio` | Prisma Studio — просмотр и правка данных в браузере |
 
 ## Сборка для production
@@ -88,7 +90,16 @@ npm run build
 npm run start
 ```
 
-Убедитесь, что на сервере заданы все нужные переменные окружения и доступна PostgreSQL. Для миграций на проде обычно используют `npx prisma migrate deploy` (отдельно от `db:migrate`).
+Убедитесь, что на сервере заданы все нужные переменные окружения и доступна PostgreSQL.
+
+**Миграции перед seed:** после обновления кода сначала примените миграции, иначе seed упадёт с ошибкой вроде «column `users.avatarUrl` does not exist»:
+
+```bash
+npm run db:deploy
+npm run db:seed
+```
+
+Или одной командой: `npm run db:deploy:seed`. Локально для разработки по-прежнему: `npm run db:migrate` (не путать с `db:deploy` на проде).
 
 ## Лицензия
 
