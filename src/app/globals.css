@@ -10,6 +10,46 @@
   --shadow-admin: 0 12px 48px rgba(0, 0, 0, 0.1);
 }
 
+/* Flat glass tokens — gradient only on body (--lg-bg-image). Surfaces = solid fill + blur. */
+html {
+  --lg-blur: 32px;
+  /* < 1 = dim the layer behind glass so stacks don’t bloom together */
+  --lg-backdrop-bright: 0.86;
+  --lg-backdrop-sat: 150%;
+  --lg-fill: rgba(255, 255, 255, 0.14);
+  --lg-fill-hover: rgba(255, 255, 255, 0.2);
+  --lg-fill-active: rgba(255, 255, 255, 0.26);
+  --lg-ring: rgba(255, 255, 255, 0.22);
+  --lg-ring-strong: rgba(255, 255, 255, 0.38);
+  --lg-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
+  --lg-shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.16);
+  --lg-text: rgba(255, 255, 255, 0.94);
+  --lg-text-muted: rgba(255, 255, 255, 0.62);
+  --lg-chip-label: rgba(255, 255, 255, 0.92);
+  --lg-chip-label-active: #ffffff;
+  --lg-bg-image: linear-gradient(to top, #646669 0%, #bacef0 100%);
+  --lg-nav-blur: 40px;
+}
+
+html[data-theme="light"] {
+  --lg-blur: 28px;
+  --lg-backdrop-bright: 0.9;
+  --lg-backdrop-sat: 140%;
+  /* Slightly more opaque so card seams / text don’t show through stacked glass */
+  --lg-fill: rgba(255, 255, 255, 0.48);
+  --lg-fill-hover: rgba(255, 255, 255, 0.58);
+  --lg-fill-active: rgba(255, 255, 255, 0.66);
+  --lg-ring: rgba(255, 255, 255, 0.9);
+  --lg-ring-strong: rgba(15, 23, 42, 0.14);
+  --lg-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+  --lg-shadow-strong: 0 14px 40px rgba(15, 23, 42, 0.1);
+  --lg-text: #18181b;
+  --lg-text-muted: #52525b;
+  --lg-chip-label: #27272a;
+  --lg-chip-label-active: #0a0a0a;
+  --lg-bg-image: linear-gradient(to bottom, #e8eef7 0%, #f6f8fc 100%);
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -22,12 +62,10 @@
   }
 
   body {
-    @apply m-0 h-dvh w-screen overflow-hidden p-0 font-sans text-zinc-900 fixed;
-    /* filter: blur(3px) saturate(0.5) brightness(0.9); */
-    background-image: linear-gradient(to top, #646669 0%, #bacef0 100%);
-    /* background: linear-gradient(to bottom, #D5DEE7 0%, #E8EBF2 50%, #E2E7ED 100%), linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 50%, rgba(255, 255, 255, 0.02) 61%, rgba(0, 0, 0, 0.02) 73%), linear-gradient(33deg, rgba(255, 255, 255, 0.20) 0%, rgba(0, 0, 0, 0.20) 100%);
-    background-blend-mode: normal, color-burn;
-    background-attachment: fixed; */
+    @apply m-0 h-dvh w-screen overflow-hidden p-0 font-sans fixed;
+    color: var(--lg-text);
+    background-image: var(--lg-bg-image);
+    background-attachment: fixed;
   }
 
   a {
@@ -36,6 +74,21 @@
 }
 
 @layer components {
+  /* Admin shell: light surfaces + dark text (overrides global dark theme tokens) */
+  .admin-surface {
+    --lg-text: #18181b;
+    --lg-text-muted: #52525b;
+    --lg-ring: rgba(15, 23, 42, 0.12);
+    --lg-ring-strong: rgba(15, 23, 42, 0.2);
+    --lg-fill: rgba(255, 255, 255, 0.88);
+    --lg-fill-hover: rgba(255, 255, 255, 0.94);
+    --lg-fill-active: rgba(255, 255, 255, 0.98);
+    --lg-shadow: 0 6px 24px rgba(15, 23, 42, 0.07);
+    --lg-shadow-strong: 0 10px 32px rgba(15, 23, 42, 0.1);
+    --lg-backdrop-bright: 0.98;
+    --lg-backdrop-sat: 140%;
+  }
+
   .scrollbar-hide {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -45,60 +98,227 @@
     display: none;
   }
 
-  .glass-border {
-    border-top: 1px solid #ffffff40;
-    border-bottom: 1px solid #ffffff70;
-  }
-
-  .glass-effect {
-    backdrop-filter: blur(3px);
-    background-image: linear-gradient(135deg, #232e3b40 0%, #5f779c40 100%);
+  /* Shared flat glass: uniform fill, no inset highlights */
+  .lg-surface,
+  .lg-card,
+  .lg-pill,
+  .lg-bar,
+  .lg-nav,
+  .glass-effect,
+  .glass-panel,
+  .glass-panel-strong {
     position: relative;
+    /* No isolation: isolate — it breaks backdrop-filter sampling in many browsers */
+    border: 1px solid var(--lg-ring);
+    background-color: var(--lg-fill);
+    background-image: none;
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: var(--lg-shadow);
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
+  .lg-card,
+  .glass-panel,
+  .glass-panel-strong {
+    border-radius: 1.75rem;
+  }
 
-  .glass-panel {
-    @apply rounded-[1.75rem] border border-surface-edge bg-white/50 shadow-glass backdrop-blur-xl backdrop-saturate-150;
+  .lg-pill,
+  .glass-effect {
+    border-radius: 9999px;
+  }
+
+  .lg-bar {
+    border-radius: 9999px;
+  }
+
+  .lg-nav {
+    --lg-blur: var(--lg-nav-blur);
+    border-radius: 9999px;
   }
 
   .glass-panel-strong {
-    @apply rounded-[1.75rem] border border-surface-edge bg-white/72 shadow-glass-strong backdrop-blur-2xl backdrop-saturate-150;
+    box-shadow: var(--lg-shadow-strong);
+  }
+
+  .lg-interactive:hover:not(:disabled) {
+    border-color: var(--lg-ring-strong);
+    background-color: var(--lg-fill-hover);
+    box-shadow: var(--lg-shadow-strong);
+  }
+
+  .lg-interactive:active:not(:disabled) {
+    opacity: 0.96;
+  }
+
+  .lg-active {
+    border-color: var(--lg-ring-strong);
+    background-color: var(--lg-fill-active);
+    box-shadow: var(--lg-shadow-strong);
+  }
+
+  /* Category / filter chips: flat, no drop shadow (cleaner + no overflow clip) */
+  .lg-chip.lg-pill,
+  .lg-chip.lg-pill.lg-interactive:hover:not(:disabled),
+  .lg-chip.lg-pill.lg-active {
+    box-shadow: none;
+  }
+
+  .lg-chip.lg-pill {
+    color: var(--lg-chip-label);
+  }
+
+  .lg-chip.lg-pill.lg-active {
+    color: var(--lg-chip-label-active);
+  }
+
+  /* Buttons */
+  .lg-button-primary,
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[0.9375rem] font-semibold tracking-tight text-white transition disabled:pointer-events-none disabled:opacity-45;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: rgba(24, 24, 27, 0.88);
+    background-image: none;
+    backdrop-filter: blur(16px) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    -webkit-backdrop-filter: blur(16px) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+  }
+
+  .lg-button-primary:hover:not(:disabled),
+  .btn-primary:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.3);
+    background-color: rgba(24, 24, 27, 0.95);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  }
+
+  .lg-button-primary:active:not(:disabled),
+  .btn-primary:active:not(:disabled) {
+    opacity: 0.92;
+  }
+
+  html[data-theme="light"] .lg-button-primary,
+  html[data-theme="light"] .btn-primary {
+    border-color: rgba(24, 24, 27, 0.4);
+    background-color: #18181b;
+    box-shadow: 0 6px 24px rgba(15, 23, 42, 0.18);
+  }
+
+  .lg-button-outline,
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[0.9375rem] font-semibold tracking-tight transition;
+    color: var(--lg-text);
+    position: relative;
+    border: 1px solid var(--lg-ring);
+    background-color: var(--lg-fill);
+    background-image: none;
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: var(--lg-shadow);
+  }
+
+  .lg-button-outline:hover:not(:disabled),
+  .btn-outline:hover:not(:disabled) {
+    border-color: var(--lg-ring-strong);
+    background-color: var(--lg-fill-hover);
+    box-shadow: var(--lg-shadow-strong);
+  }
+
+  .lg-button-outline:active:not(:disabled),
+  .btn-outline:active:not(:disabled) {
+    opacity: 0.94;
+  }
+
+  .lg-button-icon,
+  .btn-icon {
+    @apply inline-flex size-10 shrink-0 items-center justify-center rounded-full transition;
+    color: var(--lg-text);
+    position: relative;
+    border: 1px solid var(--lg-ring);
+    background-color: var(--lg-fill);
+    background-image: none;
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: var(--lg-shadow);
+  }
+
+  .lg-button-icon:hover:not(:disabled),
+  .btn-icon:hover:not(:disabled) {
+    border-color: var(--lg-ring-strong);
+    background-color: var(--lg-fill-hover);
+  }
+
+  .lg-button-icon:active:not(:disabled),
+  .btn-icon:active:not(:disabled) {
+    opacity: 0.92;
+  }
+
+  /* Deprecated aliases */
+  .glass-border {
+    /* no-op: rim now on glass surfaces */
   }
 
   .glass-tight {
-    @apply rounded-2xl border border-surface-edge bg-white/40 shadow-glass-tight backdrop-blur-lg backdrop-saturate-150;
-  }
-
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-surface-edge bg-zinc-900 px-6 py-3 text-[0.9375rem] font-semibold tracking-tight text-white shadow-md transition hover:border-surface-edge-strong hover:bg-zinc-800 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45;
-  }
-
-  .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-surface-edge bg-white/55 px-6 py-3 text-[0.9375rem] font-semibold tracking-tight text-zinc-900 backdrop-blur-sm transition hover:border-surface-edge-strong hover:bg-white/75 active:scale-[0.99];
+    border-radius: 1rem;
+    border: 1px solid var(--lg-ring);
+    background-color: var(--lg-fill);
+    background-image: none;
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: var(--lg-shadow);
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-surface-edge px-4 py-2 text-sm font-semibold text-zinc-600 transition hover:border-surface-edge-strong hover:bg-zinc-900/6;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition;
+    border-color: var(--lg-ring);
+    color: var(--lg-text-muted);
+    background: transparent;
   }
 
-  .btn-icon {
-    @apply inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-surface-edge bg-white/55 text-zinc-900 shadow-sm backdrop-blur-md transition hover:border-surface-edge-strong hover:bg-white/75;
+  .btn-ghost:hover {
+    border-color: var(--lg-ring-strong);
+    background: color-mix(in srgb, var(--lg-text) 6%, transparent);
+    color: var(--lg-text);
   }
 
   .input-pill {
-    @apply w-full rounded-full border border-surface-edge bg-white/70 px-4 py-2.5 text-zinc-900 shadow-inner backdrop-blur-md outline-none transition placeholder:text-zinc-500 focus:border-surface-edge-strong focus:ring-2 focus:ring-zinc-900/10;
+    @apply w-full rounded-full px-4 py-2.5 outline-none transition;
+    color: var(--lg-text);
+    border: 1px solid var(--lg-ring);
+    background-color: var(--lg-fill);
+    background-image: none;
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: none;
+  }
+
+  .input-pill::placeholder {
+    color: var(--lg-text-muted);
+  }
+
+  .input-pill:focus {
+    border-color: var(--lg-ring-strong);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lg-text) 8%, transparent);
   }
 
   .heading-display {
     @apply text-[1.65rem] font-bold leading-tight tracking-[-0.03em] sm:text-4xl;
+    color: var(--lg-text);
   }
 
   .heading-section {
-    @apply text-xl font-semibold tracking-[-0.02em] text-white/90 sm:text-2xl;
+    @apply text-xl font-semibold tracking-[-0.02em] sm:text-2xl;
+    color: var(--lg-text);
   }
 
   .admin-table-wrap {
-    @apply overflow-hidden rounded-2xl border border-surface-edge bg-white/72 shadow-admin backdrop-blur-2xl backdrop-saturate-150;
+    @apply overflow-hidden rounded-2xl shadow-admin backdrop-blur-2xl backdrop-saturate-150;
+    border: 1px solid var(--lg-ring);
+    background: color-mix(in srgb, white 72%, transparent);
   }
 
   .admin-table {
@@ -106,15 +326,50 @@
   }
 
   .admin-table th {
-    @apply border-b border-zinc-900/8 bg-white/35 px-4 py-3 font-semibold text-zinc-700 backdrop-blur-sm;
+    @apply border-b px-4 py-3 font-semibold backdrop-blur-sm;
+    border-color: color-mix(in srgb, var(--lg-text) 8%, transparent);
+    background: color-mix(in srgb, white 35%, transparent);
+    color: var(--lg-text-muted);
   }
 
   .admin-table td {
-    @apply border-b border-zinc-900/5 px-4 py-3 text-zinc-800;
+    @apply border-b px-4 py-3;
+    border-color: color-mix(in srgb, var(--lg-text) 5%, transparent);
+    color: var(--lg-text);
   }
 
   .admin-table tr:last-child td {
     @apply border-b-0;
+  }
+
+  /* Nav sliding lozenge (behind items) — pair with .lg-pill.lg-active in markup */
+  .lg-nav-lozenge {
+    @apply pointer-events-none absolute left-0 top-0 z-0 rounded-full transition-[left,top,width,height,opacity] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)];
+  }
+
+  /* Fullscreen search modal backdrop — heavy frosted glass over the page */
+  .search-modal-backdrop {
+    background-color: rgba(12, 14, 22, 0.78);
+    -webkit-backdrop-filter: blur(48px) saturate(140%) brightness(0.7);
+    backdrop-filter: blur(48px) saturate(140%) brightness(0.7);
+  }
+
+  html[data-theme="light"] .search-modal-backdrop {
+    background-color: rgba(240, 244, 250, 0.82);
+    -webkit-backdrop-filter: blur(48px) saturate(140%) brightness(1.05);
+    backdrop-filter: blur(48px) saturate(140%) brightness(1.05);
+  }
+
+  /* Food card image overlay chips */
+  .lg-chip-float {
+    @apply pointer-events-none rounded-full px-2.5 py-1 text-xs font-bold tabular-nums;
+    color: var(--lg-text);
+    border: 1px solid var(--lg-ring);
+    background-color: var(--lg-fill);
+    background-image: none;
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: var(--lg-shadow);
   }
 }
 
@@ -128,4 +383,8 @@
 
 ::-webkit-scrollbar-thumb {
   @apply rounded-full bg-zinc-300;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  @apply bg-zinc-500;
 }

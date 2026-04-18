@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useRef, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { Check, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useCartStore } from '@/store/cartStore';
 
 interface Product {
   id: string;
@@ -27,7 +28,7 @@ interface Category {
 
 export default function MenuPage() {
   return (
-    <Suspense fallback={<div className="py-12 text-center text-zinc-500">Загрузка…</div>}>
+    <Suspense fallback={<div className="py-12 text-center text-[var(--lg-text-muted)]">Загрузка…</div>}>
       <MenuPageInner />
     </Suspense>
   );
@@ -39,7 +40,38 @@ function MenuPageInner() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
     searchParams.get('category')
   );
-  const [search, setSearch] = useState('');
+  const addItem = useCartStore((s) => s.addItem);
+  const [justAdded, setJustAdded] = useState<Set<string>>(new Set());
+  const flashTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  function handleAdd(product: Product) {
+    addItem({
+      productId: product.id,
+      name: product.name,
+      image: product.image,
+      basePrice: product.price,
+      quantity: 1,
+      customizations: [],
+    });
+    setJustAdded((prev) => {
+      const next = new Set(prev);
+      next.add(product.id);
+      return next;
+    });
+    const prev = flashTimers.current.get(product.id);
+    if (prev) clearTimeout(prev);
+    flashTimers.current.set(
+      product.id,
+      setTimeout(() => {
+        setJustAdded((s) => {
+          const next = new Set(s);
+          next.delete(product.id);
+          return next;
+        });
+        flashTimers.current.delete(product.id);
+      }, 700),
+    );
+  }
 
   const { data: categoriesData, isLoading: loadingCats } = useQuery({
     queryKey: ['categories'],
@@ -54,45 +86,22 @@ function MenuPageInner() {
   const categories: Category[] = categoriesData?.categories ?? [];
   const allProducts: Product[] = productsData?.products ?? [];
 
-  const filteredProducts = allProducts.filter((p) => {
-    const matchesCategory = !selectedCategory || p.categoryId === selectedCategory;
-    const matchesSearch =
-      !search ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.description?.toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const filteredProducts = allProducts.filter(
+    (p) => !selectedCategory || p.categoryId === selectedCategory,
+  );
 
   const chip = (active: boolean) =>
-    `shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
-      active
-        ? 'border border-surface-edge-strong bg-zinc-900 text-white shadow-md'
-        : 'border border-surface-edge bg-white/50 text-zinc-800 backdrop-blur-md hover:border-surface-edge-strong hover:bg-white/70'
-    }`;
+    `shrink-0 px-4 py-2 text-sm font-semibold transition lg-chip lg-pill lg-interactive ${active ? "lg-active" : ""}`;
 
   return (
-    <div className="mx-auto max-w-2xl pb-4 pt-2">
-      <div className="relative mb-4">
-        <Search
-          className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-zinc-400"
-          strokeWidth={1.75}
-        />
-        <input
-          className="input-pill w-full pl-11"
-          placeholder="Поиск по меню…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Поиск по меню"
-        />
-      </div>
-
-      <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
+    <div className="mx-auto max-w-2xl pb-4 pt-4 px-4">
+      <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto scrollbar-hide scroll-px-4 px-4 py-2">
         <button type="button" className={chip(!selectedCategory)} onClick={() => setSelectedCategory(null)}>
           Все
         </button>
         {loadingCats
           ? Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-9 w-24 shrink-0 animate-pulse rounded-full bg-white/40" />
+              <div key={i} className="h-9 w-24 shrink-0 animate-pulse rounded-full bg-(--lg-fill)" />
             ))
           : categories.map((cat) => (
               <button
@@ -111,46 +120,67 @@ function MenuPageInner() {
           ? Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="glass-tight h-[240px] animate-pulse" />
             ))
-          : filteredProducts.map((product) => (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => router.push(`/menu/${product.id}`)}
-                className="glass-panel group flex cursor-pointer flex-col overflow-hidden text-left transition hover:-translate-y-1 hover:shadow-xl"
-              >
-                <div className="relative flex h-[150px] items-center justify-center bg-zinc-100/80">
-                  {product.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={product.image} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-5xl font-bold text-zinc-200/80">{product.name[0]}</span>
-                  )}
-                </div>
-                <div className="flex flex-1 flex-col p-3">
-                  <p className="mb-1 line-clamp-2 text-sm font-semibold leading-snug text-zinc-900">
-                    {product.name}
-                  </p>
-                  {product.calories != null && (
-                    <p className="text-xs text-zinc-500">
-                      {product.calories} ккал
-                      {product.proteins != null && (
-                        <span>
-                          {' '}
-                          · Б {product.proteins} г
-                        </span>
+          : filteredProducts.map((product) => {
+              const added = justAdded.has(product.id);
+              return (
+                <div key={product.id} className="relative h-full">
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/menu/${product.id}`)}
+                    className="glass-panel lg-interactive group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left"
+                  >
+                    <div className="relative flex h-[150px] items-center justify-center bg-zinc-100/80">
+                      {product.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={product.image} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-5xl font-bold text-zinc-200/80">{product.name[0]}</span>
                       )}
-                    </p>
-                  )}
-                  <p className="mt-auto pt-1 text-base font-bold text-zinc-900">{product.price} ₽</p>
+                    </div>
+                    <div className="flex flex-1 flex-col p-3">
+                      <p className="mb-1 line-clamp-2 min-h-[2.6rem] text-sm font-semibold leading-snug text-[var(--lg-text)]">
+                        {product.name}
+                      </p>
+                      {product.calories != null && (
+                        <p className="text-xs text-[var(--lg-text-muted)]">
+                          {product.calories} ккал
+                          {product.proteins != null && (
+                            <span>
+                              {' '}
+                              · Б {product.proteins} г
+                            </span>
+                          )}
+                        </p>
+                      )}
+                      <p className="mt-auto pt-1 pr-12 text-base font-bold text-[var(--lg-text)]">{product.price} ₽</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAdd(product)}
+                    aria-label={`Добавить ${product.name} в корзину`}
+                    aria-pressed={added}
+                    className={`lg-interactive absolute right-2 bottom-2 inline-flex size-9 items-center justify-center rounded-full border backdrop-blur-md transition ${
+                      added
+                        ? 'border-emerald-400/60 bg-emerald-500/25 text-emerald-50'
+                        : 'border-[var(--lg-ring)] bg-[var(--lg-fill)] text-[var(--lg-text)]'
+                    }`}
+                  >
+                    {added ? (
+                      <Check className="size-[18px]" strokeWidth={2.5} />
+                    ) : (
+                      <Plus className="size-[18px]" strokeWidth={2.25} />
+                    )}
+                  </button>
                 </div>
-              </button>
-            ))}
+              );
+            })}
       </div>
 
       {!loadingProducts && filteredProducts.length === 0 && (
         <div className="glass-panel mt-8 py-12 text-center">
-          <p className="text-lg font-semibold text-zinc-700">Ничего не найдено</p>
-          <p className="mt-2 text-sm text-zinc-500">Попробуйте изменить поиск или категорию</p>
+          <p className="text-lg font-semibold text-[var(--lg-text)]">В этой категории пока пусто</p>
+          <p className="mt-2 text-sm text-[var(--lg-text-muted)]">Выберите другую категорию</p>
         </div>
       )}
     </div>
