@@ -43,6 +43,7 @@ model User {
   phone          String             @unique
   name           String?
   email          String?
+  avatarUrl      String?
   role           Role               @default(USER)
   bonusBalance   Float              @default(0)
   totalSpent     Float              @default(0)

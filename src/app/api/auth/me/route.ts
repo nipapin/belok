@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { toClientUser } from '@/lib/userClient';
 
 export async function GET() {
   try {
@@ -10,16 +11,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      user: {
-        id: user.id,
-        phone: user.phone,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        bonusBalance: user.bonusBalance,
-        totalSpent: user.totalSpent,
-        loyaltyLevel: user.loyaltyLevel,
-      },
+      user: toClientUser(user),
     });
   } catch (error) {
     console.error('Get me error:', error);

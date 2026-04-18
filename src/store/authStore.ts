@@ -7,6 +7,7 @@ interface User {
   phone: string;
   name: string | null;
   email: string | null;
+  avatarUrl: string | null;
   role: string;
   bonusBalance: number;
   totalSpent: number;

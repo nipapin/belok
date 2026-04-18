@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geologica } from "next/font/google";
+import Script from "next/script";
 import QueryProvider from "@/lib/QueryProvider";
 import { brandMark } from "@/lib/brand";
 import "./globals.css";
@@ -34,14 +35,19 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+const themeInitScript = `(function(){try{var k='theme',s=localStorage.getItem(k);if(s==='light'||s==='dark'){document.documentElement.setAttribute('data-theme',s);return;}var d=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',d);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className={geologica.variable}>
+    <html lang="ru" className={geologica.variable} data-theme="dark" suppressHydrationWarning>
       <body>
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeInitScript}
+        </Script>
         <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
