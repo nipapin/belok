@@ -16,7 +16,7 @@ export default function Header() {
           onClick={() => router.push("/")}
           className="outline-none focus:outline-none min-w-0 flex-1 rounded-full text-left transition lg-interactive"
         >
-          <span className="heading-display lowercase tracking-[-0.04em]">{brandMark}</span>
+          <span className="heading-display">{brandMark}</span>
         </button>
         <SearchControl />
         <ThemeToggle />

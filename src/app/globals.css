@@ -74,6 +74,7 @@ html[data-theme="light"] {
 }
 
 @layer components {
+
   /* Admin shell: light surfaces + dark text (overrides global dark theme tokens) */
   .admin-surface {
     --lg-text: #18181b;
@@ -257,11 +258,6 @@ html[data-theme="light"] {
     opacity: 0.92;
   }
 
-  /* Deprecated aliases */
-  .glass-border {
-    /* no-op: rim now on glass surfaces */
-  }
-
   .glass-tight {
     border-radius: 1rem;
     border: 1px solid var(--lg-ring);
@@ -306,7 +302,7 @@ html[data-theme="light"] {
   }
 
   .heading-display {
-    @apply text-[1.65rem] font-bold leading-tight tracking-[-0.03em] sm:text-4xl;
+    @apply text-[1.65rem] font-semibold leading-tight sm:text-4xl;
     color: var(--lg-text);
   }
 
@@ -344,7 +340,9 @@ html[data-theme="light"] {
 
   /* Nav sliding lozenge (behind items) — pair with .lg-pill.lg-active in markup */
   .lg-nav-lozenge {
-    @apply pointer-events-none absolute left-0 top-0 z-0 rounded-full transition-[left,top,width,height,opacity] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)];
+    @apply pointer-events-none absolute left-0 top-0 z-0 rounded-full duration-300;
+    transition-property: left, top, width, height, opacity;
+    transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
   }
 
   /* Fullscreen search modal backdrop — heavy frosted glass over the page */
@@ -370,6 +368,142 @@ html[data-theme="light"] {
     -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
     backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
     box-shadow: var(--lg-shadow);
+  }
+
+  /* Auth: alerts readable on glass in both themes */
+  .auth-alert-error {
+    @apply rounded-2xl px-4 py-3 text-sm;
+    border: 1px solid color-mix(in srgb, rgb(244 63 94) 38%, transparent);
+    background: color-mix(in srgb, rgb(244 63 94) 14%, transparent);
+    color: rgb(254 205 211);
+  }
+
+  html[data-theme="light"] .auth-alert-error {
+    border-color: color-mix(in srgb, rgb(225 29 72) 28%, transparent);
+    background: color-mix(in srgb, rgb(255 241 242) 96%, transparent);
+    color: rgb(136 19 55);
+  }
+
+  .auth-alert-info {
+    @apply rounded-2xl px-4 py-3 text-sm;
+    border: 1px solid color-mix(in srgb, rgb(56 189 248) 35%, transparent);
+    background: color-mix(in srgb, rgb(56 189 248) 12%, transparent);
+    color: rgb(186 230 253);
+  }
+
+  html[data-theme="light"] .auth-alert-info {
+    border-color: color-mix(in srgb, rgb(14 165 233) 30%, transparent);
+    background: color-mix(in srgb, rgb(240 249 255) 98%, transparent);
+    color: rgb(12 74 110);
+  }
+
+  /* Profile */
+  .profile-alert-success {
+    @apply rounded-2xl px-4 py-3 text-sm;
+    border: 1px solid color-mix(in srgb, rgb(52 211 153) 38%, transparent);
+    background: color-mix(in srgb, rgb(16 185 129) 14%, transparent);
+    color: rgb(167 243 208);
+  }
+
+  html[data-theme="light"] .profile-alert-success {
+    border-color: color-mix(in srgb, rgb(16 185 129) 35%, transparent);
+    background: color-mix(in srgb, rgb(236 253 245) 94%, transparent);
+    color: rgb(6 78 59);
+  }
+
+  .profile-divider {
+    @apply my-6 border-0 border-t;
+    border-color: color-mix(in srgb, var(--lg-text) 12%, transparent);
+  }
+
+  .profile-level-pill {
+    @apply inline-flex rounded-full px-3 py-1 text-xs font-semibold;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(24, 24, 27, 0.92);
+    color: #fafafa;
+  }
+
+  html[data-theme="light"] .profile-level-pill {
+    border-color: rgba(24, 24, 27, 0.12);
+    background: #18181b;
+    color: #fafafa;
+  }
+
+  .profile-progress-track {
+    @apply h-2 overflow-hidden rounded-full;
+    background: color-mix(in srgb, var(--lg-text) 12%, transparent);
+  }
+
+  .profile-progress-fill {
+    @apply h-full rounded-full bg-emerald-500 transition-all duration-300 ease-out;
+  }
+
+  .profile-bonus-card {
+    border-color: color-mix(in srgb, rgb(52 211 153) 30%, var(--lg-ring));
+    background-color: color-mix(in srgb, rgb(16 185 129) 11%, var(--lg-fill)) !important;
+  }
+
+  html[data-theme="light"] .profile-bonus-card {
+    border-color: color-mix(in srgb, rgb(16 185 129) 24%, transparent);
+    background-color: color-mix(in srgb, rgb(236 253 245) 68%, var(--lg-fill)) !important;
+  }
+
+  .profile-bonus-icon {
+    color: rgb(110 231 183);
+  }
+
+  html[data-theme="light"] .profile-bonus-icon {
+    color: rgb(5 150 105);
+  }
+
+  .profile-bonus-heading {
+    color: rgb(167 243 208);
+  }
+
+  html[data-theme="light"] .profile-bonus-heading {
+    color: rgb(6 78 59);
+  }
+
+  .profile-bonus-amount {
+    color: rgb(209 250 229);
+  }
+
+  html[data-theme="light"] .profile-bonus-amount {
+    color: rgb(4 120 87);
+  }
+
+  .profile-bonus-muted {
+    color: rgb(110 231 183);
+  }
+
+  html[data-theme="light"] .profile-bonus-muted {
+    color: rgb(52 120 90);
+  }
+
+  .profile-logout {
+    @apply inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-[0.9375rem] font-semibold tracking-tight transition disabled:pointer-events-none disabled:opacity-45;
+    color: rgb(252 165 165);
+    border: 1px solid color-mix(in srgb, rgb(244 63 94) 42%, var(--lg-ring));
+    background-color: var(--lg-fill);
+    background-image: none;
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: var(--lg-shadow);
+  }
+
+  .profile-logout:hover:not(:disabled) {
+    border-color: color-mix(in srgb, rgb(244 63 94) 55%, var(--lg-ring));
+    background-color: var(--lg-fill-hover);
+    box-shadow: var(--lg-shadow-strong);
+  }
+
+  .profile-logout:active:not(:disabled) {
+    opacity: 0.94;
+  }
+
+  html[data-theme="light"] .profile-logout {
+    color: rgb(159 18 57);
+    border-color: color-mix(in srgb, rgb(244 63 94) 32%, transparent);
   }
 }
 

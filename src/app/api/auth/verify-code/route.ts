@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { signAccessToken, signRefreshToken } from '@/lib/auth';
+import { toClientUser } from '@/lib/userClient';
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,14 +61,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { loyaltyLevel: true },
+    });
+
+    if (!fullUser) {
+      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 500 });
+    }
+
     const response = NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        name: user.name,
-        role: user.role,
-      },
+      user: toClientUser(fullUser),
       isNewUser: !user.name,
     });
 

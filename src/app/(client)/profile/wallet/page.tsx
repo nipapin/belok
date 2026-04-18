@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Apple, Loader2, Smartphone } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { AppleWalletMark, GoogleWalletMark } from '@/components/icons/WalletProviderIcons';
 import { useAuthStore } from '@/store/authStore';
 import { brandMark } from '@/lib/brand';
 
@@ -49,10 +50,10 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="mx-auto max-w-md pb-4 pt-2">
+    <div className="mx-auto max-w-md pb-4 pt-2 px-4">
       <h1 className="heading-section mb-4">Карта в Wallet</h1>
 
-      <div className="glass-panel-strong relative mb-6 overflow-hidden rounded-[1.5rem] bg-zinc-900 p-6 text-white shadow-xl">
+      <div className="glass-panel-strong relative mb-6 overflow-hidden rounded-3xl bg-zinc-900 p-6 text-white shadow-xl">
         <div className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-white/5" />
         <p className="relative mb-6 text-2xl font-extrabold tracking-[0.15em]">{brandMark}</p>
         <div className="relative mb-4 flex justify-between gap-4">
@@ -70,7 +71,7 @@ export default function WalletPage() {
         </p>
       </div>
 
-      <p className="mb-4 text-center text-sm text-zinc-500">
+      <p className="mb-4 text-center text-sm text-white/55">
         Добавьте карту лояльности в кошелёк телефона для быстрого доступа к бонусам
       </p>
 
@@ -90,7 +91,7 @@ export default function WalletPage() {
           {loading === 'apple' ? (
             <Loader2 className="size-5 animate-spin" />
           ) : (
-            <Apple className="size-5" strokeWidth={1.75} />
+            <AppleWalletMark className="size-5 shrink-0 text-white" />
           )}
           Добавить в Apple Wallet
         </button>
@@ -104,7 +105,7 @@ export default function WalletPage() {
           {loading === 'google' ? (
             <Loader2 className="size-5 animate-spin text-white" />
           ) : (
-            <Smartphone className="size-5" strokeWidth={1.75} />
+            <GoogleWalletMark className="size-5 shrink-0 text-white" />
           )}
           Добавить в Google Wallet
         </button>

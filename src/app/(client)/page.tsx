@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Suspense, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import CategoryChip from "@/components/ui/category-chip";
+import { ProductCard } from "@/components/product/ProductCard";
 import { Category, Product } from "@/types";
 
 export default function HomePage() {
@@ -59,35 +60,20 @@ function HomePageInner() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           {loadingProducts
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="lg-card h-[220px] animate-pulse border border-(--lg-ring) bg-(--lg-fill)" />
+                <div key={i} className="glass-tight h-[240px] animate-pulse" />
               ))
             : products.map((product) => (
-                <button
+                <ProductCard
                   key={product.id}
-                  type="button"
-                  onClick={() => router.push(`/menu/${product.id}`)}
-                  className="lg-card lg-interactive group flex cursor-pointer flex-col overflow-hidden text-left"
-                >
-                  <div className="relative flex h-[140px] items-center justify-center overflow-hidden bg-zinc-100/50">
-                    {product.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={product.image} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="text-4xl font-bold text-[var(--lg-text-muted)]">{product.name[0]}</span>
-                    )}
-                    <div className="pointer-events-none absolute inset-0 bg-black/28" aria-hidden />
-                    {product.calories != null && (
-                      <span className="lg-chip-float absolute left-2 top-2 z-[1]">{product.calories} ккал</span>
-                    )}
-                    <span className="lg-chip-float absolute bottom-2 right-2 z-[1] tabular-nums">{product.price} ₽</span>
-                  </div>
-                  <div className="flex flex-1 flex-col p-3">
-                    <p className="truncate text-[0.9375rem] font-semibold leading-snug tracking-[-0.02em] text-[var(--lg-text)]">
-                      {product.name}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-[var(--lg-text-muted)]">{product.category.name}</p>
-                  </div>
-                </button>
+                  product={{
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    image: product.image,
+                    calories: product.calories,
+                    proteins: product.proteins,
+                  }}
+                />
               ))}
         </div>
 

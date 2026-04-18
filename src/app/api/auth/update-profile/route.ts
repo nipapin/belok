@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { toClientUser } from '@/lib/userClient';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -21,16 +22,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({
-      user: {
-        id: updated.id,
-        phone: updated.phone,
-        name: updated.name,
-        email: updated.email,
-        role: updated.role,
-        bonusBalance: updated.bonusBalance,
-        totalSpent: updated.totalSpent,
-        loyaltyLevel: updated.loyaltyLevel,
-      },
+      user: toClientUser(updated),
     });
   } catch (error) {
     console.error('Update profile error:', error);

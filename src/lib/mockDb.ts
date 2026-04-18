@@ -258,6 +258,16 @@ function createCrudModel(store: any[], resolveFn?: (item: any, opts?: any) => an
       const item = store.find(i => i[key] === opts.where[key]);
       return item ? resolve(item, opts) : null;
     },
+    findUniqueOrThrow: async (opts?: any) => {
+      const key = Object.keys(opts.where)[0];
+      const item = store.find(i => i[key] === opts.where[key]);
+      if (!item) {
+        const err = new Error('Record to find does not exist.') as Error & { code?: string };
+        err.code = 'P2025';
+        throw err;
+      }
+      return resolve(item, opts);
+    },
     findFirst: async (opts?: any) => {
       let result = store.filter(item => matchWhere(item, opts?.where));
       result = sortBy(result, opts?.orderBy);
