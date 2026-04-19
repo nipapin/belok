@@ -83,7 +83,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   return (
-    <div className="admin-surface flex min-h-screen">
+    <div className="admin-surface h-dvh min-h-0 w-full overflow-hidden">
       <header className="admin-header-bar fixed left-0 right-0 top-0 z-[1300] flex h-14 items-center px-3 md:left-[260px]">
         {!mdUp && (
           <button
@@ -126,7 +126,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
       )}
 
-      <main className="min-h-screen flex-1 px-4 pb-8 pt-[4.5rem] md:pl-[calc(260px+1rem)] md:pr-8">
+      <main className="box-border h-full min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-8 pt-[4.5rem] md:pl-[calc(260px+1rem)] md:pr-8">
         {children}
       </main>
     </div>
