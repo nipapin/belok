@@ -59,56 +59,109 @@ export default function AdminSettingsPage() {
         </div>
       )}
 
-      <div className="admin-table-wrap mb-6 overflow-x-auto">
-        <table className="admin-table min-w-[720px]">
-          <thead>
-            <tr>
-              <th>Уровень</th>
-              <th>Мин. сумма, ₽</th>
-              <th>Кэшбэк, %</th>
-              <th>Скидка, %</th>
-              <th>Клиентов</th>
-            </tr>
-          </thead>
-          <tbody>
-            {levels.map((level, i) => (
-              <tr key={level.id}>
-                <td>
-                  <input
-                    className="input-pill max-w-[180px] py-2 text-sm"
-                    value={level.name}
-                    onChange={(e) => updateLevel(i, 'name', e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="input-pill max-w-[120px] py-2 text-sm"
-                    type="number"
-                    value={level.minSpent}
-                    onChange={(e) => updateLevel(i, 'minSpent', e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="input-pill max-w-[100px] py-2 text-sm"
-                    type="number"
-                    value={level.cashbackPercent}
-                    onChange={(e) => updateLevel(i, 'cashbackPercent', e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="input-pill max-w-[100px] py-2 text-sm"
-                    type="number"
-                    value={level.discountPercent}
-                    onChange={(e) => updateLevel(i, 'discountPercent', e.target.value)}
-                  />
-                </td>
-                <td>{level._count?.users ?? 0}</td>
+      <div className="mb-6 hidden min-[900px]:block">
+        <div className="admin-table-wrap overflow-x-auto">
+          <table className="admin-table min-w-[720px]">
+            <thead>
+              <tr>
+                <th>Уровень</th>
+                <th>Мин. сумма, ₽</th>
+                <th>Кэшбэк, %</th>
+                <th>Скидка, %</th>
+                <th>Клиентов</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {levels.map((level, i) => (
+                <tr key={level.id}>
+                  <td>
+                    <input
+                      className="input-pill max-w-[180px] py-2 text-sm"
+                      value={level.name}
+                      onChange={(e) => updateLevel(i, 'name', e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="input-pill max-w-[120px] py-2 text-sm"
+                      type="number"
+                      value={level.minSpent}
+                      onChange={(e) => updateLevel(i, 'minSpent', e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="input-pill max-w-[100px] py-2 text-sm"
+                      type="number"
+                      value={level.cashbackPercent}
+                      onChange={(e) => updateLevel(i, 'cashbackPercent', e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="input-pill max-w-[100px] py-2 text-sm"
+                      type="number"
+                      value={level.discountPercent}
+                      onChange={(e) => updateLevel(i, 'discountPercent', e.target.value)}
+                    />
+                  </td>
+                  <td>{level._count?.users ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mb-6 space-y-3 min-[900px]:hidden">
+        {levels.map((level, i) => (
+          <div key={level.id} className="glass-panel space-y-3 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-(--lg-text-muted)">
+              Уровень {i + 1}
+            </p>
+            <label className="block text-sm font-medium text-(--lg-text)">
+              Название
+              <input
+                className="input-pill mt-1 py-2 text-sm"
+                value={level.name}
+                onChange={(e) => updateLevel(i, 'name', e.target.value)}
+              />
+            </label>
+            <label className="block text-sm font-medium text-(--lg-text)">
+              Мин. сумма, ₽
+              <input
+                className="input-pill mt-1 py-2 text-sm"
+                type="number"
+                value={level.minSpent}
+                onChange={(e) => updateLevel(i, 'minSpent', e.target.value)}
+              />
+            </label>
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-[color-mix(in_srgb,var(--lg-text)_12%,transparent)] px-3 py-2.5 text-sm">
+              <span className="text-(--lg-text-muted)">Клиентов</span>
+              <span className="font-semibold tabular-nums text-(--lg-text)">{level._count?.users ?? 0}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-xs font-medium text-(--lg-text)">
+                Кэшбэк, %
+                <input
+                  className="input-pill mt-1 py-2 text-sm"
+                  type="number"
+                  value={level.cashbackPercent}
+                  onChange={(e) => updateLevel(i, 'cashbackPercent', e.target.value)}
+                />
+              </label>
+              <label className="text-xs font-medium text-(--lg-text)">
+                Скидка, %
+                <input
+                  className="input-pill mt-1 py-2 text-sm"
+                  type="number"
+                  value={level.discountPercent}
+                  onChange={(e) => updateLevel(i, 'discountPercent', e.target.value)}
+                />
+              </label>
+            </div>
+          </div>
+        ))}
       </div>
 
       <button

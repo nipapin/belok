@@ -50,58 +50,113 @@ export default function AdminUsersPage() {
     <div>
       <h1 className="heading-section mb-6">Пользователи</h1>
 
-      <div className="admin-table-wrap overflow-x-auto">
-        <table className="admin-table min-w-[960px]">
-          <thead>
-            <tr>
-              <th>Телефон</th>
-              <th>Имя</th>
-              <th>Роль</th>
-              <th>Уровень</th>
-              <th>Бонусы</th>
-              <th>Потрачено</th>
-              <th>Заказы</th>
-              <th className="text-right">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td>{user.phone}</td>
-                <td>{user.name || '—'}</td>
-                <td>
-                  <span
-                    className={
-                      user.role === 'ADMIN'
-                        ? 'rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800'
-                        : 'admin-chip-neutral'
-                    }
-                  >
-                    {user.role === 'ADMIN' ? 'Админ' : 'Клиент'}
-                  </span>
-                </td>
-                <td>{user.loyaltyLevel?.name || '—'}</td>
-                <td>{user.bonusBalance}</td>
-                <td>{user.totalSpent} ₽</td>
-                <td>{user._count.orders}</td>
-                <td className="text-right">
-                  <button
-                    type="button"
-                    className="btn-icon inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
-                    onClick={() => {
-                      setEditUser(user);
-                      setBonusAdjustment('');
-                      setBonusReason('');
-                    }}
-                    aria-label="Изменить"
-                  >
-                    <Pencil className="size-4" />
-                  </button>
-                </td>
+      <div className="hidden min-[900px]:block">
+        <div className="admin-table-wrap overflow-x-auto">
+          <table className="admin-table min-w-[960px]">
+            <thead>
+              <tr>
+                <th>Телефон</th>
+                <th>Имя</th>
+                <th>Роль</th>
+                <th>Уровень</th>
+                <th>Бонусы</th>
+                <th>Потрачено</th>
+                <th>Заказы</th>
+                <th className="text-right">Действия</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.phone}</td>
+                  <td>{user.name || '—'}</td>
+                  <td>
+                    <span
+                      className={
+                        user.role === 'ADMIN'
+                          ? 'rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800'
+                          : 'admin-chip-neutral'
+                      }
+                    >
+                      {user.role === 'ADMIN' ? 'Админ' : 'Клиент'}
+                    </span>
+                  </td>
+                  <td>{user.loyaltyLevel?.name || '—'}</td>
+                  <td>{user.bonusBalance}</td>
+                  <td>{user.totalSpent} ₽</td>
+                  <td>{user._count.orders}</td>
+                  <td className="text-right">
+                    <button
+                      type="button"
+                      className="btn-icon inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
+                      onClick={() => {
+                        setEditUser(user);
+                        setBonusAdjustment('');
+                        setBonusReason('');
+                      }}
+                      aria-label="Изменить"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="space-y-3 min-[900px]:hidden">
+        {users.map((user) => (
+          <div key={user.id} className="glass-panel p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium text-(--lg-text)">{user.phone}</p>
+                <p className="mt-0.5 text-sm text-(--lg-text-muted)">{user.name || '—'}</p>
+              </div>
+              <button
+                type="button"
+                className="btn-icon shrink-0 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
+                onClick={() => {
+                  setEditUser(user);
+                  setBonusAdjustment('');
+                  setBonusReason('');
+                }}
+                aria-label="Изменить"
+              >
+                <Pencil className="size-4" />
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span
+                className={
+                  user.role === 'ADMIN'
+                    ? 'rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800'
+                    : 'admin-chip-neutral'
+                }
+              >
+                {user.role === 'ADMIN' ? 'Админ' : 'Клиент'}
+              </span>
+              {user.loyaltyLevel?.name ? (
+                <span className="admin-chip-neutral text-xs font-medium">{user.loyaltyLevel.name}</span>
+              ) : null}
+            </div>
+            <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] pt-3 text-center text-xs">
+              <div>
+                <dt className="text-(--lg-text-muted)">Бонусы</dt>
+                <dd className="mt-0.5 font-semibold tabular-nums text-(--lg-text)">{user.bonusBalance}</dd>
+              </div>
+              <div>
+                <dt className="text-(--lg-text-muted)">Потрачено</dt>
+                <dd className="mt-0.5 font-semibold tabular-nums text-(--lg-text)">{user.totalSpent} ₽</dd>
+              </div>
+              <div>
+                <dt className="text-(--lg-text-muted)">Заказы</dt>
+                <dd className="mt-0.5 font-semibold tabular-nums text-(--lg-text)">{user._count.orders}</dd>
+              </div>
+            </dl>
+          </div>
+        ))}
       </div>
 
       <Modal

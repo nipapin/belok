@@ -185,72 +185,132 @@ export default function AdminProductsPage() {
         </button>
       </div>
 
-      <div className="admin-table-wrap overflow-x-auto">
-        <table className="admin-table min-w-[720px]">
-          <thead>
-            <tr>
-              <th>Название</th>
-              <th>Категория</th>
-              <th>Цена</th>
-              <th>В меню</th>
-              <th className="text-right">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product.id}>
-                <td>
-                  <div className="flex items-center gap-2">
-                    {product.image && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={product.image}
-                        alt=""
-                        className="size-10 rounded-xl object-cover"
-                      />
-                    )}
-                    <span className="font-medium">{product.name}</span>
-                  </div>
-                </td>
-                <td>
-                  <span className="admin-chip-neutral font-medium">{product.category.name}</span>
-                </td>
-                <td>{product.price} ₽</td>
-                <td>
-                  <span
-                    className={
-                      product.isAvailable
-                        ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
-                        : 'admin-chip-neutral'
-                    }
-                  >
-                    {product.isAvailable ? 'Да' : 'Нет'}
-                  </span>
-                </td>
-                <td className="text-right">
-                  <button
-                    type="button"
-                    className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
-                    onClick={() => handleOpen(product)}
-                    aria-label="Изменить"
-                  >
-                    <Pencil className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                    onClick={() => {
-                      if (window.confirm('Удалить товар?')) deleteMutation.mutate(product.id);
-                    }}
-                    aria-label="Удалить"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </td>
+      <div className="hidden min-[900px]:block">
+        <div className="admin-table-wrap overflow-x-auto">
+          <table className="admin-table min-w-[720px]">
+            <thead>
+              <tr>
+                <th>Название</th>
+                <th>Категория</th>
+                <th>Цена</th>
+                <th>В меню</th>
+                <th className="text-right">Действия</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {products.map((product) => (
+                <tr key={product.id}>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      {product.image && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={product.image}
+                          alt=""
+                          className="size-10 rounded-xl object-cover"
+                        />
+                      )}
+                      <span className="font-medium">{product.name}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="admin-chip-neutral font-medium">{product.category.name}</span>
+                  </td>
+                  <td>{product.price} ₽</td>
+                  <td>
+                    <span
+                      className={
+                        product.isAvailable
+                          ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
+                          : 'admin-chip-neutral'
+                      }
+                    >
+                      {product.isAvailable ? 'Да' : 'Нет'}
+                    </span>
+                  </td>
+                  <td className="text-right">
+                    <button
+                      type="button"
+                      className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
+                      onClick={() => handleOpen(product)}
+                      aria-label="Изменить"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
+                      onClick={() => {
+                        if (window.confirm('Удалить товар?')) deleteMutation.mutate(product.id);
+                      }}
+                      aria-label="Удалить"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="space-y-3 min-[900px]:hidden">
+        {products.map((product) => (
+          <div
+            key={product.id}
+            className="glass-panel flex flex-col gap-3 p-4"
+          >
+            <div className="flex gap-3">
+              {product.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={product.image}
+                  alt=""
+                  className="size-14 shrink-0 rounded-xl object-cover"
+                />
+              ) : null}
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-(--lg-text)">{product.name}</p>
+                <p className="mt-1">
+                  <span className="admin-chip-neutral text-xs font-medium">{product.category.name}</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] pt-3 text-sm">
+              <span className="font-semibold tabular-nums text-(--lg-text)">{product.price} ₽</span>
+              <span
+                className={
+                  product.isAvailable
+                    ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
+                    : 'admin-chip-neutral'
+                }
+              >
+                {product.isAvailable ? 'В меню' : 'Скрыт'}
+              </span>
+              <div className="ml-auto flex gap-1">
+                <button
+                  type="button"
+                  className="btn-icon inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
+                  onClick={() => handleOpen(product)}
+                  aria-label="Изменить"
+                >
+                  <Pencil className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
+                  onClick={() => {
+                    if (window.confirm('Удалить товар?')) deleteMutation.mutate(product.id);
+                  }}
+                  aria-label="Удалить"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <Modal

@@ -73,58 +73,109 @@ export default function AdminIngredientsPage() {
         </button>
       </div>
 
-      <div className="admin-table-wrap overflow-x-auto">
-        <table className="admin-table min-w-[640px]">
-          <thead>
-            <tr>
-              <th>Название</th>
-              <th>Цена</th>
-              <th>В блюдах</th>
-              <th>Статус</th>
-              <th className="text-right">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ingredients.map((ing) => (
-              <tr key={ing.id}>
-                <td>{ing.name}</td>
-                <td>{ing.price} ₽</td>
-                <td>{ing._count.products}</td>
-                <td>
-                  <span
-                    className={
-                      ing.isAvailable
-                        ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
-                        : 'admin-chip-neutral'
-                    }
-                  >
-                    {ing.isAvailable ? 'Доступен' : 'Скрыт'}
-                  </span>
-                </td>
-                <td className="text-right">
-                  <button
-                    type="button"
-                    className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
-                    onClick={() => handleOpen(ing)}
-                    aria-label="Изменить"
-                  >
-                    <Pencil className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                    onClick={() => {
-                      if (window.confirm('Удалить ингредиент?')) deleteMutation.mutate(ing.id);
-                    }}
-                    aria-label="Удалить"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </td>
+      <div className="hidden min-[900px]:block">
+        <div className="admin-table-wrap overflow-x-auto">
+          <table className="admin-table min-w-[640px]">
+            <thead>
+              <tr>
+                <th>Название</th>
+                <th>Цена</th>
+                <th>В блюдах</th>
+                <th>Статус</th>
+                <th className="text-right">Действия</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {ingredients.map((ing) => (
+                <tr key={ing.id}>
+                  <td>{ing.name}</td>
+                  <td>{ing.price} ₽</td>
+                  <td>{ing._count.products}</td>
+                  <td>
+                    <span
+                      className={
+                        ing.isAvailable
+                          ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
+                          : 'admin-chip-neutral'
+                      }
+                    >
+                      {ing.isAvailable ? 'Доступен' : 'Скрыт'}
+                    </span>
+                  </td>
+                  <td className="text-right">
+                    <button
+                      type="button"
+                      className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
+                      onClick={() => handleOpen(ing)}
+                      aria-label="Изменить"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
+                      onClick={() => {
+                        if (window.confirm('Удалить ингредиент?')) deleteMutation.mutate(ing.id);
+                      }}
+                      aria-label="Удалить"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="space-y-3 min-[900px]:hidden">
+        {ingredients.map((ing) => (
+          <div key={ing.id} className="glass-panel p-4">
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-semibold text-(--lg-text)">{ing.name}</p>
+              <span
+                className={
+                  ing.isAvailable
+                    ? 'shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
+                    : 'admin-chip-neutral shrink-0'
+                }
+              >
+                {ing.isAvailable ? 'Доступен' : 'Скрыт'}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <span className="text-(--lg-text-muted)">Цена</span>
+                <span className="ml-2 font-medium tabular-nums text-(--lg-text)">{ing.price} ₽</span>
+              </div>
+              <div>
+                <span className="text-(--lg-text-muted)">В блюдах</span>
+                <span className="ml-2 font-medium tabular-nums text-(--lg-text)">{ing._count.products}</span>
+              </div>
+            </div>
+            <div className="mt-3 flex justify-end gap-1 border-t border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] pt-3">
+              <button
+                type="button"
+                className="btn-icon inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
+                onClick={() => handleOpen(ing)}
+                aria-label="Изменить"
+              >
+                <Pencil className="size-4" />
+              </button>
+              <button
+                type="button"
+                className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
+                onClick={() => {
+                  if (window.confirm('Удалить ингредиент?')) deleteMutation.mutate(ing.id);
+                }}
+                aria-label="Удалить"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
       <Modal
