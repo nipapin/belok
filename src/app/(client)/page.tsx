@@ -44,12 +44,14 @@ function HomePageInner() {
     <div className="pt-2">
       <div className="mx-auto max-w-2xl px-2">
         <h2 className="heading-section my-3">Категории</h2>
-        <div className="mb-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide scroll-pl-2 scroll-pr-2 py-2">
+        <div className="-mx-2 mb-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide scroll-pl-3 scroll-pr-3 py-2">
+          <span className="pointer-events-none w-3 shrink-0" aria-hidden />
           {loadingCategories
             ? Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="h-11 w-28 shrink-0 animate-pulse rounded-full bg-white/25" />
               ))
             : categories.map((cat) => <CategoryChip key={cat.id} category={cat} selected={categoryParam === cat.id} />)}
+          <span className="pointer-events-none w-3 shrink-0" aria-hidden />
         </div>
 
         <div className="mb-3 flex items-center gap-2">

@@ -69,7 +69,8 @@ function MenuPageInner() {
 
   return (
     <div className="mx-auto max-w-2xl px-2 pb-4 pt-4">
-      <div className="mb-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide scroll-pl-2 scroll-pr-2 py-2">
+      <div className="-mx-2 mb-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide scroll-pl-3 scroll-pr-3 py-2">
+        <span className="pointer-events-none w-3 shrink-0" aria-hidden />
         <button
           ref={allChipRef}
           type="button"
@@ -96,6 +97,7 @@ function MenuPageInner() {
                 {cat.name}
               </button>
             ))}
+        <span className="pointer-events-none w-3 shrink-0" aria-hidden />
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2">
