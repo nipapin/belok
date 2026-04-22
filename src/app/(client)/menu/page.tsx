@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ProductCard } from '@/components/product/ProductCard';
@@ -38,6 +38,8 @@ function MenuPageInner() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
     searchParams.get('category')
   );
+  const allChipRef = useRef<HTMLButtonElement>(null);
+  const categoryChipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const { data: categoriesData, isLoading: loadingCats } = useQuery({
     queryKey: ['categories'],
@@ -56,24 +58,39 @@ function MenuPageInner() {
     (p) => !selectedCategory || p.categoryId === selectedCategory,
   );
 
-  const chip = (active: boolean) =>
-    `shrink-0 px-4 py-2 text-sm font-semibold transition lg-chip lg-pill lg-interactive ${active ? 'lg-active' : ''}`;
+  const chipClass = (active: boolean) =>
+    `flex min-h-11 w-28 shrink-0 items-center justify-center wrap-break-word px-1.5 py-2 text-center text-sm font-semibold leading-tight transition line-clamp-2 lg-chip lg-pill lg-interactive ${active ? 'lg-active' : ''}`;
+
+  useEffect(() => {
+    if (loadingCats) return;
+    const el = !selectedCategory ? allChipRef.current : categoryChipRefs.current.get(selectedCategory);
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [selectedCategory, loadingCats]);
 
   return (
-    <div className="mx-auto max-w-2xl pb-4 pt-4 px-4">
-      <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto scrollbar-hide scroll-px-4 px-4 py-2">
-        <button type="button" className={chip(!selectedCategory)} onClick={() => setSelectedCategory(null)}>
+    <div className="mx-auto max-w-2xl px-2 pb-4 pt-4">
+      <div className="mb-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide scroll-pl-2 scroll-pr-2 py-2">
+        <button
+          ref={allChipRef}
+          type="button"
+          className={chipClass(!selectedCategory)}
+          onClick={() => setSelectedCategory(null)}
+        >
           Все
         </button>
         {loadingCats
           ? Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-9 w-24 shrink-0 animate-pulse rounded-full bg-(--lg-fill)" />
+              <div key={i} className="h-11 w-28 shrink-0 animate-pulse rounded-full bg-(--lg-fill)" />
             ))
           : categories.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
-                className={chip(selectedCategory === cat.id)}
+                className={chipClass(selectedCategory === cat.id)}
+                ref={(node) => {
+                  if (node) categoryChipRefs.current.set(cat.id, node);
+                  else categoryChipRefs.current.delete(cat.id);
+                }}
                 onClick={() => setSelectedCategory(cat.id)}
               >
                 {cat.name}
@@ -81,10 +98,10 @@ function MenuPageInner() {
             ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2">
         {loadingProducts
           ? Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="glass-tight h-[240px] animate-pulse" />
+              <div key={i} className="glass-tight w-full h-full aspect-2/3 animate-pulse" />
             ))
           : filteredProducts.map((product) => (
               <ProductCard

@@ -16,7 +16,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }, [fetchUser]);
 
   return (
-    <div className="flex min-h-dvh flex-col h-full overflow-y-auto scrollbar-hide">
+    <div data-mobile-ui className="flex min-h-dvh flex-col h-full overflow-y-auto scrollbar-hide">
       <Header />
       <main
         className={

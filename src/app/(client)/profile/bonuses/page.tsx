@@ -21,7 +21,7 @@ export default function BonusesPage() {
   const balance: number = data?.balance ?? 0;
 
   return (
-    <div className="mx-auto max-w-md pb-4 pt-2 px-4">
+    <div className="mx-auto max-w-md pb-4 pt-2 px-2">
       <h1 className="heading-section mb-4">Детализация бонусов</h1>
 
       <div className="glass-panel-strong mb-6 rounded-3xl bg-zinc-900 p-6 text-center text-white shadow-xl">

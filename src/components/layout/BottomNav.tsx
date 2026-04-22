@@ -54,7 +54,7 @@ export default function BottomNav() {
   if (pathname.startsWith("/admin")) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-1200 flex justify-center px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))]">
+    <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-1200 flex justify-center px-2 pb-[max(12px,env(safe-area-inset-bottom,0px))]">
       <nav
         ref={navRef}
         role="navigation"

@@ -50,7 +50,7 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="mx-auto max-w-md pb-4 pt-2 px-4">
+    <div className="mx-auto max-w-md pb-4 pt-2 px-2">
       <h1 className="heading-section mb-4">Карта в Wallet</h1>
 
       <div className="glass-panel-strong relative mb-6 overflow-hidden rounded-3xl bg-zinc-900 p-6 text-white shadow-xl">
@@ -76,7 +76,7 @@ export default function WalletPage() {
       </p>
 
       {error && (
-        <div className="mb-4 rounded-2xl border border-rose-200/80 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+        <div className="mb-4 rounded-2xl border border-rose-200/80 bg-rose-50 px-2 py-3 text-sm text-rose-800">
           {error}
         </div>
       )}
@@ -84,7 +84,7 @@ export default function WalletPage() {
       <div className="flex flex-col gap-3">
         <button
           type="button"
-          className="btn-primary w-full bg-zinc-950 py-3.5 hover:bg-zinc-900"
+          className="btn-primary btn-primary-wallet-apple w-full bg-zinc-950 py-3.5"
           onClick={handleAppleWallet}
           disabled={loading !== null}
         >
@@ -98,7 +98,7 @@ export default function WalletPage() {
 
         <button
           type="button"
-          className="btn-primary w-full bg-[#4285F4] py-3.5 hover:bg-[#3367d6]"
+          className="btn-primary btn-primary-wallet-google w-full bg-[#4285F4] py-3.5"
           onClick={handleGoogleWallet}
           disabled={loading !== null}
         >

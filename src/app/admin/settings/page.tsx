@@ -54,7 +54,7 @@ export default function AdminSettingsPage() {
       <h1 className="heading-section mb-6">Настройки бонусной программы</h1>
 
       {saved && (
-        <div className="mb-4 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        <div className="mb-4 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-2 py-3 text-sm text-emerald-900">
           Настройки сохранены
         </div>
       )}

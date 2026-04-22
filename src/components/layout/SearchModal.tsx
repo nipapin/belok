@@ -80,6 +80,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
 
   return createPortal(
     <div
+      data-mobile-ui
       role="dialog"
       aria-modal="true"
       aria-label="Поиск по меню"
@@ -90,9 +91,9 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="mx-auto flex h-full w-full max-w-2xl flex-col px-4 pt-[max(12px,env(safe-area-inset-top,0px))] pb-4">
+      <div className="mx-auto flex h-full w-full max-w-2xl flex-col px-2 pt-[max(12px,env(safe-area-inset-top,0px))] pb-4">
         <div className="mt-2 flex items-center gap-2">
-          <div className="lg-bar relative flex flex-1 items-center px-4 py-1.5">
+          <div className="lg-bar relative flex flex-1 items-center px-2 py-1.5">
             <Search
               className="pointer-events-none mr-3 size-[18px] shrink-0 text-[var(--lg-text-muted)]"
               strokeWidth={1.75}
@@ -115,7 +116,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                   setQuery("");
                   inputRef.current?.focus();
                 }}
-                className="ml-2 rounded-full p-1 text-[var(--lg-text-muted)] transition hover:text-[var(--lg-text)]"
+                className="ml-2 rounded-full p-1 text-[var(--lg-text-muted)] transition"
                 aria-label="Очистить"
               >
                 <X className="size-4" strokeWidth={2} />

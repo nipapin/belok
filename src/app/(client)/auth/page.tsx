@@ -93,7 +93,7 @@ function AuthPageInner() {
   };
 
   return (
-    <div className="mx-auto flex min-h-[min(100%,calc(100dvh-5.5rem))] max-w-md flex-col items-center justify-center px-4 pb-10 pt-8 sm:pt-12">
+    <div className="mx-auto flex min-h-[min(100%,calc(100dvh-5.5rem))] max-w-md flex-col items-center justify-center px-2 pb-10 pt-8 sm:pt-12">
       <div className="glass-panel-strong p-6 sm:p-8">
         {step === "phone" ? (
           <>

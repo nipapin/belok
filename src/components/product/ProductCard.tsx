@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Check, Plus } from 'lucide-react';
-import { useCartStore } from '@/store/cartStore';
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Check, Plus } from "lucide-react";
+import { useCartStore } from "@/store/cartStore";
+import { ProductCardDetails } from "./ProductCardDetails";
 
 export type ProductCardModel = {
   id: string;
@@ -50,50 +51,26 @@ export function ProductCard({ product }: ProductCardProps) {
       <button
         type="button"
         onClick={() => router.push(`/menu/${product.id}`)}
-        className="glass-panel lg-interactive group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left"
+        className="w-full h-full overflow-hidden rounded-2xl aspect-2/3"
       >
-        <div className="relative flex h-[150px] items-center justify-center bg-zinc-100/80">
+        <div className="w-full h-full">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.image} alt="" className="h-full w-full object-cover" />
+            <img src={product.image} alt="" className="w-full h-full object-cover" />
           ) : (
-            <span className="text-5xl font-bold text-zinc-200/80">{product.name[0]}</span>
+            <span className="">{product.name[0]}</span>
           )}
         </div>
-        <div className="flex flex-1 flex-col p-3">
-          <p className="mb-1 line-clamp-2 min-h-[2.6rem] text-sm font-semibold leading-snug text-(--lg-text)">
-            {product.name}
-          </p>
-          {product.calories != null && (
-            <p className="text-xs text-(--lg-text-muted)">
-              {product.calories} ккал
-              {product.proteins != null && (
-                <span>
-                  {' '}
-                  · Б {product.proteins} г
-                </span>
-              )}
-            </p>
-          )}
-          <p className="mt-auto pt-1 pr-12 text-base font-bold text-(--lg-text)">{product.price} ₽</p>
-        </div>
+        <ProductCardDetails product={product} />
       </button>
       <button
         type="button"
         onClick={handleAdd}
         aria-label={`Добавить ${product.name} в корзину`}
         aria-pressed={justAdded}
-        className={`lg-interactive absolute right-2 bottom-2 inline-flex size-9 items-center justify-center rounded-full border backdrop-blur-md transition ${
-          justAdded
-            ? 'border-emerald-400/60 bg-emerald-500/25 text-emerald-50'
-            : 'border-(--lg-ring) bg-(--lg-fill) text-(--lg-text)'
-        }`}
+        className={"absolute right-2 bottom-2 rounded-full p-2 glass-fx flex items-center justify-center border border-solid border-surface-edge-strong"}
       >
-        {justAdded ? (
-          <Check className="size-[18px]" strokeWidth={2.5} />
-        ) : (
-          <Plus className="size-[18px]" strokeWidth={2.25} />
-        )}
+        {justAdded ? <Check className="text-(--lg-text)" strokeWidth={2.5} /> : <Plus className="text-(--lg-text)" strokeWidth={2.25} />}
       </button>
     </div>
   );

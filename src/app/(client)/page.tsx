@@ -11,7 +11,7 @@ import { Category, Product } from "@/types";
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<div className="pt-2 px-4 py-12 text-center text-[var(--lg-text-muted)]">Загрузка…</div>}>
+    <Suspense fallback={<div className="pt-2 px-2 py-12 text-center text-(--lg-text-muted)">Загрузка…</div>}>
       <HomePageInner />
     </Suspense>
   );
@@ -42,25 +42,25 @@ function HomePageInner() {
 
   return (
     <div className="pt-2">
-      <div className="mx-auto max-w-2xl px-4">
-        <h2 className="heading-section mb-3">Категории</h2>
-        <div className="-mx-1 mb-6 flex gap-2 overflow-x-auto scrollbar-hide scroll-px-4 px-4 pt-2">
+      <div className="mx-auto max-w-2xl px-2">
+        <h2 className="heading-section my-3">Категории</h2>
+        <div className="mb-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide scroll-pl-2 scroll-pr-2 py-2">
           {loadingCategories
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-11 w-[120px] shrink-0 animate-pulse rounded-full bg-white/25" />
+                <div key={i} className="h-11 w-28 shrink-0 animate-pulse rounded-full bg-white/25" />
               ))
             : categories.map((cat) => <CategoryChip key={cat.id} category={cat} selected={categoryParam === cat.id} />)}
         </div>
 
         <div className="mb-3 flex items-center gap-2">
-          <Flame className="size-6 opacity-85 text-[var(--lg-text)]" strokeWidth={1.75} />
+          <Flame className="size-6 opacity-85 text-(--lg-text)" strokeWidth={1.75} />
           <h2 className="heading-section m-0">Популярное</h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2">
           {loadingProducts
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="glass-tight h-[240px] animate-pulse" />
+                <div key={i} className="glass-tight w-full h-full aspect-2/3 animate-pulse" />
               ))
             : products.map((product) => (
                 <ProductCard

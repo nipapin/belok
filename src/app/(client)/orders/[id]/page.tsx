@@ -56,7 +56,7 @@ export default function OrderDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-md pt-2">
+      <div className="mx-auto max-w-md px-2 pt-2">
         <div className="glass-tight h-[200px] animate-pulse" />
       </div>
     );
@@ -64,8 +64,8 @@ export default function OrderDetailPage() {
 
   if (!order) {
     return (
-      <div className="mx-auto max-w-md py-16 text-center">
-        <p className="text-lg font-semibold text-zinc-700">Заказ не найден</p>
+      <div className="mx-auto max-w-md px-2 py-16 text-center">
+        <p className="text-lg font-semibold text-(--lg-text)">Заказ не найден</p>
         <button type="button" className="btn-primary mt-4" onClick={() => router.push('/orders')}>
           К заказам
         </button>
@@ -76,11 +76,11 @@ export default function OrderDetailPage() {
   const activeStep = order.status === 'CANCELLED' ? -1 : statusSteps.indexOf(order.status);
 
   return (
-    <div className="mx-auto max-w-md pb-6 pt-2">
+    <div className="mx-auto max-w-md px-2 pb-6 pt-2">
       <button
         type="button"
         onClick={() => router.push('/orders')}
-        className="btn-ghost mb-4 gap-1.5 pl-0"
+        className="btn-ghost mb-4 gap-1.5"
       >
         <ArrowLeft className="size-4" />
         Назад
@@ -89,12 +89,12 @@ export default function OrderDetailPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h1 className="heading-section m-0">Заказ №{order.id.slice(0, 8)}</h1>
         <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+          className={`rounded-full border px-3 py-1 text-xs font-semibold ${
             order.status === 'CANCELLED'
-              ? 'bg-rose-100 text-rose-800'
+              ? 'border-rose-400/35 bg-rose-500/18 text-(--lg-text)'
               : order.status === 'COMPLETED'
-                ? 'bg-emerald-100 text-emerald-900'
-                : 'bg-sky-100 text-sky-900'
+                ? 'border-emerald-400/35 bg-emerald-500/20 text-(--lg-text)'
+                : 'border-sky-400/35 bg-sky-500/18 text-(--lg-text)'
           }`}
         >
           {statusLabels[order.status]}
@@ -110,10 +110,10 @@ export default function OrderDetailPage() {
                 <div key={step} className="flex min-w-0 flex-1 flex-col items-center text-center">
                   <span
                     className={`mb-1 h-2.5 w-2.5 shrink-0 rounded-full ${
-                      done ? 'bg-zinc-900' : 'bg-zinc-300'
+                      done ? 'bg-(--lg-text)' : 'bg-[color-mix(in_srgb,var(--lg-text)_22%,transparent)]'
                     }`}
                   />
-                  <span className="text-[10px] font-medium leading-tight text-zinc-600">
+                  <span className="text-[10px] font-medium leading-tight text-(--lg-text-muted)">
                     {statusLabels[step]}
                   </span>
                 </div>
@@ -124,54 +124,57 @@ export default function OrderDetailPage() {
       )}
 
       <div className="glass-panel mb-4 p-4">
-        <h2 className="mb-3 text-base font-semibold text-zinc-900">Состав заказа</h2>
+        <h2 className="mb-3 text-base font-semibold text-(--lg-text)">Состав заказа</h2>
         {order.items.map((item) => (
-          <div key={item.id} className="flex justify-between gap-2 border-b border-zinc-900/5 py-2 last:border-0">
+          <div
+            key={item.id}
+            className="flex justify-between gap-2 border-b border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] py-2 last:border-0"
+          >
             <div>
-              <p className="text-sm text-zinc-800">
+              <p className="text-sm text-(--lg-text)">
                 {item.product.name} ×{item.quantity}
               </p>
               {item.customizations.length > 0 && (
-                <p className="mt-0.5 text-xs text-zinc-500">
+                <p className="mt-0.5 text-xs text-(--lg-text-muted)">
                   {item.customizations.map((c) => (c.action === 'REMOVE' ? 'Без ' : '+ ') + c.ingredientId).join(', ')}
                 </p>
               )}
             </div>
-            <p className="shrink-0 text-sm font-semibold text-zinc-900">
+            <p className="shrink-0 text-sm font-semibold tabular-nums text-(--lg-text)">
               {item.unitPrice * item.quantity} ₽
             </p>
           </div>
         ))}
-        <hr className="my-3 border-zinc-900/10" />
+        <hr className="my-3 border-[color-mix(in_srgb,var(--lg-text)_12%,transparent)]" />
         {order.discountAmount > 0 && (
-          <div className="flex justify-between text-sm text-emerald-700">
+          <div className="flex justify-between text-sm text-emerald-500">
             <span>Скидка</span>
             <span>−{order.discountAmount} ₽</span>
           </div>
         )}
         {order.bonusUsed > 0 && (
-          <div className="mt-1 flex justify-between text-sm text-amber-800">
+          <div className="mt-1 flex justify-between text-sm text-amber-500">
             <span>Бонусы</span>
             <span>−{order.bonusUsed} ₽</span>
           </div>
         )}
-        <div className="mt-3 flex justify-between text-base font-semibold">
+        <div className="mt-3 flex justify-between text-base font-semibold text-(--lg-text)">
           <span>Итого</span>
-          <span>{order.total} ₽</span>
+          <span className="tabular-nums">{order.total} ₽</span>
         </div>
         {order.bonusEarned > 0 && (
-          <p className="mt-2 text-xs font-medium text-emerald-700">Начислено бонусов: +{order.bonusEarned}</p>
+          <p className="mt-2 text-xs font-medium text-emerald-500">Начислено бонусов: +{order.bonusEarned}</p>
         )}
       </div>
 
       {order.comment && (
         <div className="glass-panel mb-4 p-4">
-          <h2 className="mb-1 text-base font-semibold text-zinc-900">Комментарий</h2>
-          <p className="text-sm text-zinc-600">{order.comment}</p>
+          <h2 className="mb-1 text-base font-semibold text-(--lg-text)">Комментарий</h2>
+          <p className="text-sm text-(--lg-text-muted)">{order.comment}</p>
         </div>
       )}
 
-      <p className="text-center text-xs text-zinc-500">
+      <p className="text-center text-xs text-(--lg-text-muted)">
         Оплата: {paymentLabel(order.paymentStatus)} · {new Date(order.createdAt).toLocaleString('ru-RU')}
       </p>
     </div>

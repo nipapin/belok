@@ -131,11 +131,11 @@ export default function ProfilePage() {
   };
 
   const avatarTriggerClass =
-    'relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-(--lg-ring) bg-(--lg-fill) backdrop-blur-sm transition hover:border-(--lg-ring-strong)';
+    'relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-(--lg-ring) bg-(--lg-fill) backdrop-blur-sm transition';
 
   if (isLoading || !user) {
     return (
-      <div className="flex justify-center py-24">
+      <div className="mx-auto flex max-w-md justify-center px-2 py-24">
         <Loader2 className="size-8 animate-spin text-(--lg-text-muted)" />
       </div>
     );
@@ -143,7 +143,7 @@ export default function ProfilePage() {
 
   return (
     <>
-      <div className="mx-auto max-w-md px-4 pb-6 pt-4">
+      <div className="mx-auto max-w-md px-2 pb-6 pt-2">
       {saved && <div className="profile-alert-success mb-4">Профиль обновлён</div>}
       {avatarError && <div className="auth-alert-error mb-4">{avatarError}</div>}
 
@@ -322,6 +322,7 @@ export default function ProfilePage() {
         avatarModalOpen &&
         createPortal(
           <div
+            data-mobile-ui
             role="dialog"
             aria-modal="true"
             aria-labelledby="avatar-photo-dialog-title"

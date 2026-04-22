@@ -28,14 +28,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#eceef3",
+  themeColor: "#18181b",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
 };
 
-const themeInitScript = `(function(){try{var k='theme',s=localStorage.getItem(k);if(s==='light'||s==='dark'){document.documentElement.setAttribute('data-theme',s);return;}var d=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',d);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
+const themeInitScript = `(function(){try{var k='theme',s=localStorage.getItem(k);if(s==='light'||s==='dark'){document.documentElement.setAttribute('data-theme',s);return;}document.documentElement.setAttribute('data-theme','dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
 
 export default function RootLayout({
   children,

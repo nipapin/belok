@@ -130,8 +130,10 @@ export default function ProductDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-lg px-4 pt-2">
-        <div className="glass-tight mb-4 h-[250px] animate-pulse" />
+      <div className="mx-auto max-w-lg px-2 pb-28">
+        <div className="relative -mx-4 -mt-(--client-header-stack-height)">
+          <div className="glass-tight mb-4 h-[250px] animate-pulse border-0" />
+        </div>
         <div className="h-8 w-[60%] max-w-xs animate-pulse rounded-lg bg-[color-mix(in_srgb,var(--lg-fill)_70%,transparent)]" />
         <div className="mt-2 h-4 w-2/5 animate-pulse rounded bg-[color-mix(in_srgb,var(--lg-fill)_50%,transparent)]" />
       </div>
@@ -140,7 +142,7 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+      <div className="mx-auto max-w-lg px-2 py-16 text-center">
         <p className="text-lg font-semibold text-[var(--lg-text)]">Товар не найден</p>
         <button type="button" className="btn-primary mt-4" onClick={() => router.push('/menu')}>
           Вернуться в меню
@@ -153,9 +155,9 @@ export default function ProductDetailPage() {
   const extraIngredients = product.ingredients.filter((pi) => pi.isExtra);
 
   return (
-    <div className="px-4 pb-28">
-      <div className="relative -mx-4">
-        <div className="flex h-[280px] items-center justify-center bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]">
+    <div className="px-2 pb-28">
+      <div className="relative -mx-4 -mt-(--client-header-stack-height)">
+        <div className="flex w-full items-center justify-center aspect-square">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={product.image} alt="" className="h-full w-full object-cover" />
@@ -166,7 +168,7 @@ export default function ProductDetailPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="btn-icon absolute left-4 top-4"
+          className="btn-icon absolute left-4 bottom-4 z-1200 glass-fx"
           aria-label="Назад"
         >
           <ArrowLeft className="size-5" strokeWidth={1.75} />

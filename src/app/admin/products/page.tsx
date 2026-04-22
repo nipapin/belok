@@ -348,7 +348,7 @@ export default function AdminProductsPage() {
           <label className="text-sm font-medium text-(--lg-text)">
             Описание
             <textarea
-              className="glass-tight mt-1 min-h-[72px] w-full resize-none px-4 py-3 text-sm text-(--lg-text) outline-none focus:border-(--lg-ring-strong) focus:ring-2 focus:ring-[color-mix(in_srgb,var(--lg-text)_10%,transparent)]"
+              className="glass-tight mt-1 min-h-[72px] w-full resize-none px-2 py-3 text-sm text-(--lg-text) outline-none focus:border-(--lg-ring-strong) focus:ring-2 focus:ring-[color-mix(in_srgb,var(--lg-text)_10%,transparent)]"
               rows={2}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -427,7 +427,7 @@ export default function AdminProductsPage() {
             <input
               type="file"
               accept="image/*"
-              className="text-sm text-(--lg-text-muted) file:mr-3 file:rounded-full file:border-0 file:bg-[#18181b] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+              className="text-sm text-(--lg-text-muted) file:mr-3 file:rounded-full file:border-0 file:bg-[#18181b] file:px-2 file:py-2 file:text-sm file:font-semibold file:text-white"
               onChange={(e) => setImageFile(e.target.files?.[0] || null)}
             />
           </div>

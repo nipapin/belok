@@ -12,9 +12,9 @@
 
 /* Flat glass tokens — gradient only on body (--lg-bg-image). Surfaces = solid fill + blur. */
 html {
-  --lg-blur: 32px;
+  --lg-blur: 8px;
   /* < 1 = dim the layer behind glass so stacks don’t bloom together */
-  --lg-backdrop-bright: 0.86;
+  --lg-backdrop-bright: 0.76;
   --lg-backdrop-sat: 150%;
   --lg-fill: rgba(255, 255, 255, 0.14);
   --lg-fill-hover: rgba(255, 255, 255, 0.2);
@@ -29,6 +29,8 @@ html {
   --lg-chip-label-active: #ffffff;
   --lg-bg-image: linear-gradient(to top, #646669 0%, #bacef0 100%);
   --lg-nav-blur: 40px;
+  /* Header: safe-area + mt-2 on bar + lg-bar py-2 + row (~2.5rem icons) — product hero negative margin */
+  --client-header-stack-height: calc(env(safe-area-inset-top, 0px) + 0.5rem + 0.5rem + 2.5rem + 0.5rem);
 }
 
 html[data-theme="light"] {
@@ -124,6 +126,10 @@ html[data-theme="light"] {
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  .glass-fx {
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
   }
 
   /* Shared flat glass: uniform fill, no inset highlights */
@@ -531,6 +537,86 @@ html[data-theme="light"] {
   html[data-theme="light"] .profile-logout {
     color: rgb(159 18 57);
     border-color: color-mix(in srgb, rgb(244 63 94) 32%, transparent);
+  }
+
+  /*
+   * Client shell + portals: `data-mobile-ui` — tap-only UI, no pointer-hover visuals.
+   */
+  [data-mobile-ui] .lg-interactive:hover:not(:disabled) {
+    border-color: var(--lg-ring);
+    background-color: var(--lg-fill);
+    box-shadow: var(--lg-shadow);
+  }
+
+  [data-mobile-ui] .glass-panel-strong.lg-interactive:hover:not(:disabled) {
+    box-shadow: var(--lg-shadow-strong);
+  }
+
+  [data-mobile-ui] .lg-chip.lg-pill.lg-interactive:hover:not(:disabled):not(.lg-active) {
+    border-color: var(--lg-ring);
+    background-color: var(--lg-fill);
+    box-shadow: none;
+    color: var(--lg-chip-label);
+  }
+
+  [data-mobile-ui] .lg-chip.lg-pill.lg-interactive.lg-active:hover:not(:disabled) {
+    border-color: var(--lg-ring-strong);
+    background-color: var(--lg-fill-active);
+    box-shadow: none;
+    color: var(--lg-chip-label-active);
+  }
+
+  [data-mobile-ui] .lg-button-primary:hover:not(:disabled),
+  [data-mobile-ui] .btn-primary:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(24, 24, 27, 0.88);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+  }
+
+  html[data-theme="light"] [data-mobile-ui] .lg-button-primary:hover:not(:disabled),
+  html[data-theme="light"] [data-mobile-ui] .btn-primary:hover:not(:disabled) {
+    border-color: rgba(24, 24, 27, 0.4);
+    background-color: #18181b;
+    box-shadow: 0 6px 24px rgba(15, 23, 42, 0.18);
+  }
+
+  [data-mobile-ui] .btn-primary-wallet-apple.btn-primary:hover:not(:disabled) {
+    background-color: #09090b;
+  }
+
+  [data-mobile-ui] .btn-primary-wallet-google.btn-primary:hover:not(:disabled) {
+    background-color: #4285f4;
+  }
+
+  [data-mobile-ui] .lg-button-outline:hover:not(:disabled),
+  [data-mobile-ui] .btn-outline:hover:not(:disabled) {
+    border-color: var(--lg-ring);
+    background-color: var(--lg-fill);
+    box-shadow: var(--lg-shadow);
+  }
+
+  [data-mobile-ui] .lg-button-icon:hover:not(:disabled),
+  [data-mobile-ui] .btn-icon:hover:not(:disabled) {
+    border-color: var(--lg-ring);
+    background-color: var(--lg-fill);
+  }
+
+  [data-mobile-ui] .btn-ghost:hover {
+    border-color: var(--lg-ring);
+    background: transparent;
+    color: var(--lg-text-muted);
+  }
+
+  [data-mobile-ui] .profile-logout:hover:not(:disabled) {
+    border-color: color-mix(in srgb, rgb(244 63 94) 42%, var(--lg-ring));
+    background-color: var(--lg-fill);
+    box-shadow: var(--lg-shadow);
+  }
+
+  html[data-theme="light"] [data-mobile-ui] .profile-logout:hover:not(:disabled) {
+    border-color: color-mix(in srgb, rgb(244 63 94) 32%, transparent);
+    background-color: var(--lg-fill);
+    box-shadow: var(--lg-shadow);
   }
 }
 

@@ -126,7 +126,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
       )}
 
-      <main className="box-border h-full min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-8 pt-[4.5rem] md:pl-[calc(260px+1rem)] md:pr-8">
+      <main className="box-border h-full min-h-0 overflow-y-auto overflow-x-hidden px-2 pb-8 pt-[4.5rem] md:pl-[calc(260px+1rem)] md:pr-8">
         {children}
       </main>
     </div>

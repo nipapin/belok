@@ -74,7 +74,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md pb-4 pt-2">
+    <div className="mx-auto max-w-md px-2 pb-4 pt-2">
       <h1 className="heading-section mb-6">Оформление заказа</h1>
 
       <div className="glass-panel mb-4 p-4">
@@ -135,7 +135,7 @@ export default function CheckoutPage() {
       <label className="mb-4 block">
         <span className="mb-1.5 block text-sm font-medium text-zinc-700">Комментарий к заказу</span>
         <textarea
-          className="min-h-[88px] w-full resize-none rounded-2xl border border-surface-edge bg-white/70 px-4 py-3 text-sm text-zinc-900 shadow-inner backdrop-blur-md outline-none placeholder:text-zinc-500 focus:border-surface-edge-strong focus:ring-2 focus:ring-zinc-900/10"
+          className="min-h-[88px] w-full resize-none rounded-2xl border border-surface-edge bg-white/70 px-2 py-3 text-sm text-zinc-900 shadow-inner backdrop-blur-md outline-none placeholder:text-zinc-500 focus:border-surface-edge-strong focus:ring-2 focus:ring-zinc-900/10"
           rows={2}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
@@ -144,13 +144,13 @@ export default function CheckoutPage() {
       </label>
 
       {error && (
-        <div className="mb-4 rounded-2xl border border-rose-200/80 bg-rose-50/90 px-4 py-3 text-sm text-rose-800 backdrop-blur-sm">
+        <div className="mb-4 rounded-2xl border border-rose-200/80 bg-rose-50/90 px-2 py-3 text-sm text-rose-800 backdrop-blur-sm">
           {error}
         </div>
       )}
 
       {user?.loyaltyLevel && (
-        <div className="mb-4 rounded-2xl border border-sky-200/80 bg-sky-50/90 px-4 py-3 text-sm text-sky-950 backdrop-blur-sm">
+        <div className="mb-4 rounded-2xl border border-sky-200/80 bg-sky-50/90 px-2 py-3 text-sm text-sky-950 backdrop-blur-sm">
           После оплаты начислим кэшбэк {user.loyaltyLevel.cashbackPercent}% (≈
           {Math.round(total * (user.loyaltyLevel.cashbackPercent / 100))} бонусов)
         </div>
