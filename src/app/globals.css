@@ -119,6 +119,24 @@ html[data-theme="light"] {
     color: var(--lg-text-muted);
   }
 
+  /* Admin product editor: calm card UI */
+  .admin-form-section {
+    @apply rounded-2xl p-5 sm:p-6;
+    border: 1px solid color-mix(in srgb, var(--lg-text) 7%, transparent);
+    background: color-mix(in srgb, white 75%, var(--lg-fill));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--lg-text) 2%, transparent),
+      0 10px 40px -12px color-mix(in srgb, var(--lg-text) 12%, transparent);
+  }
+
+  .admin-form-eyebrow {
+    @apply text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-(--lg-text-muted);
+  }
+
+  .admin-form-hint {
+    @apply text-xs font-normal leading-relaxed text-(--lg-text-muted);
+  }
+
   .scrollbar-hide {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -330,6 +348,26 @@ html[data-theme="light"] {
   }
 
   .input-pill:focus {
+    border-color: var(--lg-ring-strong);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lg-text) 8%, transparent);
+  }
+
+  /* Native <select>: replace OS chevron for consistent vertical alignment */
+  .select-pill {
+    @apply w-full cursor-pointer appearance-none rounded-full py-2.5 pl-4 pr-10 text-left outline-none transition;
+    color: var(--lg-text);
+    border: 1px solid var(--lg-ring);
+    background-color: var(--lg-fill);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    background-size: 1rem 1rem;
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: none;
+  }
+
+  .select-pill:focus {
     border-color: var(--lg-ring-strong);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--lg-text) 8%, transparent);
   }

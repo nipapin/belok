@@ -28,6 +28,7 @@ interface Product {
   proteins: number | null;
   fats: number | null;
   carbs: number | null;
+  fiber: number | null;
   category: { name: string };
   ingredients: ProductIngredient[];
 }
@@ -190,17 +191,22 @@ export default function ProductDetailPage() {
           <p className="mb-4 text-sm leading-relaxed text-[var(--lg-text-muted)]">{product.description}</p>
         )}
 
-        {product.calories != null && (
-          <div className="glass-tight mb-6 flex justify-around gap-2 px-2 py-4">
+        {(
+          [product.calories, product.proteins, product.fats, product.carbs, product.fiber] as (number | null)[]
+        ).some((v) => v != null) && (
+          <div className="glass-tight mb-6 grid grid-cols-2 gap-3 px-2 py-4 sm:grid-cols-3 sm:gap-2 lg:grid-cols-5">
             {[
               { label: 'Ккал', value: product.calories },
               { label: 'Белки, г', value: product.proteins },
               { label: 'Жиры, г', value: product.fats },
               { label: 'Углеводы, г', value: product.carbs },
+              { label: 'Клетчатка, г', value: product.fiber },
             ].map((item) => (
-              <div key={item.label} className="min-w-0 flex-1 text-center">
+              <div key={item.label} className="min-w-0 text-center">
                 <p className="text-base font-bold text-[var(--lg-text)]">{item.value ?? '—'}</p>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--lg-text-muted)]">{item.label}</p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--lg-text-muted)]">
+                  {item.label}
+                </p>
               </div>
             ))}
           </div>

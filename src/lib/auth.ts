@@ -1,6 +1,37 @@
 import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
+import type { NextRequest } from 'next/server';
+import { cookies, headers } from 'next/headers';
 import prisma from './prisma';
+
+/**
+ * Browsers reject `Secure` cookies on plain HTTP. Using NODE_ENV alone breaks
+ * sessions when production is served without TLS (local `next start`, some LAN hosts).
+ */
+export function shouldUseSecureAuthCookie(request: NextRequest): boolean {
+  const forwarded = request.headers.get('x-forwarded-proto');
+  if (forwarded) {
+    return forwarded.split(',')[0]?.trim() === 'https';
+  }
+  return request.nextUrl.protocol === 'https:';
+}
+
+export function authCookieBaseOptions(request: NextRequest) {
+  return {
+    httpOnly: true,
+    secure: shouldUseSecureAuthCookie(request),
+    sameSite: 'lax' as const,
+    path: '/',
+  };
+}
+
+async function secureFlagFromIncomingHeaders(): Promise<boolean> {
+  const h = await headers();
+  const forwarded = h.get('x-forwarded-proto');
+  if (forwarded) {
+    return forwarded.split(',')[0]?.trim() === 'https';
+  }
+  return false;
+}
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
@@ -51,17 +82,18 @@ export async function getCurrentUser() {
 }
 
 export async function setAuthCookies(accessToken: string, refreshToken: string) {
+  const secure = await secureFlagFromIncomingHeaders();
   const cookieStore = await cookies();
   cookieStore.set('accessToken', accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure,
     sameSite: 'lax',
     maxAge: 15 * 60, // 15 min
     path: '/',
   });
   cookieStore.set('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure,
     sameSite: 'lax',
     maxAge: 30 * 24 * 60 * 60, // 30 days
     path: '/',

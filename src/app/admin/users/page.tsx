@@ -195,7 +195,7 @@ export default function AdminUsersPage() {
             <label className="text-sm font-medium text-(--lg-text)">
               Роль
               <select
-                className="input-pill mt-1 cursor-pointer"
+                className="select-pill mt-1"
                 value={editUser.role}
                 onChange={(e) =>
                   setEditUser(editUser ? { ...editUser, role: e.target.value } : null)

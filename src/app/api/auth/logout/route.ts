@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { authCookieBaseOptions } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,8 +13,9 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json({ success: true });
-    response.cookies.delete('accessToken');
-    response.cookies.delete('refreshToken');
+    const opts = authCookieBaseOptions(request);
+    response.cookies.set('accessToken', '', { ...opts, maxAge: 0 });
+    response.cookies.set('refreshToken', '', { ...opts, maxAge: 0 });
 
     return response;
   } catch (error) {

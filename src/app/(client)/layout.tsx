@@ -1,5 +1,6 @@
 "use client";
 
+import MetallicGlitterBackground from "@/components/effects/MetallicGlitterBackground";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import { useAuthStore } from "@/store/authStore";
@@ -16,18 +17,21 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }, [fetchUser]);
 
   return (
-    <div data-mobile-ui className="flex min-h-dvh flex-col h-full overflow-y-auto scrollbar-hide">
-      <Header />
-      <main
-        className={
-          isAuth
-            ? "flex-1 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]"
-            : "flex-1 pb-[calc(100px+env(safe-area-inset-bottom,0px))]"
-        }
-      >
-        {children}
-      </main>
-      {!isAuth && <BottomNav />}
-    </div>
+    <>
+      <MetallicGlitterBackground />
+      <div data-mobile-ui className="relative z-10 flex h-full min-h-dvh flex-col overflow-hidden">
+        <Header />
+        <main
+          className={
+            isAuth
+              ? "flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]"
+              : "flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide pb-[calc(100px+env(safe-area-inset-bottom,0px))]"
+          }
+        >
+          {children}
+        </main>
+        {!isAuth && <BottomNav />}
+      </div>
+    </>
   );
 }

@@ -16,10 +16,12 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useHydrated } from '@/hooks/useHydrated';
 import { useQuery } from '@tanstack/react-query';
 
 export default function ProfilePage() {
   const router = useRouter();
+  const hydrated = useHydrated();
   const { user, isLoading, setUser, logout } = useAuthStore();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
@@ -93,7 +95,7 @@ export default function ProfilePage() {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/auth/avatar', { method: 'POST', body: fd });
+      const res = await fetch('/api/auth/avatar', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setAvatarError(typeof data.error === 'string' ? data.error : 'Не удалось загрузить фото');
@@ -111,7 +113,7 @@ export default function ProfilePage() {
     setAvatarError('');
     setAvatarBusy(true);
     try {
-      const res = await fetch('/api/auth/avatar', { method: 'DELETE' });
+      const res = await fetch('/api/auth/avatar', { method: 'DELETE', credentials: 'include' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setAvatarError(typeof data.error === 'string' ? data.error : 'Не удалось удалить фото');
@@ -133,7 +135,7 @@ export default function ProfilePage() {
   const avatarTriggerClass =
     'relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-(--lg-ring) bg-(--lg-fill) backdrop-blur-sm transition';
 
-  if (isLoading || !user) {
+  if (!hydrated || isLoading || !user) {
     return (
       <div className="mx-auto flex max-w-md justify-center px-2 py-24">
         <Loader2 className="size-8 animate-spin text-(--lg-text-muted)" />

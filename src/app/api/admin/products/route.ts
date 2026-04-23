@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
     const body = await request.json();
-    const { name, description, price, image, categoryId, isAvailable, calories, proteins, fats, carbs, sortOrder, ingredients } = body;
+    const { name, description, price, image, categoryId, isAvailable, calories, proteins, fats, carbs, fiber, sortOrder, ingredients } = body;
 
     const product = await prisma.product.create({
       data: {
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
         proteins: proteins ? parseFloat(proteins) : null,
         fats: fats ? parseFloat(fats) : null,
         carbs: carbs ? parseFloat(carbs) : null,
+        fiber: fiber ? parseFloat(fiber) : null,
         sortOrder: sortOrder ?? 0,
         ingredients: ingredients
           ? {

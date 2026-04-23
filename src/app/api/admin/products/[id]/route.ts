@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/adminAuth';
+import { deletePublicImage } from '@/lib/uploadStorage';
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requireAdmin();
+    const { id } = await params;
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: { category: true, ingredients: { include: { ingredient: true } } },
+    });
+    if (!product) {
+      return NextResponse.json({ error: 'Товар не найден' }, { status: 404 });
+    }
+    return NextResponse.json({ product });
+  } catch (e) {
+    if ((e as Error).message === 'UNAUTHORIZED')
+      return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });
+    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });
+  }
+}
 
 export async function PUT(
   request: NextRequest,
@@ -10,7 +33,12 @@ export async function PUT(
     await requireAdmin();
     const { id } = await params;
     const body = await request.json();
-    const { name, description, price, image, categoryId, isAvailable, calories, proteins, fats, carbs, sortOrder, ingredients } = body;
+    const { name, description, price, image, categoryId, isAvailable, calories, proteins, fats, carbs, fiber, sortOrder, ingredients } = body;
+
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Товар не найден' }, { status: 404 });
+    }
 
     if (ingredients) {
       await prisma.productIngredient.deleteMany({ where: { productId: id } });
@@ -29,6 +57,7 @@ export async function PUT(
         ...(proteins !== undefined && { proteins: proteins ? parseFloat(proteins) : null }),
         ...(fats !== undefined && { fats: fats ? parseFloat(fats) : null }),
         ...(carbs !== undefined && { carbs: carbs ? parseFloat(carbs) : null }),
+        ...(fiber !== undefined && { fiber: fiber ? parseFloat(fiber) : null }),
         ...(sortOrder !== undefined && { sortOrder }),
         ...(ingredients && {
           ingredients: {
@@ -43,6 +72,10 @@ export async function PUT(
       },
       include: { category: true, ingredients: { include: { ingredient: true } } },
     });
+
+    if (image !== undefined && existing.image && existing.image !== image) {
+      await deletePublicImage(existing.image);
+    }
 
     return NextResponse.json({ product });
   } catch (e) {
@@ -60,6 +93,11 @@ export async function DELETE(
   try {
     await requireAdmin();
     const { id } = await params;
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Товар не найден' }, { status: 404 });
+    }
+    await deletePublicImage(existing.image);
     await prisma.product.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (e) {

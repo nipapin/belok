@@ -27,6 +27,11 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+const authFetch = (input: string, init?: RequestInit) =>
+  fetch(input, { ...init, credentials: 'include' });
+
+let fetchUserInFlight: Promise<void> | null = null;
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: true,
@@ -34,33 +39,41 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => set({ user, isLoading: false }),
 
   fetchUser: async () => {
-    try {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
-        const data = await res.json();
-        set({ user: data.user, isLoading: false });
-        return;
-      }
-
-      const refreshRes = await fetch('/api/auth/refresh', { method: 'POST' });
-      if (refreshRes.ok) {
-        const meRes = await fetch('/api/auth/me');
-        if (meRes.ok) {
-          const data = await meRes.json();
+    if (fetchUserInFlight) {
+      return fetchUserInFlight;
+    }
+    fetchUserInFlight = (async () => {
+      try {
+        const res = await authFetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
           set({ user: data.user, isLoading: false });
           return;
         }
-      }
 
-      await fetch('/api/auth/logout', { method: 'POST' });
-      set({ user: null, isLoading: false });
-    } catch {
-      set({ user: null, isLoading: false });
-    }
+        const refreshRes = await authFetch('/api/auth/refresh', { method: 'POST' });
+        if (refreshRes.ok) {
+          const meRes = await authFetch('/api/auth/me');
+          if (meRes.ok) {
+            const data = await meRes.json();
+            set({ user: data.user, isLoading: false });
+            return;
+          }
+        }
+
+        await authFetch('/api/auth/logout', { method: 'POST' });
+        set({ user: null, isLoading: false });
+      } catch {
+        set({ user: null, isLoading: false });
+      } finally {
+        fetchUserInFlight = null;
+      }
+    })();
+    return fetchUserInFlight;
   },
 
   logout: async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await authFetch('/api/auth/logout', { method: 'POST' });
     set({ user: null });
   },
 }));

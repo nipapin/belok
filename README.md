@@ -66,6 +66,16 @@
 | `SMS_RU_API_KEY` | SMS.RU для отправки кодов в production |
 | `GOOGLE_WALLET_ISSUER_EMAIL`, `GOOGLE_WALLET_ISSUER_ID` | Google Wallet (опционально) |
 | `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID` | Apple Wallet (опционально) |
+| `S3_ENDPOINT` | URL S3 API, без завершающего слэша (например `https://s3.twcstorage.ru`) |
+| `S3_BUCKET` | Имя бакета |
+| `S3_ACCESS_KEY_ID` | Access key S3 |
+| `S3_SECRET_ACCESS_KEY` | Secret key S3 |
+| `S3_REGION` | Регион (по умолчанию `ru-1`, если не задан) |
+| `S3_PUBLIC_BASE_URL` | Опционально: публичный префикс URL для объектов (без завершающего `/`). Если не задан, как `S3_ENDPOINT`/`S3_BUCKET` в path-style: `https://…/bucket` |
+| `S3_FORCE_PATH_STYLE` | Опционально: `true`/`false` для path-style запросов к API (по умолчанию `true`) |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob — используется только если S3 не настроен |
+
+Ключи и секреты от S3 задаются **только** в переменных `S3_ACCESS_KEY_ID` и `S3_SECRET_ACCESS_KEY` в `.env` или в панели хостинга (Vercel / Docker / systemd), **не** в коде и **не** в репозитории.
 
 В development часть функций ослаблена намеренно (например, код из SMS может возвращаться в ответе API — не используйте так в production). Номера из `ADMIN_BYPASS_PHONES` получают код в ответе `send-code` для автоматического входа без SMS; держите список коротким и не коммитьте продакшен-секреты.
 

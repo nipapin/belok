@@ -46,16 +46,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const drawer = (
-    <div className="admin-drawer-panel flex h-full flex-col py-4">
-      <div className="flex h-14 items-center justify-center px-2">
-        <p className="text-center text-sm font-extrabold tracking-tight text-(--lg-text)">
+    <div className="admin-drawer-panel flex h-full flex-col">
+      <div className="flex items-center justify-start p-3">
+        <p className="m-0 text-2xl font-extrabold leading-none tracking-tight text-(--lg-text)">
           <span className="lowercase">{brandMark}</span>
-          <span className="block text-[10px] font-semibold uppercase tracking-widest text-(--lg-text-muted)">
-            админ
-          </span>
         </p>
       </div>
-      <nav className="mt-2 flex-1 space-y-0.5 px-2">
+      <nav className="mt-2 flex-1 space-y-1 px-2">
         {menuItems.map((item) => {
           const selected = pathname === item.path;
           const Icon = item.icon;
@@ -110,11 +107,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <>
           <button
             type="button"
-            className="fixed inset-0 z-[1250] bg-black/35 backdrop-blur-sm"
+            className="fixed inset-0 z-[1350] bg-black/35 backdrop-blur-sm"
             aria-label="Закрыть меню"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="fixed left-0 top-0 z-[1260] h-full w-[260px] shadow-2xl">
+          {/* Выше header (z-1300), иначе шапка перекрывала верх дровера */}
+          <aside className="fixed left-0 top-0 z-[1360] h-full w-[260px] shadow-2xl">
             {drawer}
           </aside>
         </>
@@ -126,7 +124,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
       )}
 
-      <main className="box-border h-full min-h-0 overflow-y-auto overflow-x-hidden px-2 pb-8 pt-[4.5rem] md:pl-[calc(260px+1rem)] md:pr-8">
+      <main className="box-border h-full min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide px-2 pb-8 pt-[4.5rem] md:pl-[calc(260px+1rem)] md:pr-8">
         {children}
       </main>
     </div>

@@ -107,6 +107,7 @@ model Product {
   proteins     Float?
   fats         Float?
   carbs        Float?
+  fiber        Float?
   sortOrder    Int                 @default(0)
   ingredients  ProductIngredient[]
   orderItems   OrderItem[]

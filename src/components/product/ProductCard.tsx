@@ -70,7 +70,7 @@ export function ProductCard({ product }: ProductCardProps) {
         aria-pressed={justAdded}
         className={"absolute right-2 bottom-2 rounded-full p-2 glass-fx flex items-center justify-center border border-solid border-surface-edge-strong"}
       >
-        {justAdded ? <Check className="text-(--lg-text)" strokeWidth={2.5} /> : <Plus className="text-(--lg-text)" strokeWidth={2.25} />}
+        {justAdded ? <Check className="text-white" strokeWidth={2.5} /> : <Plus className="text-white" strokeWidth={2.25} />}
       </button>
     </div>
   );

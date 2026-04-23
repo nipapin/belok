@@ -94,7 +94,7 @@ export default function AdminOrdersPage() {
                   </td>
                   <td>
                     <select
-                      className="input-pill max-w-[160px] cursor-pointer py-2 text-xs font-medium"
+                      className="select-pill max-w-[160px] py-2 text-xs font-medium"
                       value={order.status}
                       onChange={(e) => updateStatus.mutate({ id: order.id, status: e.target.value })}
                       aria-label="Статус заказа"
@@ -150,7 +150,7 @@ export default function AdminOrdersPage() {
             <label className="block text-xs font-medium text-(--lg-text-muted)">
               Статус
               <select
-                className="input-pill mt-1 w-full cursor-pointer py-2.5 text-sm font-medium"
+                className="select-pill mt-1 w-full py-2.5 text-sm font-medium"
                 value={order.status}
                 onChange={(e) => updateStatus.mutate({ id: order.id, status: e.target.value })}
                 aria-label="Статус заказа"

@@ -108,6 +108,7 @@ async function main() {
       proteins: 42,
       fats: 18,
       carbs: 48,
+      fiber: 6,
       sortOrder: 0,
       ingredients: [
         { ingredientId: 'ing-chicken', isDefault: true, isRemovable: true, isExtra: false },
@@ -130,6 +131,7 @@ async function main() {
       proteins: 38,
       fats: 24,
       carbs: 52,
+      fiber: 5,
       sortOrder: 1,
       ingredients: [
         { ingredientId: 'ing-salmon', isDefault: true, isRemovable: true, isExtra: false },
@@ -150,6 +152,7 @@ async function main() {
       proteins: 28,
       fats: 16,
       carbs: 50,
+      fiber: 9,
       sortOrder: 2,
       ingredients: [
         { ingredientId: 'ing-tofu', isDefault: true, isRemovable: true, isExtra: false },
@@ -171,6 +174,7 @@ async function main() {
       proteins: 8,
       fats: 6,
       carbs: 34,
+      fiber: 4,
       sortOrder: 0,
       ingredients: [
         { ingredientId: 'ing-spinach', isDefault: true, isRemovable: true, isExtra: false },
@@ -191,6 +195,7 @@ async function main() {
       proteins: 18,
       fats: 4,
       carbs: 40,
+      fiber: 5,
       sortOrder: 1,
       ingredients: [
         { ingredientId: 'ing-berries', isDefault: true, isRemovable: true, isExtra: false },
@@ -211,6 +216,7 @@ async function main() {
       proteins: 32,
       fats: 20,
       carbs: 18,
+      fiber: 3,
       sortOrder: 0,
       ingredients: [
         { ingredientId: 'ing-chicken', isDefault: true, isRemovable: true, isExtra: false },
@@ -231,6 +237,7 @@ async function main() {
       proteins: 8,
       fats: 12,
       carbs: 30,
+      fiber: 3,
       sortOrder: 0,
       ingredients: [
         { ingredientId: 'ing-granola', isDefault: true, isRemovable: false, isExtra: false },
@@ -249,6 +256,7 @@ async function main() {
       proteins: 30,
       fats: 6,
       carbs: 32,
+      fiber: 2,
       sortOrder: 0,
       ingredients: [
         { ingredientId: 'ing-protein', isDefault: true, isRemovable: false, isExtra: false },
@@ -271,6 +279,7 @@ async function main() {
         proteins: productData.proteins,
         fats: productData.fats,
         carbs: productData.carbs,
+        fiber: productData.fiber,
         sortOrder: productData.sortOrder,
       },
       create: productData,

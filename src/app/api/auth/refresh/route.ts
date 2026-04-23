@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { verifyRefreshToken, signAccessToken, signRefreshToken } from '@/lib/auth';
+import {
+  authCookieBaseOptions,
+  verifyRefreshToken,
+  signAccessToken,
+  signRefreshToken,
+} from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,12 +49,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ success: true });
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-    };
+    const cookieOptions = authCookieBaseOptions(request);
 
     response.cookies.set('accessToken', newAccessToken, {
       ...cookieOptions,

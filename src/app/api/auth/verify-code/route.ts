@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { signAccessToken, signRefreshToken } from '@/lib/auth';
+import { authCookieBaseOptions, signAccessToken, signRefreshToken } from '@/lib/auth';
 import { toClientUser } from '@/lib/userClient';
 import { isAdminBypassPhone } from '@/lib/adminBypassPhones';
 
@@ -84,12 +84,7 @@ export async function POST(request: NextRequest) {
       isNewUser: !user.name,
     });
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-    };
+    const cookieOptions = authCookieBaseOptions(request);
 
     response.cookies.set('accessToken', accessToken, {
       ...cookieOptions,

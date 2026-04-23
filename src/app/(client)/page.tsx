@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Suspense, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
-import CategoryChip from "@/components/ui/category-chip";
+import CategoryChipStrip from "@/components/ui/CategoryChipStrip";
 import { ProductCard } from "@/components/product/ProductCard";
 import { Category, Product } from "@/types";
 
@@ -43,16 +43,16 @@ function HomePageInner() {
   return (
     <div className="pt-2">
       <div className="mx-auto max-w-2xl px-2">
-        <h2 className="heading-section my-3">Категории</h2>
-        <div className="-mx-2 mb-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide scroll-pl-3 scroll-pr-3 py-2">
-          <span className="pointer-events-none w-3 shrink-0" aria-hidden />
-          {loadingCategories
-            ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-11 w-28 shrink-0 animate-pulse rounded-full bg-white/25" />
-              ))
-            : categories.map((cat) => <CategoryChip key={cat.id} category={cat} selected={categoryParam === cat.id} />)}
-          <span className="pointer-events-none w-3 shrink-0" aria-hidden />
-        </div>
+        <CategoryChipStrip
+          title="Категории"
+          categories={categories}
+          loading={loadingCategories}
+          selectedId={categoryParam}
+          onSelect={(id) => {
+            if (id) router.push(`/menu?category=${id}`);
+            else router.push("/menu");
+          }}
+        />
 
         <div className="mb-3 flex items-center gap-2">
           <Flame className="size-6 opacity-85 text-(--lg-text)" strokeWidth={1.75} />

@@ -40,6 +40,7 @@ function AuthPageInner() {
     try {
       const res = await fetch("/api/auth/send-code", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
@@ -69,6 +70,7 @@ function AuthPageInner() {
     try {
       const res = await fetch("/api/auth/verify-code", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, code: codeToSend }),
       });
