@@ -15,7 +15,7 @@ const PLASMA_SPREAD = 64;
 /** Scales real elapsed time so motion matches “time += 0.03 / frame” demos (~1.8 per second) */
 const PLASMA_TIME_SCALE = 2;
 /** Sample grid for plasma (0…30 in formula); higher = smaller cells, smoother before blur */
-const PLASMA_GRID_N = 100;
+const PLASMA_GRID_N = 50;
 /** Blur in CSS pixels when compositing the plasma layer (softens the grid) */
 const PLASMA_BLUR_PX = 2.5;
 
@@ -39,16 +39,10 @@ function plasmaB(x: number, y: number, time: number) {
   const cx = 15;
   const cy = 15;
   return Math.floor(
-    PLASMA_CENTER +
-      PLASMA_SPREAD *
-        Math.sin(5 * Math.sin(time / 9) + ((x - cx) * (x - cx) + (y - cy) * (y - cy)) / 50),
+    PLASMA_CENTER + PLASMA_SPREAD * Math.sin(5 * Math.sin(time / 9) + ((x - cx) * (x - cx) + (y - cy) * (y - cy)) / 50),
   );
 }
 
-/**
- * One scalar field (plasma still uses R+G+B math for motion), color stays **on the brand segment only** —
- * no per-channel offset → no green/magenta; chrome-like cool silver/blue, not a hue sweep.
- */
 function mapPlasmaToBrand(pr: number, pg: number, pb: number, theme: Theme) {
   const c = theme === "dark" ? BRAND.dark : BRAND.light;
   const luma = 0.2126 * pr + 0.7152 * pg + 0.0722 * pb;
@@ -60,10 +54,6 @@ function mapPlasmaToBrand(pr: number, pg: number, pb: number, theme: Theme) {
   };
 }
 
-/**
- * Plasma (RGB math field) recolored into #646669 → #bacef0, + foil noise, glitter, vignette.
- * Sits at z-0; client shell should be `relative z-10`.
- */
 export default function MetallicGlitterBackground() {
   const ref = useRef<HTMLCanvasElement>(null);
   const patternRef = useRef<CanvasPattern | null>(null);
@@ -219,22 +209,6 @@ export default function MetallicGlitterBackground() {
       ctx.fillStyle = midD;
       ctx.fillRect(0, 0, w, h);
 
-      // --- 3) Foil / glitter grain: tiled noise, overlay
-      if (noiseCanvas) {
-        if (!patternRef.current) {
-          patternRef.current = ctx.createPattern(noiseCanvas, "repeat");
-        }
-        const p = patternRef.current;
-        if (p) {
-          ctx.save();
-          ctx.globalAlpha = theme === "dark" ? 0.2 : 0.14;
-          ctx.globalCompositeOperation = "overlay";
-          ctx.fillStyle = p;
-          ctx.fillRect(0, 0, w, h);
-          ctx.restore();
-        }
-      }
-
       // --- 4) Sparkle dots (on top of grain)
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
@@ -298,11 +272,5 @@ export default function MetallicGlitterBackground() {
     };
   }, []);
 
-  return (
-    <canvas
-      ref={ref}
-      className="pointer-events-none fixed inset-0 z-0 h-dvh w-full"
-      aria-hidden
-    />
-  );
+  return <canvas ref={ref} className="pointer-events-none fixed inset-0 z-0 h-dvh w-full" aria-hidden />;
 }

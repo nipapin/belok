@@ -14,7 +14,7 @@
 html {
   --lg-blur: 8px;
   /* < 1 = dim the layer behind glass so stacks don’t bloom together */
-  --lg-backdrop-bright: 0.76;
+  --lg-backdrop-bright: 0.66;
   --lg-backdrop-sat: 150%;
   --lg-fill: rgba(255, 255, 255, 0.14);
   --lg-fill-hover: rgba(255, 255, 255, 0.2);
@@ -30,7 +30,7 @@ html {
   --lg-bg-image: linear-gradient(to top, #646669 0%, #bacef0 100%);
   --lg-nav-blur: 40px;
   /* Header: safe-area + mt-2 on bar + lg-bar py-2 + row (~2.5rem icons) — product hero negative margin */
-  --client-header-stack-height: calc(env(safe-area-inset-top, 0px) + 0.5rem + 0.5rem + 2.5rem + 0.5rem);
+  --client-header-stack-height: 70px;
 }
 
 html[data-theme="light"] {

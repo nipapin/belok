@@ -19,8 +19,9 @@ export default function BottomNav() {
   const navRef = useRef<HTMLElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [lozenge, setLozenge] = useState({ x: 0, y: 0, width: 0, height: 0, visible: false });
+  const profilePathAlias = pathname.startsWith("/auth") ? "/profile" : pathname;
 
-  const currentValue = navItems.findIndex((item) => (item.path === "/" ? pathname === "/" : pathname.startsWith(item.path)));
+  const currentValue = navItems.findIndex((item) => (item.path === "/" ? profilePathAlias === "/" : profilePathAlias.startsWith(item.path)));
 
   const updateLozenge = useCallback(() => {
     const nav = navRef.current;

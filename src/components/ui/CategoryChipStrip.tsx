@@ -5,21 +5,17 @@ import { useEffect, useRef } from "react";
 export type CategoryStripItem = { id: string; name: string };
 
 function chipClass(active: boolean) {
-  return `flex min-h-11 w-28 shrink-0 items-center justify-center wrap-break-word px-1.5 py-2 text-center text-sm font-semibold leading-tight transition line-clamp-2 lg-chip lg-pill lg-interactive ${active ? "lg-active" : ""}`;
+  return `glass-fx rounded-full px-4 py-2 h-9 flex items-center justify-center text-sm whitespace-nowrap ${active ? "border" : ""}`;
 }
 
-const stripClass =
-  "-mx-2 mb-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide scroll-pl-3 scroll-pr-3 py-2";
+const stripClass = "-mx-2 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide scroll-pl-3 scroll-pr-3 py-4";
 
 type CategoryChipStripProps = {
   categories: CategoryStripItem[];
   loading: boolean;
-  /** `null` — выбран пункт «Все» (если включён) или ничего не выбрано */
   selectedId: string | null;
-  /** Показать первый чип «Все» */
   showAllOption?: boolean;
   onSelect: (categoryId: string | null) => void;
-  /** Заголовок над полосой (например «Категории» на главной) */
   title?: string;
 };
 
@@ -38,15 +34,15 @@ export default function CategoryChipStrip({
     if (loading) return;
     let el: HTMLButtonElement | null = null;
     if (showAllOption) {
-      el = selectedId === null ? allChipRef.current : categoryChipRefs.current.get(selectedId) ?? null;
+      el = selectedId === null ? allChipRef.current : (categoryChipRefs.current.get(selectedId) ?? null);
     } else if (selectedId !== null) {
       el = categoryChipRefs.current.get(selectedId) ?? null;
     }
-    el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    el?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
   }, [selectedId, loading, showAllOption]);
 
   function handleSelect(e: React.MouseEvent<HTMLButtonElement>, categoryId: string | null) {
-    e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
     onSelect(categoryId);
   }
 
@@ -54,7 +50,7 @@ export default function CategoryChipStrip({
     <>
       {title ? <h2 className="heading-section my-3">{title}</h2> : null}
       <div className={stripClass}>
-        <span className="pointer-events-none w-3 shrink-0" aria-hidden />
+        <span className="pointer-events-none w-0 shrink-0" aria-hidden />
         {showAllOption ? (
           <button
             ref={allChipRef}

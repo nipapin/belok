@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Plus } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { ProductCardDetails } from "./ProductCardDetails";
+import Image from "next/image";
 
 export type ProductCardModel = {
   id: string;
@@ -47,16 +48,15 @@ export function ProductCard({ product }: ProductCardProps) {
   }
 
   return (
-    <div className="relative h-full">
+    <div className="relative h-full aspect-2/3 overflow-hidden rounded-2xl glass-fx">
       <button
         type="button"
         onClick={() => router.push(`/menu/${product.id}`)}
-        className="w-full h-full overflow-hidden rounded-2xl aspect-2/3"
+        className="w-full h-full flex flex-col items-center"
       >
-        <div className="w-full h-full">
+        <div className="w-full h-auto aspect-1/1 overflow-hidden bg-white rounded-bl-2xl rounded-br-2xl">
           {product.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.image} alt="" className="w-full h-full object-cover" />
+            <Image src={product.image} alt={product.name} width={200} height={200} className="w-full h-full object-cover" />
           ) : (
             <span className="">{product.name[0]}</span>
           )}
@@ -68,9 +68,15 @@ export function ProductCard({ product }: ProductCardProps) {
         onClick={handleAdd}
         aria-label={`Добавить ${product.name} в корзину`}
         aria-pressed={justAdded}
-        className={"absolute right-2 bottom-2 rounded-full p-2 glass-fx flex items-center justify-center border border-solid border-surface-edge-strong"}
+        className={
+          "absolute right-2 bottom-2 rounded-full p-2 glass-fx flex items-center justify-center border border-solid border-surface-edge-strong"
+        }
       >
-        {justAdded ? <Check className="text-white" strokeWidth={2.5} /> : <Plus className="text-white" strokeWidth={2.25} />}
+        {justAdded ? (
+          <Check className="text-white" strokeWidth={2.5} />
+        ) : (
+          <Plus className="text-white" strokeWidth={2.25} />
+        )}
       </button>
     </div>
   );

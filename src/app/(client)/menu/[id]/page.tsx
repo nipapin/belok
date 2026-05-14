@@ -1,47 +1,13 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Minus, Plus, ShoppingCart } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { useCartStore, type CartItemCustomization } from '@/store/cartStore';
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Minus, Plus, ShoppingCart } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useCartStore, type CartItemCustomization } from "@/store/cartStore";
+import { Product, ProductIngredient } from "@/types";
 
-interface ProductIngredient {
-  id: string;
-  isDefault: boolean;
-  isRemovable: boolean;
-  isExtra: boolean;
-  ingredient: {
-    id: string;
-    name: string;
-    price: number;
-  };
-}
-
-interface Product {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  image: string | null;
-  calories: number | null;
-  proteins: number | null;
-  fats: number | null;
-  carbs: number | null;
-  fiber: number | null;
-  category: { name: string };
-  ingredients: ProductIngredient[];
-}
-
-function Toggle({
-  checked,
-  onChange,
-  id,
-}: {
-  checked: boolean;
-  onChange: () => void;
-  id: string;
-}) {
+function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
   return (
     <label htmlFor={id} className="relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center">
       <input id={id} type="checkbox" className="peer sr-only" checked={checked} onChange={onChange} />
@@ -61,7 +27,7 @@ export default function ProductDetailPage() {
   const [addedExtras, setAddedExtras] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useQuery({
-    queryKey: ['product', id],
+    queryKey: ["product", id],
     queryFn: () => fetch(`/api/products/${id}`).then((r) => r.json()),
   });
 
@@ -94,7 +60,7 @@ export default function ProductDetailPage() {
         customizations.push({
           ingredientId: pi.ingredient.id,
           ingredientName: pi.ingredient.name,
-          action: 'REMOVE',
+          action: "REMOVE",
           priceDelta: 0,
         });
       }
@@ -102,7 +68,7 @@ export default function ProductDetailPage() {
         customizations.push({
           ingredientId: pi.ingredient.id,
           ingredientName: pi.ingredient.name,
-          action: 'ADD',
+          action: "ADD",
           priceDelta: pi.ingredient.price,
         });
       }
@@ -126,7 +92,7 @@ export default function ProductDetailPage() {
       quantity,
       customizations: getCustomizations(),
     });
-    router.push('/cart');
+    router.push("/cart");
   };
 
   if (isLoading) {
@@ -145,7 +111,7 @@ export default function ProductDetailPage() {
     return (
       <div className="mx-auto max-w-lg px-2 py-16 text-center">
         <p className="text-lg font-semibold text-[var(--lg-text)]">Товар не найден</p>
-        <button type="button" className="btn-primary mt-4" onClick={() => router.push('/menu')}>
+        <button type="button" className="btn-primary mt-4" onClick={() => router.push("/menu")}>
           Вернуться в меню
         </button>
       </div>
@@ -156,7 +122,7 @@ export default function ProductDetailPage() {
   const extraIngredients = product.ingredients.filter((pi) => pi.isExtra);
 
   return (
-    <div className="px-2 pb-28">
+    <div className="">
       <div className="relative -mx-4 -mt-(--client-header-stack-height)">
         <div className="flex w-full items-center justify-center aspect-square">
           {product.image ? (
@@ -184,26 +150,28 @@ export default function ProductDetailPage() {
             </span>
             <h1 className="heading-section text-balance">{product.name}</h1>
           </div>
-          <p className="shrink-0 text-xl font-bold tracking-tight tabular-nums text-[var(--lg-text)]">{product.price} ₽</p>
+          <p className="shrink-0 text-xl font-bold tracking-tight tabular-nums text-[var(--lg-text)]">
+            {product.price} ₽
+          </p>
         </div>
 
         {product.description && (
           <p className="mb-4 text-sm leading-relaxed text-[var(--lg-text-muted)]">{product.description}</p>
         )}
 
-        {(
-          [product.calories, product.proteins, product.fats, product.carbs, product.fiber] as (number | null)[]
-        ).some((v) => v != null) && (
-          <div className="glass-tight mb-6 grid grid-cols-2 gap-3 px-2 py-4 sm:grid-cols-3 sm:gap-2 lg:grid-cols-5">
+        {([product.calories, product.proteins, product.fats, product.carbs, product.fiber] as (number | null)[]).some(
+          (v) => v != null,
+        ) && (
+          <div className="mb-6 grid grid-cols-6 gap-1">
             {[
-              { label: 'Ккал', value: product.calories },
-              { label: 'Белки, г', value: product.proteins },
-              { label: 'Жиры, г', value: product.fats },
-              { label: 'Углеводы, г', value: product.carbs },
-              { label: 'Клетчатка, г', value: product.fiber },
+              { label: "Ккал", value: product.calories, span: 'col-span-2' },
+              { label: "Белки, г", value: product.proteins, span: 'col-span-2' },
+              { label: "Жиры, г", value: product.fats, span: 'col-span-2' },
+              { label: "Углеводы, г", value: product.carbs, span: 'col-span-3' },
+              { label: "Клетчатка, г", value: product.fiber, span: 'col-span-3' },
             ].map((item) => (
-              <div key={item.label} className="min-w-0 text-center">
-                <p className="text-base font-bold text-[var(--lg-text)]">{item.value ?? '—'}</p>
+              <div key={item.label} className={`glass-tight text-center flex items-baseline justify-center gap-1 ${item.span} p-2`}>
+                <p className="text-base font-bold text-[var(--lg-text)]">{item.value ?? "—"}</p>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--lg-text-muted)]">
                   {item.label}
                 </p>
@@ -221,8 +189,8 @@ export default function ProductDetailPage() {
                   <span
                     className={`text-sm ${
                       removedIngredients.has(pi.ingredient.id)
-                        ? 'text-[var(--lg-text-muted)] line-through opacity-70'
-                        : 'text-[var(--lg-text)]'
+                        ? "text-[var(--lg-text-muted)] line-through opacity-70"
+                        : "text-[var(--lg-text)]"
                     }`}
                   >
                     {pi.ingredient.name}
@@ -261,31 +229,26 @@ export default function ProductDetailPage() {
           </>
         )}
 
-        <div className="mb-6 flex items-center justify-center gap-4">
-          <button
-            type="button"
-            className="btn-icon"
-            onClick={() => setQuantity(Math.max(1, quantity - 1))}
-            aria-label="Меньше"
-          >
-            <Minus className="size-4" />
-          </button>
-          <span className="min-w-10 text-center text-xl font-bold tabular-nums text-[var(--lg-text)]">{quantity}</span>
-          <button
-            type="button"
-            className="btn-icon"
-            onClick={() => setQuantity(quantity + 1)}
-            aria-label="Больше"
-          >
-            <Plus className="size-4" />
-          </button>
-        </div>
-
-        <div className="glass-panel-strong sticky bottom-[calc(88px+env(safe-area-inset-bottom,0px))] p-4">
-          <button type="button" className="btn-primary w-full" onClick={handleAddToCart}>
-            <ShoppingCart className="size-5" strokeWidth={1.75} />
+        <div className="glass-panel-strong p-2 sticky bottom-0 left-0 right-0 flex items-center justify-between">
+          <button type="button" className="btn-primary" onClick={handleAddToCart}>
             В корзину · {calcPrice()} ₽
           </button>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              type="button"
+              className="btn-icon"
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              aria-label="Меньше"
+            >
+              <Minus className="size-4" />
+            </button>
+            <span className="min-w-10 text-center text-xl font-bold tabular-nums text-[var(--lg-text)]">
+              {quantity}
+            </span>
+            <button type="button" className="btn-icon" onClick={() => setQuantity(quantity + 1)} aria-label="Больше">
+              <Plus className="size-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

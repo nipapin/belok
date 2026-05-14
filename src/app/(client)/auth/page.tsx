@@ -34,35 +34,6 @@ function AuthPageInner() {
     }
   }, [countdown]);
 
-  const handleSendCode = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/send-code", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error);
-        return;
-      }
-      if (data.bypass && data.code) {
-        void handleVerifyCode(data.code);
-        return;
-      }
-      if (data.code) setDevCode(data.code);
-      setStep("code");
-      setCountdown(60);
-    } catch {
-      setError("Ошибка соединения");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleVerifyCode = async (codeOverride?: string) => {
     const codeToSend = codeOverride ?? code;
     setError("");
@@ -119,7 +90,7 @@ function AuthPageInner() {
             <button
               type="button"
               className="btn-primary min-h-12 w-full text-[0.9375rem]"
-              onClick={handleSendCode}
+              onClick={() => {}}
               disabled={loading || phone.length < 12}
             >
               {loading ? <Loader2 className="size-5 shrink-0 animate-spin" /> : null}
@@ -166,16 +137,7 @@ function AuthPageInner() {
               {loading ? <Loader2 className="size-5 shrink-0 animate-spin" /> : null}
               Подтвердить
             </button>
-            <button
-              type="button"
-              className="btn-ghost mb-2 w-full"
-              onClick={() => {
-                if (countdown === 0) {
-                  handleSendCode();
-                }
-              }}
-              disabled={countdown > 0}
-            >
+            <button type="button" className="btn-ghost mb-2 w-full" onClick={() => {}} disabled={countdown > 0}>
               {countdown > 0 ? `Повторно через ${countdown} с` : "Отправить код повторно"}
             </button>
             <button
