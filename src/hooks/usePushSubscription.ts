@@ -12,11 +12,16 @@ export type PushStatus =
   | "subscribed" // we have a subscription saved on the server
   | "not-subscribed"; // permission ok but no active subscription
 
-function urlBase64ToUint8Array(base64: string): Uint8Array {
+// TS 5.7+: Uint8Array is generic over its backing buffer; default widens to
+// ArrayBufferLike (= ArrayBuffer | SharedArrayBuffer). BufferSource — which
+// PushManager.subscribe() wants — only accepts the ArrayBuffer variant, so
+// allocate explicitly and pin the type parameter.
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
   const normalized = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
   const raw = atob(normalized);
-  const out = new Uint8Array(raw.length);
+  const buffer = new ArrayBuffer(raw.length);
+  const out = new Uint8Array(buffer);
   for (let i = 0; i < raw.length; ++i) out[i] = raw.charCodeAt(i);
   return out;
 }
