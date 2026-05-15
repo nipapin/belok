@@ -1,3 +1,5 @@
+/// <reference lib="webworker" />
+
 /**
  * Custom Service Worker code injected into the next-pwa generated SW.
  * Configured via `workboxOptions: { ... }` + `customWorkerSrc: 'src/worker'`
@@ -6,15 +8,22 @@
  * This file runs in the ServiceWorkerGlobalScope — NO `window`, NO React,
  * NO DOM access. Only `self`, `clients`, `caches`, fetch, IndexedDB, etc.
  *
+ * Typing setup:
+ *  - The triple-slash above pulls in lib.webworker.d.ts (ServiceWorkerGlobal-
+ *    Scope, PushEvent, NotificationEvent, Clients, …) which is otherwise
+ *    absent because tsconfig's `lib` is DOM-only.
+ *  - `tsconfig.skipLibCheck: true` suppresses the duplicate-declaration
+ *    conflict between lib.dom's `declare var self: Window` and lib.webworker's
+ *    `declare var self: WorkerGlobalScope` (they collide at the global level).
+ *  - `export {}` makes this file a module, so the local `declare const self`
+ *    is module-scoped and unambiguously narrows `self` to the SW global here
+ *    without leaking back to page code (which uses `window`, never bare `self`).
+ *
  * What it does:
  *  - On `push` event: parse JSON payload, show a system notification.
  *  - On `notificationclick`: focus an existing tab (if any) or open the URL.
  */
 
-// Force this file to be treated as a module so the `declare const self` below
-// is module-scoped and doesn't collide with the global `self: Window` from
-// lib.dom (which TS picks because this project's tsconfig lib is DOM-based).
-// Bundler strips this empty export from the emitted SW script.
 export {};
 
 declare const self: ServiceWorkerGlobalScope;
