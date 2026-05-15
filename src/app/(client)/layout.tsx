@@ -1,6 +1,6 @@
 "use client";
 
-import MetallicGlitterBackground from "@/components/effects/MetallicGlitterBackground";
+import AnimatedGradientBackground from "@/components/effects/AnimatedGradientBackground";
 import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
 import PullToRefresh from "@/components/layout/PullToRefresh";
@@ -38,7 +38,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <>
-      <MetallicGlitterBackground />
+      <AnimatedGradientBackground />
       <div data-mobile-ui className="relative z-10 flex h-full min-h-dvh flex-col overflow-hidden">
         <Header />
         <PullToRefresh

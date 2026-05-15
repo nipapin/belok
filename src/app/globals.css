@@ -866,6 +866,105 @@ html[data-theme="light"] {
   }
 }
 
+/* Animated background — three soft radial blobs that drift via GPU transforms.
+   Sits beneath app content (z-0). All animation is `transform` only to keep it
+   on a composited layer (no repaint, no layout). */
+.animated-bg__blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+  /* Helps Safari promote to its own compositor layer */
+  transform: translate3d(0, 0, 0);
+}
+
+.animated-bg__blob--a {
+  width: 75vmax;
+  height: 75vmax;
+  top: -25vmax;
+  left: -20vmax;
+  background: radial-gradient(
+    circle at center,
+    rgba(186, 206, 240, 0.55) 0%,
+    rgba(186, 206, 240, 0) 65%
+  );
+  animation: blob-drift-a 26s ease-in-out infinite alternate;
+}
+
+.animated-bg__blob--b {
+  width: 65vmax;
+  height: 65vmax;
+  top: 5vmax;
+  right: -25vmax;
+  background: radial-gradient(
+    circle at center,
+    rgba(168, 180, 208, 0.45) 0%,
+    rgba(168, 180, 208, 0) 65%
+  );
+  animation: blob-drift-b 32s ease-in-out infinite alternate;
+}
+
+.animated-bg__blob--c {
+  width: 85vmax;
+  height: 85vmax;
+  bottom: -35vmax;
+  left: -15vmax;
+  background: radial-gradient(
+    circle at center,
+    rgba(140, 156, 178, 0.5) 0%,
+    rgba(140, 156, 178, 0) 65%
+  );
+  animation: blob-drift-c 38s ease-in-out infinite alternate;
+}
+
+html[data-theme="light"] .animated-bg__blob--a {
+  background: radial-gradient(
+    circle at center,
+    rgba(216, 230, 244, 0.7) 0%,
+    rgba(216, 230, 244, 0) 65%
+  );
+}
+
+html[data-theme="light"] .animated-bg__blob--b {
+  background: radial-gradient(
+    circle at center,
+    rgba(195, 205, 220, 0.55) 0%,
+    rgba(195, 205, 220, 0) 65%
+  );
+}
+
+html[data-theme="light"] .animated-bg__blob--c {
+  background: radial-gradient(
+    circle at center,
+    rgba(180, 192, 210, 0.5) 0%,
+    rgba(180, 192, 210, 0) 65%
+  );
+}
+
+@keyframes blob-drift-a {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(15vmax, 12vmax, 0) scale(1.1); }
+  100% { transform: translate3d(-6vmax, 20vmax, 0) scale(0.95); }
+}
+
+@keyframes blob-drift-b {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-14vmax, 18vmax, 0) scale(1.05); }
+  100% { transform: translate3d(8vmax, -12vmax, 0) scale(1.15); }
+}
+
+@keyframes blob-drift-c {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(20vmax, -10vmax, 0) scale(1.1); }
+  100% { transform: translate3d(-16vmax, -22vmax, 0) scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated-bg__blob {
+    animation: none !important;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 4px;
 }
