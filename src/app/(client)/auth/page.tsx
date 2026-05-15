@@ -126,6 +126,13 @@ function AuthPageInner() {
         return;
       }
       setUser(data.user);
+      // Mark that the user just completed registration so the post-auth
+      // PushPrompt can decide whether to show itself.
+      try {
+        sessionStorage.setItem('belok_just_registered', '1');
+      } catch {
+        /* private mode etc. — ignore */
+      }
       window.location.href = redirect;
     } catch {
       setError('Ошибка соединения');

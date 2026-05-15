@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { CreditCard, Loader2 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
+import { useHaptic } from '@/hooks/useHaptic';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, getTotalPrice, clearCart, getItemPrice } = useCartStore();
   const user = useAuthStore((s) => s.user);
+  const haptic = useHaptic();
 
   const [bonusUsed, setBonusUsed] = useState(0);
   const [comment, setComment] = useState('');
@@ -51,10 +53,12 @@ export default function CheckoutPage() {
 
       const data = await res.json();
       if (!res.ok) {
+        haptic('error');
         setError(data.error || 'Не удалось оформить заказ');
         return;
       }
 
+      haptic('success');
       clearCart();
 
       if (data.paymentUrl) {
@@ -63,6 +67,7 @@ export default function CheckoutPage() {
         router.push(`/orders/${data.order.id}`);
       }
     } catch {
+      haptic('error');
       setError('Ошибка соединения');
     } finally {
       setLoading(false);

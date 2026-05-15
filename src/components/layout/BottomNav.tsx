@@ -7,6 +7,7 @@ import { startTransition, useCallback, useLayoutEffect, useMemo, useRef, useStat
 import NavItem from "../ui/NavItem";
 import UserQrModal from "../loyalty/UserQrModal";
 import { useAuthStore } from "@/store/authStore";
+import { useHaptic } from "@/hooks/useHaptic";
 
 type NavItemConfig = {
   id: string;
@@ -24,6 +25,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const haptic = useHaptic();
   const navRef = useRef<HTMLElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [lozenge, setLozenge] = useState({ x: 0, y: 0, width: 0, height: 0, visible: false });
@@ -112,10 +114,14 @@ export default function BottomNav() {
 
   const handleClick = (item: NavItemConfig) => {
     if (item.action === "qr") {
+      haptic("medium");
       setQrOpen(true);
       return;
     }
-    if (item.path) router.push(item.path);
+    if (item.path) {
+      haptic("selection");
+      router.push(item.path);
+    }
   };
 
   return (

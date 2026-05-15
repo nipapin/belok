@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plus } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
+import { useHaptic } from "@/hooks/useHaptic";
 import { ProductCardDetails } from "./ProductCardDetails";
 import Image from "next/image";
 
@@ -18,11 +19,13 @@ export type ProductCardModel = {
 
 type ProductCardProps = {
   product: ProductCardModel;
+  eager?: boolean;
 };
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, eager = false }: ProductCardProps) {
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
+  const haptic = useHaptic();
   const [justAdded, setJustAdded] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -42,6 +45,7 @@ export function ProductCard({ product }: ProductCardProps) {
       quantity: 1,
       customizations: [],
     });
+    haptic("success");
     setJustAdded(true);
     if (flashTimer.current) clearTimeout(flashTimer.current);
     flashTimer.current = setTimeout(() => setJustAdded(false), 700);
@@ -56,7 +60,15 @@ export function ProductCard({ product }: ProductCardProps) {
       >
         <div className="w-full h-auto aspect-square overflow-hidden bg-white rounded-bl-2xl rounded-br-2xl">
           {product.image ? (
-            <Image src={product.image} alt={product.name} width={200} height={200} className="w-full h-full object-cover" />
+            <Image
+              src={product.image}
+              alt={product.name}
+              width={200}
+              height={200}
+              className="w-full h-full object-cover"
+              loading={eager ? "eager" : "lazy"}
+              fetchPriority={eager ? "high" : "auto"}
+            />
           ) : (
             <span className="">{product.name[0]}</span>
           )}

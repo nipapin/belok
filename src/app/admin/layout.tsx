@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   ArrowLeft,
+  Bell,
   LayoutDashboard,
   Menu,
   UtensilsCrossed,
@@ -26,6 +27,7 @@ const menuItems = [
   { label: 'Заказы', icon: Receipt, path: '/admin/orders' },
   { label: 'Касса · Лояльность', icon: ScanLine, path: '/admin/loyalty' },
   { label: 'Пользователи', icon: Users, path: '/admin/users' },
+  { label: 'Уведомления', icon: Bell, path: '/admin/notifications' },
   { label: 'Настройки', icon: Settings, path: '/admin/settings' },
 ];
 

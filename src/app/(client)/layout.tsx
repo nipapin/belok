@@ -4,6 +4,8 @@ import AnimatedGradientBackground from "@/components/effects/AnimatedGradientBac
 import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
 import PullToRefresh from "@/components/layout/PullToRefresh";
+import UpdateToast from "@/components/layout/UpdateToast";
+import PushPromptAfterRegister from "@/components/notifications/PushPromptAfterRegister";
 import { useAuthStore } from "@/store/authStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -49,6 +51,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         </PullToRefresh>
         <BottomNav />
       </div>
+      <UpdateToast />
+      <PushPromptAfterRegister />
     </>
   );
 }

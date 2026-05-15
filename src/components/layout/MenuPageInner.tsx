@@ -114,16 +114,17 @@ export function MenuPageInner() {
       ) : null}
 
       {!loadingProducts &&
-        categoriesWithProducts.map((category) => {
+        categoriesWithProducts.map((category, categoryIndex) => {
           const categoryProducts = productsByCategory.get(category.id) ?? [];
 
           return (
             <section key={category.id} id={`category-${category.id}`} className="mb-6 scroll-mt-24">
               <h2 className="heading-section mb-3">{category.name}</h2>
               <div className="grid grid-cols-2 gap-1">
-                {categoryProducts.map((product) => (
+                {categoryProducts.map((product, productIndex) => (
                   <ProductCard
                     key={product.id}
+                    eager={categoryIndex === 0 && productIndex < 2}
                     product={{
                       id: product.id,
                       name: product.name,

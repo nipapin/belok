@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useQuery } from "@tanstack/react-query";
 import LoyaltyCard from "@/components/loyalty/LoyaltyCard";
+import PushToggle from "@/components/notifications/PushToggle";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -278,6 +279,10 @@ export default function ProfilePage() {
             <span className="font-medium text-(--lg-text)">{item.label}</span>
           </button>
         ))}
+
+        <div className="mt-4">
+          <PushToggle />
+        </div>
 
         <button type="button" className="profile-logout mt-8" onClick={handleLogout}>
           <LogOut className="size-4 shrink-0" strokeWidth={2} />

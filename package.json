@@ -9,7 +9,8 @@
     "lint": "eslint",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "icons:generate": "tsx scripts/generate-icons.ts"
+    "icons:generate": "tsx scripts/generate-icons.ts",
+    "push:keys": "tsx scripts/generate-vapid-keys.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1035.0",
@@ -32,6 +33,7 @@
     "resend": "^6.12.3",
     "sharp": "^0.34.5",
     "uuid": "^13.0.2",
+    "web-push": "^3.6.7",
     "webpack": "^5.106.2",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
@@ -46,6 +48,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "^16.2.6",
     "tailwindcss": "^4",

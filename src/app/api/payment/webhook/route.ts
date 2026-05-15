@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, withTransaction } from '@/lib/db';
+import { tryNotifyUser } from '@/lib/push';
 import type { LoyaltyLevelRow, OrderRow } from '@/lib/types';
 
 interface WebhookBody {
@@ -44,6 +45,10 @@ export async function POST(request: NextRequest) {
 
       const cashbackPercent = order.ll_cashbackPercent ?? 3;
       const bonusEarned = Math.round(order.total * (cashbackPercent / 100));
+
+      // We capture the level transition inside the transaction so we can
+      // notify the user once the DB is consistent (after COMMIT).
+      let leveledUpToId: string | null = null;
 
       await withTransaction(async (client) => {
         await client.query(
@@ -92,9 +97,41 @@ export async function POST(request: NextRequest) {
               `UPDATE "users" SET "loyaltyLevelId" = $1 WHERE id = $2`,
               [next.id, order.userId]
             );
+            leveledUpToId = next.id;
           }
         }
       });
+
+      // Best-effort push: order confirmed + bonus credit + (optional) level-up.
+      void tryNotifyUser(order.userId, {
+        title: 'Заказ оплачен',
+        body: 'Оплата прошла успешно. Скоро начнём готовить.',
+        url: `/orders/${orderId}`,
+        tag: `order-${orderId}`,
+      });
+      if (bonusEarned > 0) {
+        void tryNotifyUser(order.userId, {
+          title: `+${bonusEarned} ₽ бонусов`,
+          body: `Кэшбэк ${cashbackPercent}% за заказ.`,
+          url: '/profile/bonuses',
+          tag: 'bonus',
+        });
+      }
+      if (leveledUpToId) {
+        const lvl = await queryOne<LoyaltyLevelRow>(
+          `SELECT id, name, "minSpent", "cashbackPercent", "discountPercent", "sortOrder"
+             FROM "loyalty_levels" WHERE id = $1`,
+          [leveledUpToId]
+        );
+        if (lvl) {
+          void tryNotifyUser(order.userId, {
+            title: `Уровень «${lvl.name}» — ваш!`,
+            body: `Кэшбэк ${lvl.cashbackPercent}% и скидка ${lvl.discountPercent}%.`,
+            url: '/profile',
+            tag: 'level-up',
+          });
+        }
+      }
     }
 
     if (event === 'payment.canceled') {

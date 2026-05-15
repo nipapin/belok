@@ -44,9 +44,10 @@ export function HomePageInner() {
           ? Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="glass-tight w-full h-full aspect-2/3 animate-pulse" />
             ))
-          : products.map((product) => (
+          : products.map((product, index) => (
               <ProductCard
                 key={product.id}
+                eager={index < 4}
                 product={{
                   id: product.id,
                   name: product.name,

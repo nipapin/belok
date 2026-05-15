@@ -2,6 +2,7 @@
 
 import { LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useHaptic } from "@/hooks/useHaptic";
 
 const THRESHOLD = 72;
 const MAX_PULL = 120;
@@ -15,6 +16,7 @@ type Props = {
 
 export default function PullToRefresh({ onRefresh, className, children }: Props) {
   const scrollRef = useRef<HTMLElement>(null);
+  const haptic = useHaptic();
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [animating, setAnimating] = useState(true);
@@ -23,6 +25,7 @@ export default function PullToRefresh({ onRefresh, className, children }: Props)
   const active = useRef(false);
   const pullRef = useRef(0);
   const refreshingRef = useRef(false);
+  const thresholdHitRef = useRef(false);
   const onRefreshRef = useRef(onRefresh);
 
   useEffect(() => {
@@ -44,6 +47,7 @@ export default function PullToRefresh({ onRefresh, className, children }: Props)
       if (e.touches.length !== 1) return;
       startY.current = e.touches[0].clientY;
       active.current = true;
+      thresholdHitRef.current = false;
     };
 
     const handleMove = (e: TouchEvent) => {
@@ -65,7 +69,14 @@ export default function PullToRefresh({ onRefresh, className, children }: Props)
       // Prevent native rubber-band / pull-to-refresh while we drive the gesture.
       if (e.cancelable) e.preventDefault();
       setAnimating(false);
-      setPullValue(Math.min(MAX_PULL, delta * RESISTANCE));
+      const next = Math.min(MAX_PULL, delta * RESISTANCE);
+      // Tick the moment the user crosses the release threshold —
+      // mirrors the iOS native pull-to-refresh "armed" feel.
+      if (!thresholdHitRef.current && next >= THRESHOLD) {
+        thresholdHitRef.current = true;
+        haptic("light");
+      }
+      setPullValue(next);
     };
 
     const handleEnd = () => {
@@ -100,7 +111,7 @@ export default function PullToRefresh({ onRefresh, className, children }: Props)
       el.removeEventListener("touchend", handleEnd);
       el.removeEventListener("touchcancel", handleEnd);
     };
-  }, [setPullValue]);
+  }, [setPullValue, haptic]);
 
   const progress = Math.max(0, Math.min(pull / THRESHOLD, 1));
   const visible = pull > 0 || refreshing;

@@ -2,6 +2,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useHaptic } from "@/hooks/useHaptic";
 
 function readThemeFromDom(): "light" | "dark" {
   if (typeof document === "undefined") return "dark";
@@ -11,6 +12,7 @@ function readThemeFromDom(): "light" | "dark" {
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const haptic = useHaptic();
 
   useEffect(() => {
     setTheme(readThemeFromDom());
@@ -25,6 +27,7 @@ export default function ThemeToggle() {
       /* ignore */
     }
     document.documentElement.setAttribute("data-theme", next);
+    haptic("selection");
   }
 
   return (

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { withTransaction } from '@/lib/db';
+import { queryOne, withTransaction } from '@/lib/db';
 import { getUserWithLoyaltyById } from '@/lib/auth';
 import { requireAdmin } from '@/lib/adminAuth';
+import { tryNotifyUser } from '@/lib/push';
 import type { LoyaltyLevelRow } from '@/lib/types';
 
 interface AwardBody {
@@ -72,6 +73,33 @@ export async function POST(request: NextRequest) {
     });
 
     const updated = await getUserWithLoyaltyById(userId);
+
+    // Best-effort push: bonus credit + level-up (if it happened).
+    if (bonusEarned > 0) {
+      void tryNotifyUser(userId, {
+        title: `+${bonusEarned} ₽ бонусов`,
+        body: `Кэшбэк ${cashbackPercent}% за заказ ${amount} ₽. Можно тратить в следующем заказе.`,
+        url: '/profile/bonuses',
+        tag: 'bonus',
+      });
+    }
+    if (updated && targetUser.loyaltyLevelId !== updated.loyaltyLevelId && updated.loyaltyLevel) {
+      // Level changed during this award — congratulate.
+      const nextLevelInfo = await queryOne<LoyaltyLevelRow>(
+        `SELECT id, name, "minSpent", "cashbackPercent", "discountPercent", "sortOrder"
+           FROM "loyalty_levels" WHERE id = $1`,
+        [updated.loyaltyLevelId]
+      );
+      if (nextLevelInfo) {
+        void tryNotifyUser(userId, {
+          title: `Поздравляем — уровень «${nextLevelInfo.name}»!`,
+          body: `Кэшбэк ${nextLevelInfo.cashbackPercent}% и скидка ${nextLevelInfo.discountPercent}% теперь ваши.`,
+          url: '/profile',
+          tag: 'level-up',
+        });
+      }
+    }
+
     return NextResponse.json({
       bonusEarned,
       cashbackPercent,
