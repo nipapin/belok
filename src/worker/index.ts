@@ -11,6 +11,12 @@
  *  - On `notificationclick`: focus an existing tab (if any) or open the URL.
  */
 
+// Force this file to be treated as a module so the `declare const self` below
+// is module-scoped and doesn't collide with the global `self: Window` from
+// lib.dom (which TS picks because this project's tsconfig lib is DOM-based).
+// Bundler strips this empty export from the emitted SW script.
+export {};
+
 declare const self: ServiceWorkerGlobalScope;
 
 interface PushPayload {
