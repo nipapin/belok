@@ -66,14 +66,18 @@ html[data-theme="light"] {
     @apply antialiased;
     font-feature-settings: "kern" 1, "liga" 1;
     overscroll-behavior-y: none;
-    /* Paint the gradient on html too so the home-indicator safe-area
-       (below body's fixed h-dvh on iOS standalone PWA) is covered. */
+    /* Force html to span the full visual viewport so iOS standalone PWA
+       cannot expose a default-white strip below the home indicator. */
+    height: 100%;
     background-image: var(--lg-bg-image);
     background-attachment: fixed;
   }
 
   body {
-    @apply m-0 h-dvh w-screen overflow-hidden p-0 font-sans fixed;
+    /* `inset: 0` (not h-dvh) anchors body to ALL four edges of the visual
+       viewport. With viewport-fit=cover this guarantees full coverage
+       including the home-indicator safe-area on iOS — no more bottom hole. */
+    @apply m-0 fixed inset-0 overflow-hidden p-0 font-sans;
     color: var(--lg-text);
     background-image: var(--lg-bg-image);
     background-attachment: fixed;
