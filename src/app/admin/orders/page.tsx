@@ -19,7 +19,7 @@ interface Order {
   discountAmount: number;
   paymentStatus: string;
   createdAt: string;
-  user: { phone: string; name: string | null };
+  user: { phone: string | null; email: string | null; name: string | null };
   items: { product: { name: string }; quantity: number; unitPrice: number }[];
 }
 
@@ -64,7 +64,7 @@ export default function AdminOrdersPage() {
               {orders.map((order) => (
                 <tr key={order.id}>
                   <td className="font-mono text-xs">{order.id.slice(0, 8)}</td>
-                  <td>{order.user?.name || order.user?.phone}</td>
+                  <td>{order.user?.name || order.user?.email || order.user?.phone || '—'}</td>
                   <td>
                     {order.items.map((item, i) => (
                       <span key={i} className="block text-xs text-(--lg-text-muted)">
@@ -122,7 +122,7 @@ export default function AdminOrdersPage() {
                 {new Date(order.createdAt).toLocaleString('ru-RU')}
               </p>
             </div>
-            <p className="text-sm font-medium text-(--lg-text)">{order.user?.name || order.user?.phone}</p>
+            <p className="text-sm font-medium text-(--lg-text)">{order.user?.name || order.user?.email || order.user?.phone || '—'}</p>
             <div className="text-xs leading-relaxed text-(--lg-text-muted)">
               {order.items.map((item, i) => (
                 <span key={i} className="block">

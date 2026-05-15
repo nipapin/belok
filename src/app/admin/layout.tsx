@@ -12,6 +12,7 @@ import {
   Receipt,
   Users,
   Settings,
+  ScanLine,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useMdUp } from '@/hooks/useMdUp';
@@ -23,6 +24,7 @@ const menuItems = [
   { label: 'Категории', icon: Tags, path: '/admin/categories' },
   { label: 'Ингредиенты', icon: ChefHat, path: '/admin/ingredients' },
   { label: 'Заказы', icon: Receipt, path: '/admin/orders' },
+  { label: 'Касса · Лояльность', icon: ScanLine, path: '/admin/loyalty' },
   { label: 'Пользователи', icon: Users, path: '/admin/users' },
   { label: 'Настройки', icon: Settings, path: '/admin/settings' },
 ];
@@ -38,12 +40,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     fetchUser();
   }, [fetchUser]);
 
-  if (isLoading) return null;
+  const isUnauthorized = !isLoading && (!user || user.role !== 'ADMIN');
 
-  if (!user || user.role !== 'ADMIN') {
-    router.push('/');
-    return null;
-  }
+  useEffect(() => {
+    if (isUnauthorized) router.replace('/');
+  }, [isUnauthorized, router]);
+
+  if (isLoading || isUnauthorized) return null;
 
   const drawer = (
     <div className="admin-drawer-panel flex h-full flex-col">

@@ -12,7 +12,7 @@ export async function GET() {
     const link = generateGoogleWalletLink({
       userId: user.id,
       userName: user.name || '',
-      phone: user.phone,
+      phone: user.phone ?? user.email ?? '',
       loyaltyLevel: user.loyaltyLevel?.name || 'Бронза',
       bonusBalance: user.bonusBalance,
       totalSpent: user.totalSpent,

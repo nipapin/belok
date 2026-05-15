@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Receipt } from 'lucide-react';
+import { ArrowLeft, Receipt } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 const statusMap: Record<string, { label: string; className: string }> = {
@@ -53,7 +54,16 @@ export default function OrdersPage() {
 
   return (
     <div className="mx-auto max-w-md px-2 pb-4 pt-2">
-      <h1 className="heading-section mb-4">Мои заказы</h1>
+      <div className="mb-4 flex items-center gap-2">
+        <Link
+          href="/profile"
+          className="btn-icon size-9 min-h-0 min-w-0 shrink-0"
+          aria-label="Назад в профиль"
+        >
+          <ArrowLeft className="size-4" strokeWidth={2} />
+        </Link>
+        <h1 className="heading-section">Мои заказы</h1>
+      </div>
 
       {isLoading ? (
         <div className="space-y-3">

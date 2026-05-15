@@ -1,102 +1,132 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { v4 as uuidv4 } from 'uuid';
+import { queryOne, withTransaction } from '@/lib/db';
+import type { LoyaltyLevelRow, OrderRow } from '@/lib/types';
+
+interface WebhookBody {
+  event?: string;
+  object?: {
+    metadata?: { order_id?: string };
+  };
+}
+
+interface OrderWithUserAndLoyalty extends OrderRow {
+  user_totalSpent: number;
+  user_loyaltyLevelId: string | null;
+  ll_id: string | null;
+  ll_cashbackPercent: number | null;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { event, object } = body;
+    const body = (await request.json().catch(() => null)) as WebhookBody | null;
+    const event = body?.event;
+    const orderId = body?.object?.metadata?.order_id;
 
     if (event === 'payment.succeeded') {
-      const orderId = object.metadata?.order_id;
       if (!orderId) return NextResponse.json({ ok: true });
 
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-        include: { user: { include: { loyaltyLevel: true } } },
-      });
+      const order = await queryOne<OrderWithUserAndLoyalty>(
+        `SELECT
+           o.*,
+           u."totalSpent"     AS "user_totalSpent",
+           u."loyaltyLevelId" AS "user_loyaltyLevelId",
+           l."id"             AS "ll_id",
+           l."cashbackPercent" AS "ll_cashbackPercent"
+         FROM "orders" o
+         JOIN "users" u ON u."id" = o."userId"
+         LEFT JOIN "loyalty_levels" l ON l."id" = u."loyaltyLevelId"
+         WHERE o.id = $1`,
+        [orderId]
+      );
 
       if (!order) return NextResponse.json({ ok: true });
 
-      await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          paymentStatus: 'SUCCEEDED',
-          status: 'CONFIRMED',
-        },
-      });
-
-      // Calculate and apply cashback
-      const cashbackPercent = order.user.loyaltyLevel?.cashbackPercent || 3;
+      const cashbackPercent = order.ll_cashbackPercent ?? 3;
       const bonusEarned = Math.round(order.total * (cashbackPercent / 100));
 
-      if (bonusEarned > 0) {
-        await prisma.order.update({
-          where: { id: orderId },
-          data: { bonusEarned },
-        });
+      await withTransaction(async (client) => {
+        await client.query(
+          `UPDATE "orders"
+              SET "paymentStatus" = 'SUCCEEDED', status = 'CONFIRMED'
+            WHERE id = $1`,
+          [orderId]
+        );
 
-        await prisma.user.update({
-          where: { id: order.userId },
-          data: {
-            bonusBalance: { increment: bonusEarned },
-            totalSpent: { increment: order.total },
-          },
-        });
+        if (bonusEarned > 0) {
+          await client.query(
+            `UPDATE "orders" SET "bonusEarned" = $1 WHERE id = $2`,
+            [bonusEarned, orderId]
+          );
+          await client.query(
+            `UPDATE "users"
+                SET "bonusBalance" = "bonusBalance" + $1,
+                    "totalSpent"   = "totalSpent" + $2
+              WHERE id = $3`,
+            [bonusEarned, order.total, order.userId]
+          );
+          await client.query(
+            `INSERT INTO "bonus_transactions"
+               (id, "userId", amount, type, "orderId", description)
+             VALUES ($1, $2, $3, 'EARNED', $4, $5)`,
+            [
+              uuidv4(),
+              order.userId,
+              bonusEarned,
+              orderId,
+              `Кэшбэк ${cashbackPercent}% за заказ`,
+            ]
+          );
 
-        await prisma.bonusTransaction.create({
-          data: {
-            userId: order.userId,
-            amount: bonusEarned,
-            type: 'EARNED',
-            orderId: order.id,
-            description: `Кэшбэк ${cashbackPercent}% за заказ`,
-          },
-        });
-
-        // Check loyalty level upgrade
-        const newTotalSpent = order.user.totalSpent + order.total;
-        const nextLevel = await prisma.loyaltyLevel.findFirst({
-          where: { minSpent: { lte: newTotalSpent } },
-          orderBy: { minSpent: 'desc' },
-        });
-
-        if (nextLevel && nextLevel.id !== order.user.loyaltyLevelId) {
-          await prisma.user.update({
-            where: { id: order.userId },
-            data: { loyaltyLevelId: nextLevel.id },
-          });
+          const newTotalSpent = order.user_totalSpent + order.total;
+          const nextLevel = await client.query<LoyaltyLevelRow>(
+            `SELECT id FROM "loyalty_levels"
+              WHERE "minSpent" <= $1
+              ORDER BY "minSpent" DESC
+              LIMIT 1`,
+            [newTotalSpent]
+          );
+          const next = nextLevel.rows[0];
+          if (next && next.id !== order.user_loyaltyLevelId) {
+            await client.query(
+              `UPDATE "users" SET "loyaltyLevelId" = $1 WHERE id = $2`,
+              [next.id, order.userId]
+            );
+          }
         }
-      }
+      });
     }
 
     if (event === 'payment.canceled') {
-      const orderId = object.metadata?.order_id;
-      if (orderId) {
-        const order = await prisma.order.findUnique({ where: { id: orderId } });
-        if (order) {
-          await prisma.order.update({
-            where: { id: orderId },
-            data: { paymentStatus: 'CANCELLED', status: 'CANCELLED' },
-          });
+      if (!orderId) return NextResponse.json({ ok: true });
 
-          // Refund bonuses if used
-          if (order.bonusUsed > 0) {
-            await prisma.user.update({
-              where: { id: order.userId },
-              data: { bonusBalance: { increment: order.bonusUsed } },
-            });
-            await prisma.bonusTransaction.create({
-              data: {
-                userId: order.userId,
-                amount: order.bonusUsed,
-                type: 'EARNED',
-                orderId: order.id,
-                description: 'Возврат бонусов (отмена заказа)',
-              },
-            });
-          }
+      const order = await queryOne<OrderRow>(
+        `SELECT * FROM "orders" WHERE id = $1`,
+        [orderId]
+      );
+      if (!order) return NextResponse.json({ ok: true });
+
+      await withTransaction(async (client) => {
+        await client.query(
+          `UPDATE "orders"
+              SET "paymentStatus" = 'CANCELLED', status = 'CANCELLED'
+            WHERE id = $1`,
+          [orderId]
+        );
+
+        if (order.bonusUsed > 0) {
+          await client.query(
+            `UPDATE "users" SET "bonusBalance" = "bonusBalance" + $1 WHERE id = $2`,
+            [order.bonusUsed, order.userId]
+          );
+          await client.query(
+            `INSERT INTO "bonus_transactions"
+               (id, "userId", amount, type, "orderId", description)
+             VALUES ($1, $2, $3, 'EARNED', $4, $5)`,
+            [uuidv4(), order.userId, order.bonusUsed, orderId, 'Возврат бонусов (отмена заказа)']
+          );
         }
-      }
+      });
     }
 
     return NextResponse.json({ ok: true });

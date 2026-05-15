@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { fetchProductById } from '@/lib/queries/products';
 
 export async function GET(
   _request: NextRequest,
@@ -7,22 +7,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const product = await prisma.product.findUnique({
-      where: { id },
-      include: {
-        category: true,
-        ingredients: {
-          include: {
-            ingredient: true,
-          },
-        },
-      },
-    });
-
+    const product = await fetchProductById(id);
     if (!product) {
       return NextResponse.json({ error: 'Товар не найден' }, { status: 404 });
     }
-
     return NextResponse.json({ product });
   } catch (error) {
     console.error('Get product error:', error);

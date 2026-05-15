@@ -12,7 +12,7 @@ export async function GET() {
     const passData = generateApplePassJson({
       userId: user.id,
       userName: user.name || '',
-      phone: user.phone,
+      phone: user.phone ?? user.email ?? '',
       loyaltyLevel: user.loyaltyLevel?.name || 'Бронза',
       bonusBalance: user.bonusBalance,
       totalSpent: user.totalSpent,

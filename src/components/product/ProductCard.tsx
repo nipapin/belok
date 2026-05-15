@@ -54,7 +54,7 @@ export function ProductCard({ product }: ProductCardProps) {
         onClick={() => router.push(`/menu/${product.id}`)}
         className="w-full h-full flex flex-col items-center"
       >
-        <div className="w-full h-auto aspect-1/1 overflow-hidden bg-white rounded-bl-2xl rounded-br-2xl">
+        <div className="w-full h-auto aspect-square overflow-hidden bg-white rounded-bl-2xl rounded-br-2xl">
           {product.image ? (
             <Image src={product.image} alt={product.name} width={200} height={200} className="w-full h-full object-cover" />
           ) : (

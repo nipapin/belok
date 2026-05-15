@@ -75,13 +75,13 @@ export default function AdminDashboard() {
             status: string;
             total: number;
             createdAt: string;
-            user: { phone: string; name: string | null };
+            user: { phone: string | null; email: string | null; name: string | null };
           }) => (
             <div key={order.id} className="glass-panel flex flex-wrap items-center justify-between gap-2 p-4">
               <div>
                 <p className="text-sm font-semibold text-(--lg-text)">№{order.id.slice(0, 8)}</p>
                 <p className="text-xs text-(--lg-text-muted)">
-                  {order.user?.name || order.user?.phone} ·{' '}
+                  {order.user?.name || order.user?.email || order.user?.phone || '—'} ·{' '}
                   {new Date(order.createdAt).toLocaleString('ru-RU')}
                 </p>
               </div>

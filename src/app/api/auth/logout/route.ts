@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { authCookieBaseOptions } from '@/lib/auth';
+import {
+  SESSION_COOKIE,
+  clearSessionCookieOnResponse,
+  readSessionIdFromCookie,
+  revokeSession,
+} from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const refreshTokenValue = request.cookies.get('refreshToken')?.value;
-
-    if (refreshTokenValue) {
-      await prisma.refreshToken.deleteMany({
-        where: { token: refreshTokenValue },
-      });
+    const raw = request.cookies.get(SESSION_COOKIE)?.value;
+    const sessionId = readSessionIdFromCookie(raw);
+    if (sessionId) {
+      await revokeSession(sessionId);
     }
 
     const response = NextResponse.json({ success: true });
-    const opts = authCookieBaseOptions(request);
-    response.cookies.set('accessToken', '', { ...opts, maxAge: 0 });
-    response.cookies.set('refreshToken', '', { ...opts, maxAge: 0 });
-
+    clearSessionCookieOnResponse(response, request);
     return response;
   } catch (error) {
     console.error('Logout error:', error);

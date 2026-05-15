@@ -4,9 +4,9 @@ import { create } from 'zustand';
 
 interface User {
   id: string;
-  phone: string;
-  name: string | null;
   email: string | null;
+  phone: string | null;
+  name: string | null;
   avatarUrl: string | null;
   role: string;
   bonusBalance: number;
@@ -39,9 +39,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => set({ user, isLoading: false }),
 
   fetchUser: async () => {
-    if (fetchUserInFlight) {
-      return fetchUserInFlight;
-    }
+    if (fetchUserInFlight) return fetchUserInFlight;
     fetchUserInFlight = (async () => {
       try {
         const res = await authFetch('/api/auth/me');
@@ -50,18 +48,6 @@ export const useAuthStore = create<AuthState>((set) => ({
           set({ user: data.user, isLoading: false });
           return;
         }
-
-        const refreshRes = await authFetch('/api/auth/refresh', { method: 'POST' });
-        if (refreshRes.ok) {
-          const meRes = await authFetch('/api/auth/me');
-          if (meRes.ok) {
-            const data = await meRes.json();
-            set({ user: data.user, isLoading: false });
-            return;
-          }
-        }
-
-        await authFetch('/api/auth/logout', { method: 'POST' });
         set({ user: null, isLoading: false });
       } catch {
         set({ user: null, isLoading: false });

@@ -20,7 +20,7 @@ export default function CheckoutPage() {
   const discountPercent = user?.loyaltyLevel?.discountPercent || 0;
   const discountAmount = Math.round(subtotal * (discountPercent / 100));
   const afterDiscount = subtotal - discountAmount;
-  const maxBonus = Math.min(Math.floor(afterDiscount * 0.3), user?.bonusBalance || 0);
+  const maxBonus = Math.min(afterDiscount, user?.bonusBalance || 0);
   const total = afterDiscount - bonusUsed;
 
   useEffect(() => {
@@ -117,7 +117,7 @@ export default function CheckoutPage() {
         <div className="glass-panel mb-4 p-4">
           <h2 className="mb-1 text-base font-semibold text-zinc-900">Списать бонусы</h2>
           <p className="mb-3 text-sm text-zinc-500">
-            Доступно: {user.bonusBalance} (не более 30% от суммы после скидки)
+            Доступно: {user.bonusBalance} (можно оплатить до 100% суммы)
           </p>
           <input
             type="range"

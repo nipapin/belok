@@ -7,7 +7,7 @@ import Modal from '@/components/ui/Modal';
 
 interface User {
   id: string;
-  phone: string;
+  phone: string | null;
   name: string | null;
   email: string | null;
   role: string;
@@ -55,7 +55,7 @@ export default function AdminUsersPage() {
           <table className="admin-table min-w-[960px]">
             <thead>
               <tr>
-                <th>Телефон</th>
+                <th>Email / Телефон</th>
                 <th>Имя</th>
                 <th>Роль</th>
                 <th>Уровень</th>
@@ -68,7 +68,7 @@ export default function AdminUsersPage() {
             <tbody>
               {users.map((user) => (
                 <tr key={user.id}>
-                  <td>{user.phone}</td>
+                  <td>{user.email || user.phone || '—'}</td>
                   <td>{user.name || '—'}</td>
                   <td>
                     <span
@@ -111,7 +111,7 @@ export default function AdminUsersPage() {
           <div key={user.id} className="glass-panel p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-medium text-(--lg-text)">{user.phone}</p>
+                <p className="font-medium text-(--lg-text)">{user.email || user.phone || '—'}</p>
                 <p className="mt-0.5 text-sm text-(--lg-text-muted)">{user.name || '—'}</p>
               </div>
               <button
@@ -190,7 +190,12 @@ export default function AdminUsersPage() {
         {editUser && (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-(--lg-text-muted)">
-              Телефон: <span className="font-medium text-(--lg-text)">{editUser.phone}</span>
+              Email: <span className="font-medium text-(--lg-text)">{editUser.email || '—'}</span>
+              {editUser.phone ? (
+                <>
+                  {' · '}Телефон: <span className="font-medium text-(--lg-text)">{editUser.phone}</span>
+                </>
+              ) : null}
             </p>
             <label className="text-sm font-medium text-(--lg-text)">
               Роль

@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowDown, ArrowLeft, ArrowUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 interface BonusTransaction {
@@ -22,7 +23,16 @@ export default function BonusesPage() {
 
   return (
     <div className="mx-auto max-w-md pb-4 pt-2 px-2">
-      <h1 className="heading-section mb-4">Детализация бонусов</h1>
+      <div className="mb-4 flex items-center gap-2">
+        <Link
+          href="/profile"
+          className="btn-icon size-9 min-h-0 min-w-0 shrink-0"
+          aria-label="Назад в профиль"
+        >
+          <ArrowLeft className="size-4" strokeWidth={2} />
+        </Link>
+        <h1 className="heading-section">Детализация бонусов</h1>
+      </div>
 
       <div className="glass-panel-strong mb-6 rounded-3xl bg-zinc-900 p-6 text-center text-white shadow-xl">
         <p className="mb-1 text-sm font-medium text-white/65">Баланс</p>

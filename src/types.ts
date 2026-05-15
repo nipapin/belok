@@ -3,6 +3,9 @@ export enum MenuLabel {
   MENU = "Меню",
   CART = "Корзина",
   PROFILE = "Профиль",
+  QR = "QR-код",
+  SCAN = "Сканер",
+  ADMIN = "Админка",
 }
 
 export interface Product {

@@ -1,7 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { v4 as uuidv4 } from 'uuid';
+import { query, queryOne, withTransaction } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import { deletePublicImage } from '@/lib/uploadStorage';
+import { fetchProductById } from '@/lib/queries/products';
+import type { ProductRow } from '@/lib/types';
+
+interface IngredientLink {
+  ingredientId: string;
+  isDefault?: boolean;
+  isRemovable?: boolean;
+  isExtra?: boolean;
+}
+
+interface UpdateProductBody {
+  name?: string;
+  description?: string | null;
+  price?: string | number;
+  image?: string | null;
+  categoryId?: string;
+  isAvailable?: boolean;
+  calories?: string | number | null;
+  proteins?: string | number | null;
+  fats?: string | number | null;
+  carbs?: string | number | null;
+  fiber?: string | number | null;
+  sortOrder?: number;
+  ingredients?: IngredientLink[];
+}
+
+function toNum(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : null;
+}
 
 export async function GET(
   _request: NextRequest,
@@ -10,10 +42,7 @@ export async function GET(
   try {
     await requireAdmin();
     const { id } = await params;
-    const product = await prisma.product.findUnique({
-      where: { id },
-      include: { category: true, ingredients: { include: { ingredient: true } } },
-    });
+    const product = await fetchProductById(id);
     if (!product) {
       return NextResponse.json({ error: 'Товар не найден' }, { status: 404 });
     }
@@ -32,51 +61,67 @@ export async function PUT(
   try {
     await requireAdmin();
     const { id } = await params;
-    const body = await request.json();
-    const { name, description, price, image, categoryId, isAvailable, calories, proteins, fats, carbs, fiber, sortOrder, ingredients } = body;
+    const body = (await request.json()) as UpdateProductBody;
 
-    const existing = await prisma.product.findUnique({ where: { id } });
+    const existing = await queryOne<ProductRow>(`SELECT * FROM "products" WHERE id = $1`, [id]);
     if (!existing) {
       return NextResponse.json({ error: 'Товар не найден' }, { status: 404 });
     }
 
-    if (ingredients) {
-      await prisma.productIngredient.deleteMany({ where: { productId: id } });
+    const sets: string[] = [];
+    const sqlParams: unknown[] = [];
+
+    function add(column: string, value: unknown) {
+      sqlParams.push(value);
+      sets.push(`"${column}" = $${sqlParams.length}`);
     }
 
-    const product = await prisma.product.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(description !== undefined && { description }),
-        ...(price !== undefined && { price: parseFloat(price) }),
-        ...(image !== undefined && { image }),
-        ...(categoryId !== undefined && { categoryId }),
-        ...(isAvailable !== undefined && { isAvailable }),
-        ...(calories !== undefined && { calories: calories ? parseFloat(calories) : null }),
-        ...(proteins !== undefined && { proteins: proteins ? parseFloat(proteins) : null }),
-        ...(fats !== undefined && { fats: fats ? parseFloat(fats) : null }),
-        ...(carbs !== undefined && { carbs: carbs ? parseFloat(carbs) : null }),
-        ...(fiber !== undefined && { fiber: fiber ? parseFloat(fiber) : null }),
-        ...(sortOrder !== undefined && { sortOrder }),
-        ...(ingredients && {
-          ingredients: {
-            create: ingredients.map((ing: { ingredientId: string; isDefault: boolean; isRemovable: boolean; isExtra: boolean }) => ({
-              ingredientId: ing.ingredientId,
-              isDefault: ing.isDefault ?? true,
-              isRemovable: ing.isRemovable ?? true,
-              isExtra: ing.isExtra ?? false,
-            })),
-          },
-        }),
-      },
-      include: { category: true, ingredients: { include: { ingredient: true } } },
+    if (body.name !== undefined) add('name', body.name);
+    if (body.description !== undefined) add('description', body.description);
+    if (body.price !== undefined) add('price', toNum(body.price) ?? 0);
+    if (body.image !== undefined) add('image', body.image);
+    if (body.categoryId !== undefined) add('categoryId', body.categoryId);
+    if (body.isAvailable !== undefined) add('isAvailable', body.isAvailable);
+    if (body.calories !== undefined) add('calories', toNum(body.calories));
+    if (body.proteins !== undefined) add('proteins', toNum(body.proteins));
+    if (body.fats !== undefined) add('fats', toNum(body.fats));
+    if (body.carbs !== undefined) add('carbs', toNum(body.carbs));
+    if (body.fiber !== undefined) add('fiber', toNum(body.fiber));
+    if (body.sortOrder !== undefined) add('sortOrder', body.sortOrder);
+
+    await withTransaction(async (client) => {
+      if (sets.length > 0) {
+        sqlParams.push(id);
+        await client.query(
+          `UPDATE "products" SET ${sets.join(', ')} WHERE id = $${sqlParams.length}`,
+          sqlParams
+        );
+      }
+      if (body.ingredients) {
+        await client.query(`DELETE FROM "product_ingredients" WHERE "productId" = $1`, [id]);
+        for (const ing of body.ingredients) {
+          await client.query(
+            `INSERT INTO "product_ingredients"
+              (id, "productId", "ingredientId", "isDefault", "isRemovable", "isExtra")
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              uuidv4(),
+              id,
+              ing.ingredientId,
+              ing.isDefault ?? true,
+              ing.isRemovable ?? true,
+              ing.isExtra ?? false,
+            ]
+          );
+        }
+      }
     });
 
-    if (image !== undefined && existing.image && existing.image !== image) {
+    if (body.image !== undefined && existing.image && existing.image !== body.image) {
       await deletePublicImage(existing.image);
     }
 
+    const product = await fetchProductById(id);
     return NextResponse.json({ product });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
@@ -93,12 +138,12 @@ export async function DELETE(
   try {
     await requireAdmin();
     const { id } = await params;
-    const existing = await prisma.product.findUnique({ where: { id } });
+    const existing = await queryOne<ProductRow>(`SELECT * FROM "products" WHERE id = $1`, [id]);
     if (!existing) {
       return NextResponse.json({ error: 'Товар не найден' }, { status: 404 });
     }
     await deletePublicImage(existing.image);
-    await prisma.product.delete({ where: { id } });
+    await query(`DELETE FROM "products" WHERE id = $1`, [id]);
     return NextResponse.json({ success: true });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')

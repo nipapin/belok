@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '@/components/ui/Modal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface Category {
   id: string;
@@ -19,6 +20,8 @@ export default function AdminCategoriesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [form, setForm] = useState({ name: '', sortOrder: 0, isActive: true });
+  const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
+  const [blockedDelete, setBlockedDelete] = useState<Category | null>(null);
 
   const { data } = useQuery({
     queryKey: ['admin-categories'],
@@ -45,8 +48,19 @@ export default function AdminCategoriesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => fetch(`/api/admin/categories/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-categories'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+      setPendingDelete(null);
+    },
   });
+
+  const handleDeleteClick = (cat: Category) => {
+    if (cat._count.products > 0) {
+      setBlockedDelete(cat);
+    } else {
+      setPendingDelete(cat);
+    }
+  };
 
   const handleOpen = (cat?: Category) => {
     if (cat) {
@@ -115,13 +129,7 @@ export default function AdminCategoriesPage() {
                     <button
                       type="button"
                       className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                      onClick={() => {
-                        if (cat._count.products > 0) {
-                          window.alert('Нельзя удалить категорию с товарами');
-                          return;
-                        }
-                        if (window.confirm('Удалить категорию?')) deleteMutation.mutate(cat.id);
-                      }}
+                      onClick={() => handleDeleteClick(cat)}
                       aria-label="Удалить"
                     >
                       <Trash2 className="size-4" />
@@ -171,13 +179,7 @@ export default function AdminCategoriesPage() {
               <button
                 type="button"
                 className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                onClick={() => {
-                  if (cat._count.products > 0) {
-                    window.alert('Нельзя удалить категорию с товарами');
-                    return;
-                  }
-                  if (window.confirm('Удалить категорию?')) deleteMutation.mutate(cat.id);
-                }}
+                onClick={() => handleDeleteClick(cat)}
                 aria-label="Удалить"
               >
                 <Trash2 className="size-4" />
@@ -186,6 +188,44 @@ export default function AdminCategoriesPage() {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onClose={() => {
+          if (!deleteMutation.isPending) setPendingDelete(null);
+        }}
+        title="Удалить категорию?"
+        description={
+          pendingDelete && (
+            <>
+              Категория{' '}
+              <span className="font-semibold text-(--lg-text)">«{pendingDelete.name}»</span>{' '}
+              будет удалена безвозвратно.
+            </>
+          )
+        }
+        confirmLabel="Удалить"
+        loading={deleteMutation.isPending}
+        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete.id)}
+      />
+
+      <ConfirmDialog
+        open={!!blockedDelete}
+        onClose={() => setBlockedDelete(null)}
+        variant="info"
+        title="Не получится удалить"
+        description={
+          blockedDelete && (
+            <>
+              В категории{' '}
+              <span className="font-semibold text-(--lg-text)">«{blockedDelete.name}»</span>{' '}
+              {blockedDelete._count.products}{' '}
+              {blockedDelete._count.products === 1 ? 'товар' : 'товаров'}. Сначала переместите или
+              удалите их.
+            </>
+          )
+        }
+      />
 
       <Modal
         open={open}

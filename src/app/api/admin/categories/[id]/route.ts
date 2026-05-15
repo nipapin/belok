@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { query, queryOne } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
+import type { CategoryRow } from '@/lib/types';
+
+interface UpdateCategoryBody {
+  name?: string;
+  image?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
+}
 
 export async function PUT(
   request: NextRequest,
@@ -9,16 +17,30 @@ export async function PUT(
   try {
     await requireAdmin();
     const { id } = await params;
-    const body = await request.json();
-    const category = await prisma.category.update({
-      where: { id },
-      data: {
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.image !== undefined && { image: body.image }),
-        ...(body.sortOrder !== undefined && { sortOrder: body.sortOrder }),
-        ...(body.isActive !== undefined && { isActive: body.isActive }),
-      },
-    });
+    const body = (await request.json()) as UpdateCategoryBody;
+
+    const sets: string[] = [];
+    const sqlParams: unknown[] = [];
+    function add(column: string, value: unknown) {
+      sqlParams.push(value);
+      sets.push(`"${column}" = $${sqlParams.length}`);
+    }
+    if (body.name !== undefined) add('name', body.name);
+    if (body.image !== undefined) add('image', body.image);
+    if (body.sortOrder !== undefined) add('sortOrder', body.sortOrder);
+    if (body.isActive !== undefined) add('isActive', body.isActive);
+
+    if (sets.length === 0) {
+      const category = await queryOne<CategoryRow>(`SELECT * FROM "categories" WHERE id = $1`, [id]);
+      return NextResponse.json({ category });
+    }
+
+    sqlParams.push(id);
+    const category = await queryOne<CategoryRow>(
+      `UPDATE "categories" SET ${sets.join(', ')} WHERE id = $${sqlParams.length}
+       RETURNING id, name, image, "sortOrder", "isActive", "createdAt", "updatedAt"`,
+      sqlParams
+    );
     return NextResponse.json({ category });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
@@ -34,7 +56,7 @@ export async function DELETE(
   try {
     await requireAdmin();
     const { id } = await params;
-    await prisma.category.delete({ where: { id } });
+    await query(`DELETE FROM "categories" WHERE id = $1`, [id]);
     return NextResponse.json({ success: true });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')

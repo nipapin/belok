@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '@/components/ui/Modal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface Ingredient {
   id: string;
@@ -18,6 +19,7 @@ export default function AdminIngredientsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [form, setForm] = useState({ name: '', price: '0', isAvailable: true });
+  const [pendingDelete, setPendingDelete] = useState<Ingredient | null>(null);
 
   const { data } = useQuery({
     queryKey: ['admin-ingredients'],
@@ -44,7 +46,10 @@ export default function AdminIngredientsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => fetch(`/api/admin/ingredients/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-ingredients'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-ingredients'] });
+      setPendingDelete(null);
+    },
   });
 
   const handleOpen = (ing?: Ingredient) => {
@@ -114,9 +119,7 @@ export default function AdminIngredientsPage() {
                     <button
                       type="button"
                       className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                      onClick={() => {
-                        if (window.confirm('Удалить ингредиент?')) deleteMutation.mutate(ing.id);
-                      }}
+                      onClick={() => setPendingDelete(ing)}
                       aria-label="Удалить"
                     >
                       <Trash2 className="size-4" />
@@ -166,9 +169,7 @@ export default function AdminIngredientsPage() {
               <button
                 type="button"
                 className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                onClick={() => {
-                  if (window.confirm('Удалить ингредиент?')) deleteMutation.mutate(ing.id);
-                }}
+                onClick={() => setPendingDelete(ing)}
                 aria-label="Удалить"
               >
                 <Trash2 className="size-4" />
@@ -177,6 +178,30 @@ export default function AdminIngredientsPage() {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onClose={() => {
+          if (!deleteMutation.isPending) setPendingDelete(null);
+        }}
+        title="Удалить ингредиент?"
+        description={
+          pendingDelete && (
+            <>
+              Ингредиент{' '}
+              <span className="font-semibold text-(--lg-text)">«{pendingDelete.name}»</span>{' '}
+              {pendingDelete._count.products > 0
+                ? `используется в ${pendingDelete._count.products} ${
+                    pendingDelete._count.products === 1 ? 'товаре' : 'товарах'
+                  }. После удаления исчезнет из их состава.`
+                : 'будет удалён безвозвратно.'}
+            </>
+          )
+        }
+        confirmLabel="Удалить"
+        loading={deleteMutation.isPending}
+        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete.id)}
+      />
 
       <Modal
         open={open}

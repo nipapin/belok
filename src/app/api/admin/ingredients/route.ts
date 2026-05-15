@@ -1,14 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { v4 as uuidv4 } from 'uuid';
+import { query, queryOne } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
+import type { IngredientRow } from '@/lib/types';
+
+interface IngredientWithCountRow extends IngredientRow {
+  product_count: string;
+}
 
 export async function GET() {
   try {
     await requireAdmin();
-    const ingredients = await prisma.ingredient.findMany({
-      orderBy: { name: 'asc' },
-      include: { _count: { select: { products: true } } },
-    });
+    const rows = await query<IngredientWithCountRow>(
+      `SELECT
+         i.*,
+         COUNT(pi."id") AS product_count
+       FROM "ingredients" i
+       LEFT JOIN "product_ingredients" pi ON pi."ingredientId" = i."id"
+       GROUP BY i."id"
+       ORDER BY i."name" ASC`
+    );
+
+    const ingredients = rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      price: r.price,
+      isAvailable: r.isAvailable,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      _count: { products: Number(r.product_count) },
+    }));
+
     return NextResponse.json({ ingredients });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
@@ -17,13 +39,23 @@ export async function GET() {
   }
 }
 
+interface CreateIngredientBody {
+  name: string;
+  price?: string | number;
+  isAvailable?: boolean;
+}
+
 export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
-    const { name, price, isAvailable } = await request.json();
-    const ingredient = await prisma.ingredient.create({
-      data: { name, price: parseFloat(price) || 0, isAvailable: isAvailable ?? true },
-    });
+    const body = (await request.json()) as CreateIngredientBody;
+    const id = uuidv4();
+    const ingredient = await queryOne<IngredientRow>(
+      `INSERT INTO "ingredients"(id, name, price, "isAvailable")
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, name, price, "isAvailable", "createdAt", "updatedAt"`,
+      [id, body.name, parseFloat(String(body.price ?? 0)) || 0, body.isAvailable ?? true]
+    );
     return NextResponse.json({ ingredient }, { status: 201 });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { getCurrentUser, getUserWithLoyaltyById } from '@/lib/auth';
+import { query } from '@/lib/db';
 import { deletePublicImage, savePublicImage } from '@/lib/uploadStorage';
 import { toClientUser } from '@/lib/userClient';
 
@@ -34,11 +34,9 @@ export async function POST(request: NextRequest) {
       throw e;
     }
 
-    const updated = await prisma.user.update({
-      where: { id: user.id },
-      data: { avatarUrl: url },
-      include: { loyaltyLevel: true },
-    });
+    await query(`UPDATE "users" SET "avatarUrl" = $1 WHERE id = $2`, [url, user.id]);
+    const updated = await getUserWithLoyaltyById(user.id);
+    if (!updated) return NextResponse.json({ error: 'Пользователь не найден' }, { status: 500 });
 
     await deletePublicImage(user.avatarUrl);
 
@@ -57,11 +55,9 @@ export async function DELETE() {
     }
 
     const prev = user.avatarUrl;
-    const updated = await prisma.user.update({
-      where: { id: user.id },
-      data: { avatarUrl: null },
-      include: { loyaltyLevel: true },
-    });
+    await query(`UPDATE "users" SET "avatarUrl" = NULL WHERE id = $1`, [user.id]);
+    const updated = await getUserWithLoyaltyById(user.id);
+    if (!updated) return NextResponse.json({ error: 'Пользователь не найден' }, { status: 500 });
 
     await deletePublicImage(prev);
 

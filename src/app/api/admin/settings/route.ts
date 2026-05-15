@@ -1,14 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { query, withTransaction } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
+import type { LoyaltyLevelRow } from '@/lib/types';
+
+interface LevelWithCountRow extends LoyaltyLevelRow {
+  user_count: string;
+}
+
+interface IncomingLevel {
+  id: string;
+  name: string;
+  minSpent: string | number;
+  cashbackPercent: string | number;
+  discountPercent: string | number;
+}
 
 export async function GET() {
   try {
     await requireAdmin();
-    const levels = await prisma.loyaltyLevel.findMany({
-      orderBy: { sortOrder: 'asc' },
-      include: { _count: { select: { users: true } } },
-    });
+    const rows = await query<LevelWithCountRow>(
+      `SELECT
+         l.*,
+         (SELECT COUNT(*) FROM "users" u WHERE u."loyaltyLevelId" = l."id") AS user_count
+       FROM "loyalty_levels" l
+       ORDER BY l."sortOrder" ASC`
+    );
+
+    const levels = rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      minSpent: r.minSpent,
+      cashbackPercent: r.cashbackPercent,
+      discountPercent: r.discountPercent,
+      sortOrder: r.sortOrder,
+      _count: { users: Number(r.user_count) },
+    }));
+
     return NextResponse.json({ levels });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
@@ -20,23 +47,34 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     await requireAdmin();
-    const { levels } = await request.json();
+    const body = (await request.json()) as { levels?: IncomingLevel[] };
+    const levels = body.levels ?? [];
 
-    for (const level of levels) {
-      await prisma.loyaltyLevel.update({
-        where: { id: level.id },
-        data: {
-          name: level.name,
-          minSpent: parseFloat(level.minSpent),
-          cashbackPercent: parseFloat(level.cashbackPercent),
-          discountPercent: parseFloat(level.discountPercent),
-        },
-      });
-    }
-
-    const updated = await prisma.loyaltyLevel.findMany({
-      orderBy: { sortOrder: 'asc' },
+    await withTransaction(async (client) => {
+      for (const level of levels) {
+        await client.query(
+          `UPDATE "loyalty_levels"
+              SET name = $1,
+                  "minSpent" = $2,
+                  "cashbackPercent" = $3,
+                  "discountPercent" = $4
+            WHERE id = $5`,
+          [
+            level.name,
+            parseFloat(String(level.minSpent)) || 0,
+            parseFloat(String(level.cashbackPercent)) || 0,
+            parseFloat(String(level.discountPercent)) || 0,
+            level.id,
+          ]
+        );
+      }
     });
+
+    const updated = await query<LoyaltyLevelRow>(
+      `SELECT id, name, "minSpent", "cashbackPercent", "discountPercent", "sortOrder"
+         FROM "loyalty_levels"
+        ORDER BY "sortOrder" ASC`
+    );
 
     return NextResponse.json({ levels: updated });
   } catch (e) {

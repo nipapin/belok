@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface Ingredient {
   id: string;
@@ -38,6 +40,7 @@ interface Product {
 
 export default function AdminProductsPage() {
   const queryClient = useQueryClient();
+  const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
 
   const { data: productsData } = useQuery({
     queryKey: ['admin-products'],
@@ -52,8 +55,44 @@ export default function AdminProductsPage() {
         if (!r.ok) throw new Error();
         return r.json();
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      setPendingDelete(null);
+    },
   });
+
+  const toggleVisibilityMutation = useMutation({
+    mutationFn: async ({ id, isAvailable }: { id: string; isAvailable: boolean }) => {
+      const res = await fetch(`/api/admin/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isAvailable }),
+      });
+      if (!res.ok) throw new Error();
+      return res.json();
+    },
+    onMutate: async ({ id, isAvailable }) => {
+      await queryClient.cancelQueries({ queryKey: ['admin-products'] });
+      const prev = queryClient.getQueryData<{ products: Product[] }>(['admin-products']);
+      if (prev) {
+        queryClient.setQueryData(['admin-products'], {
+          ...prev,
+          products: prev.products.map((p) => (p.id === id ? { ...p, isAvailable } : p)),
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(['admin-products'], ctx.prev);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+    },
+  });
+
+  const toggleVisibility = (product: Product) => {
+    toggleVisibilityMutation.mutate({ id: product.id, isAvailable: !product.isAvailable });
+  };
 
   return (
     <div>
@@ -98,15 +137,24 @@ export default function AdminProductsPage() {
                   </td>
                   <td>{product.price} ₽</td>
                   <td>
-                    <span
+                    <button
+                      type="button"
+                      onClick={() => toggleVisibility(product)}
                       className={
                         product.isAvailable
-                          ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
-                          : 'admin-chip-neutral'
+                          ? 'inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-200'
+                          : 'admin-chip-neutral inline-flex items-center gap-1.5 px-2 py-1 transition hover:opacity-80'
                       }
+                      aria-label={product.isAvailable ? 'Скрыть из меню' : 'Показать в меню'}
+                      title={product.isAvailable ? 'Скрыть из меню' : 'Показать в меню'}
                     >
+                      {product.isAvailable ? (
+                        <Eye className="size-3.5" />
+                      ) : (
+                        <EyeOff className="size-3.5" />
+                      )}
                       {product.isAvailable ? 'Да' : 'Нет'}
-                    </span>
+                    </button>
                   </td>
                   <td className="text-right">
                     <Link
@@ -119,9 +167,7 @@ export default function AdminProductsPage() {
                     <button
                       type="button"
                       className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                      onClick={() => {
-                        if (window.confirm('Удалить товар?')) deleteMutation.mutate(product.id);
-                      }}
+                      onClick={() => setPendingDelete(product)}
                       aria-label="Удалить"
                     >
                       <Trash2 className="size-4" />
@@ -158,15 +204,24 @@ export default function AdminProductsPage() {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] pt-3 text-sm">
               <span className="font-semibold tabular-nums text-(--lg-text)">{product.price} ₽</span>
-              <span
+              <button
+                type="button"
+                onClick={() => toggleVisibility(product)}
                 className={
                   product.isAvailable
-                    ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
-                    : 'admin-chip-neutral'
+                    ? 'inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-200'
+                    : 'admin-chip-neutral inline-flex items-center gap-1.5 px-2.5 py-1 transition hover:opacity-80'
                 }
+                aria-label={product.isAvailable ? 'Скрыть из меню' : 'Показать в меню'}
+                title={product.isAvailable ? 'Скрыть из меню' : 'Показать в меню'}
               >
+                {product.isAvailable ? (
+                  <Eye className="size-3.5" />
+                ) : (
+                  <EyeOff className="size-3.5" />
+                )}
                 {product.isAvailable ? 'В меню' : 'Скрыт'}
-              </span>
+              </button>
               <div className="ml-auto flex gap-1">
                 <Link
                   href={`/admin/products/${product.id}/edit`}
@@ -178,9 +233,7 @@ export default function AdminProductsPage() {
                 <button
                   type="button"
                   className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                  onClick={() => {
-                    if (window.confirm('Удалить товар?')) deleteMutation.mutate(product.id);
-                  }}
+                  onClick={() => setPendingDelete(product)}
                   aria-label="Удалить"
                 >
                   <Trash2 className="size-4" />
@@ -190,6 +243,25 @@ export default function AdminProductsPage() {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onClose={() => {
+          if (!deleteMutation.isPending) setPendingDelete(null);
+        }}
+        title="Удалить товар?"
+        description={
+          pendingDelete && (
+            <>
+              Товар <span className="font-semibold text-(--lg-text)">«{pendingDelete.name}»</span>{' '}
+              будет удалён безвозвратно.
+            </>
+          )
+        }
+        confirmLabel="Удалить"
+        loading={deleteMutation.isPending}
+        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete.id)}
+      />
     </div>
   );
 }

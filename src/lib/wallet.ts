@@ -108,7 +108,7 @@ export function generateApplePassJson(data: WalletCardData) {
         {
           key: 'rules',
           label: 'Правила программы',
-          value: 'Бонусами можно оплатить до 30% заказа. 1 бонус = 1 рубль.',
+          value: 'Бонусами можно оплатить до 100% заказа. 1 бонус = 1 рубль.',
         },
       ],
     },
