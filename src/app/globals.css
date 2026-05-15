@@ -31,6 +31,9 @@ html {
   --lg-nav-blur: 40px;
   /* Header: safe-area-inset-top + mt-2 on bar + lg-bar py-2 + row (~2.5rem icons) — product hero negative margin */
   --client-header-stack-height: calc(70px + env(safe-area-inset-top, 0px));
+  /* Edge fallback: paint behind safe-area-inset-bottom (iOS home indicator zone)
+     when body's fixed h-dvh doesn't cover it. Matches gradient bottom. */
+  background-color: #646669;
 }
 
 html[data-theme="light"] {
@@ -50,6 +53,7 @@ html[data-theme="light"] {
   --lg-chip-label: #27272a;
   --lg-chip-label-active: #0a0a0a;
   --lg-bg-image: linear-gradient(to bottom, #e8eef7 0%, #f6f8fc 100%);
+  background-color: #f6f8fc;
 }
 
 @layer base {
@@ -62,6 +66,10 @@ html[data-theme="light"] {
     @apply antialiased;
     font-feature-settings: "kern" 1, "liga" 1;
     overscroll-behavior-y: none;
+    /* Paint the gradient on html too so the home-indicator safe-area
+       (below body's fixed h-dvh on iOS standalone PWA) is covered. */
+    background-image: var(--lg-bg-image);
+    background-attachment: fixed;
   }
 
   body {

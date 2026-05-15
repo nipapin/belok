@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="belok">
+  <rect width="512" height="512" fill="#ffffff"/>
+  <circle cx="256" cy="298" r="118" stroke="#18181b" stroke-width="44" fill="none"/>
+  <path d="M244 122 L300 80" stroke="#18181b" stroke-width="24" stroke-linecap="round" fill="none"/>
+</svg>
