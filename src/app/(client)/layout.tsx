@@ -18,6 +18,16 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     fetchUser();
   }, [fetchUser]);
 
+  useEffect(() => {
+    const orientation = window.screen?.orientation as
+      | (ScreenOrientation & { lock?: (o: string) => Promise<void> })
+      | undefined;
+    if (typeof orientation?.lock !== "function") return;
+    orientation.lock("portrait-primary").catch(() => {
+      // iOS Safari and most desktop browsers reject this; silently ignore.
+    });
+  }, []);
+
   const handleRefresh = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries(),
@@ -33,7 +43,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         <Header />
         <PullToRefresh
           onRefresh={handleRefresh}
-          className="flex-1 min-h-0 pt-[66px] overflow-y-auto overflow-x-hidden scrollbar-hide pb-[max(94px,env(safe-area-inset-bottom,0px))] px-2"
+          className="flex-1 min-h-0 pt-[calc(66px+env(safe-area-inset-top,0px))] overflow-y-auto overflow-x-hidden scrollbar-hide pb-[max(94px,env(safe-area-inset-bottom,0px))] px-2"
         >
           {children}
         </PullToRefresh>

@@ -29,8 +29,8 @@ html {
   --lg-chip-label-active: #ffffff;
   --lg-bg-image: linear-gradient(to top, #646669 0%, #bacef0 100%);
   --lg-nav-blur: 40px;
-  /* Header: safe-area + mt-2 on bar + lg-bar py-2 + row (~2.5rem icons) — product hero negative margin */
-  --client-header-stack-height: 70px;
+  /* Header: safe-area-inset-top + mt-2 on bar + lg-bar py-2 + row (~2.5rem icons) — product hero negative margin */
+  --client-header-stack-height: calc(70px + env(safe-area-inset-top, 0px));
 }
 
 html[data-theme="light"] {
