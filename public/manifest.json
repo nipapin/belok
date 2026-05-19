@@ -4,8 +4,8 @@
   "description": "Кафе здорового питания. Заказ еды, бонусная программа, доставка.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#646669",
-  "theme_color": "#18181b",
+  "background_color": "#bacef0",
+  "theme_color": "#bacef0",
   "orientation": "portrait-primary",
   "categories": ["food", "lifestyle"],
   "icons": [

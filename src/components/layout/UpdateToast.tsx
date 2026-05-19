@@ -33,7 +33,7 @@ export default function UpdateToast() {
       aria-live="polite"
       className="update-toast pointer-events-none fixed left-1/2 z-1150 w-[calc(100%-1rem)] max-w-sm -translate-x-1/2 px-2"
       style={{
-        top: "calc(env(safe-area-inset-top, 0px) + 76px)",
+        top: "76px",
       }}
     >
       <div className="lg-bar pointer-events-auto flex items-center gap-3 px-3 py-2 pl-4">

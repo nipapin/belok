@@ -3,6 +3,7 @@
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useHaptic } from "@/hooks/useHaptic";
+import { applyPwaThemeColor } from "@/lib/pwaTheme";
 
 function readThemeFromDom(): "light" | "dark" {
   if (typeof document === "undefined") return "dark";
@@ -27,6 +28,7 @@ export default function ThemeToggle() {
       /* ignore */
     }
     document.documentElement.setAttribute("data-theme", next);
+    applyPwaThemeColor(next);
     haptic("selection");
   }
 

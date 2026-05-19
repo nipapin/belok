@@ -31,24 +31,23 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }, []);
 
   const handleRefresh = useCallback(async () => {
-    await Promise.all([
-      queryClient.invalidateQueries(),
-      fetchUser(),
-    ]);
+    await Promise.all([queryClient.invalidateQueries(), fetchUser()]);
     router.refresh();
   }, [queryClient, fetchUser, router]);
 
   return (
     <>
-      <AnimatedGradientBackground />
-      <div data-mobile-ui className="relative z-10 flex h-full min-h-dvh flex-col overflow-hidden">
-        <Header />
-        <PullToRefresh
-          onRefresh={handleRefresh}
-          className="flex-1 min-h-0 pt-[calc(66px+env(safe-area-inset-top,0px))] overflow-y-auto overflow-x-hidden scrollbar-hide pb-[max(94px,env(safe-area-inset-bottom,0px))] px-2"
-        >
-          {children}
-        </PullToRefresh>
+      <div className="relative flex min-h-dvh flex-col overflow-hidden">
+        <AnimatedGradientBackground />
+        <div data-mobile-ui className="relative z-10 flex min-h-0 flex-1 flex-col">
+          <Header />
+          <PullToRefresh
+            onRefresh={handleRefresh}
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden scrollbar-hide px-2 pt-[var(--client-header-stack-height)] pb-[calc(var(--client-nav-bar-height)+var(--client-nav-edge-gap))]"
+          >
+            {children}
+          </PullToRefresh>
+        </div>
         <BottomNav />
       </div>
       <UpdateToast />

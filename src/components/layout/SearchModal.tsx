@@ -91,7 +91,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="mx-auto flex h-full w-full max-w-2xl flex-col px-2 pt-[max(12px,env(safe-area-inset-top,0px))] pb-4">
+      <div className="mx-auto flex h-full w-full max-w-2xl flex-col px-2 pb-4 pt-3">
         <div className="mt-2 flex items-center gap-2">
           <div className="lg-bar relative flex flex-1 items-center px-2 py-1.5">
             <Search

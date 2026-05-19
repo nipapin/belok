@@ -29,11 +29,12 @@ html {
   --lg-chip-label-active: #ffffff;
   --lg-bg-image: linear-gradient(to top, #646669 0%, #bacef0 100%);
   --lg-nav-blur: 40px;
-  /* Header: safe-area-inset-top + mt-2 on bar + lg-bar py-2 + row (~2.5rem icons) — product hero negative margin */
-  --client-header-stack-height: calc(70px + env(safe-area-inset-top, 0px));
-  /* Edge fallback: paint behind safe-area-inset-bottom (iOS home indicator zone)
-     when body's fixed h-dvh doesn't cover it. Matches gradient bottom. */
-  background-color: #646669;
+  /* Header: mt-2 + lg-bar py-2 + row (~2.5rem icons) */
+  --client-header-stack-height: 70px;
+  --client-nav-bar-height: 70px;
+  --client-nav-edge-gap: 12px;
+  --pwa-chrome-top: #bacef0;
+  background-color: var(--pwa-chrome-top);
 }
 
 html[data-theme="light"] {
@@ -53,7 +54,8 @@ html[data-theme="light"] {
   --lg-chip-label: #27272a;
   --lg-chip-label-active: #0a0a0a;
   --lg-bg-image: linear-gradient(to bottom, #e8eef7 0%, #f6f8fc 100%);
-  background-color: #f6f8fc;
+  --pwa-chrome-top: #e8eef7;
+  background-color: var(--pwa-chrome-top);
 }
 
 @layer base {
@@ -67,21 +69,14 @@ html[data-theme="light"] {
     font-feature-settings: "kern" 1, "liga" 1;
     overscroll-behavior-y: none;
     height: 100%;
-    /* NB: NOT using `background-attachment: fixed`.
-       On iOS standalone PWA (viewport-fit=cover) `fixed` clips backgrounds
-       to the safe-area viewport — the home-indicator zone stays unpainted
-       even when the element box reaches the screen bottom. */
+    background-color: var(--pwa-chrome-top);
     background-image: var(--lg-bg-image);
   }
 
   body {
-    /* `inset: 0` anchors body to all four edges of the visual viewport.
-       With viewport-fit=cover that's the entire physical screen including
-       the home-indicator zone. */
-    @apply m-0 fixed inset-0 overflow-hidden p-0 font-sans;
+    @apply m-0 min-h-dvh overflow-hidden p-0 font-sans;
     color: var(--lg-text);
-    /* Same reason as html above — gradient must paint relative to body's
-       own box (which IS full-screen), not to the safe-area viewport. */
+    background-color: var(--pwa-chrome-top);
     background-image: var(--lg-bg-image);
     overscroll-behavior-y: none;
   }
