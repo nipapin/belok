@@ -34,12 +34,14 @@ export default function BonusesPage() {
         <h1 className="heading-section">Детализация бонусов</h1>
       </div>
 
-      <div className="glass-panel-strong mb-6 rounded-3xl bg-zinc-900 p-6 text-center text-white shadow-xl">
-        <p className="mb-1 text-sm font-medium text-white/65">Баланс</p>
-        <p className="text-3xl font-bold tracking-tight">{Math.floor(balance)} бонусов</p>
+      <div className="mb-6 rounded-3xl border border-zinc-200/80 bg-white p-6 text-center shadow-xl">
+        <p className="mb-1 text-sm font-medium text-zinc-600">Баланс</p>
+        <p className="text-3xl font-bold tracking-tight text-zinc-900">
+          {Math.floor(balance)} бонусов
+        </p>
       </div>
 
-      <h2 className="mb-3 text-base font-semibold text-zinc-900">История операций</h2>
+      <h2 className="mb-3 text-base font-semibold text-(--lg-text)">История операций</h2>
 
       {isLoading ? (
         <div className="space-y-2">
@@ -48,7 +50,7 @@ export default function BonusesPage() {
           ))}
         </div>
       ) : transactions.length === 0 ? (
-        <p className="py-10 text-center text-sm text-zinc-500">Пока нет операций</p>
+        <p className="py-10 text-center text-sm text-(--lg-text-muted)">Пока нет операций</p>
       ) : (
         transactions.map((tx) => (
           <div
@@ -57,15 +59,15 @@ export default function BonusesPage() {
           >
             <div className="flex min-w-0 items-center gap-3">
               {tx.amount > 0 ? (
-                <ArrowUp className="size-4 shrink-0 text-emerald-600" strokeWidth={2} />
+                <ArrowUp className="size-4 shrink-0 text-emerald-400" strokeWidth={2} />
               ) : (
-                <ArrowDown className="size-4 shrink-0 text-rose-600" strokeWidth={2} />
+                <ArrowDown className="size-4 shrink-0 text-rose-400" strokeWidth={2} />
               )}
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-zinc-900">
+                <p className="truncate text-sm font-medium text-(--lg-text)">
                   {tx.description || tx.type}
                 </p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-(--lg-text-muted)">
                   {new Date(tx.createdAt).toLocaleString('ru-RU')}
                 </p>
               </div>
@@ -73,8 +75,8 @@ export default function BonusesPage() {
             <span
               className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold ${
                 tx.amount > 0
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                  : 'border-rose-200 bg-rose-50 text-rose-800'
+                  ? 'border-emerald-400/35 bg-emerald-500/18 text-(--lg-text)'
+                  : 'border-rose-400/35 bg-rose-500/18 text-(--lg-text)'
               }`}
             >
               {tx.amount > 0 ? '+' : ''}

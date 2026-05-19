@@ -6,59 +6,71 @@ import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useAuthStore } from "@/store/authStore";
 import { useHaptic } from "@/hooks/useHaptic";
 
-const FLAG = "belok_just_registered";
-const DECISION_FLAG = "belok_push_prompt_shown";
+/** Set on successful login / email verification before redirect. */
+export const PUSH_PROMPT_AUTH_FLAG = "belok_show_push_prompt";
+const SESSION_DISMISSED = "belok_push_dismissed_session";
 
 /**
- * Modal that appears once, after a successful registration / first verification,
- * inviting the user to enable push notifications. Only shown if:
- *   - the user is logged in
- *   - the auth flow set the `belok_just_registered` sessionStorage flag
- *   - we haven't already asked in this browser (localStorage decision flag)
- *   - the browser actually supports push (or we can guide iOS users)
+ * Modal after sign-in (or once per session) inviting the user to enable push.
+ * - permission "default" → OS prompt via «Включить»
+ * - permission "denied" → reminder only (settings hint)
  */
 export default function PushPromptAfterRegister() {
   const user = useAuthStore((s) => s.user);
   const { status, busy, enable } = usePushSubscription();
   const haptic = useHaptic();
   const [open, setOpen] = useState(false);
+  const [reminderOnly, setReminderOnly] = useState(false);
 
-  // Decide whether to open exactly once per browser per registration.
   useEffect(() => {
     if (!user) return;
-    let justRegistered = false;
-    try {
-      justRegistered = sessionStorage.getItem(FLAG) === "1";
-      if (justRegistered) sessionStorage.removeItem(FLAG);
-    } catch {
-      /* ignore */
-    }
-    if (!justRegistered) return;
-
-    // Don't pester: if we already asked in this browser, skip.
-    let alreadyAsked = false;
-    try {
-      alreadyAsked = localStorage.getItem(DECISION_FLAG) === "1";
-    } catch {
-      /* ignore */
-    }
-    if (alreadyAsked) return;
-
-    // Wait for the subscription state to settle.
     if (status === "loading") return;
-
-    // Already subscribed → no need to ask.
     if (status === "subscribed") return;
 
-    // Permission already permanently denied → asking won't change anything.
-    if (status === "denied") return;
+    let afterAuth = false;
+    try {
+      afterAuth = sessionStorage.getItem(PUSH_PROMPT_AUTH_FLAG) === "1";
+      if (afterAuth) sessionStorage.removeItem(PUSH_PROMPT_AUTH_FLAG);
+    } catch {
+      /* ignore */
+    }
 
-    setOpen(true);
+    let dismissedThisSession = false;
+    try {
+      dismissedThisSession = sessionStorage.getItem(SESSION_DISMISSED) === "1";
+    } catch {
+      /* ignore */
+    }
+
+    if (status === "denied") {
+      if (!afterAuth) return;
+      setReminderOnly(true);
+      setOpen(true);
+      return;
+    }
+
+    if (status === "ios-needs-install") {
+      if (!afterAuth && dismissedThisSession) return;
+      setReminderOnly(false);
+      setOpen(true);
+      return;
+    }
+
+    if (afterAuth) {
+      setReminderOnly(false);
+      setOpen(true);
+      return;
+    }
+
+    if (!dismissedThisSession && status === "not-subscribed") {
+      setReminderOnly(false);
+      setOpen(true);
+    }
   }, [user, status]);
 
-  const remember = () => {
+  const dismissSession = () => {
     try {
-      localStorage.setItem(DECISION_FLAG, "1");
+      sessionStorage.setItem(SESSION_DISMISSED, "1");
     } catch {
       /* ignore */
     }
@@ -66,18 +78,25 @@ export default function PushPromptAfterRegister() {
 
   const close = () => {
     haptic("selection");
-    remember();
+    dismissSession();
     setOpen(false);
   };
 
   const handleEnable = async () => {
     haptic("medium");
     await enable();
-    remember();
+    dismissSession();
     setOpen(false);
   };
 
   if (!open) return null;
+
+  const title = reminderOnly
+    ? "Включите уведомления"
+    : "Включить уведомления?";
+  const body = reminderOnly
+    ? "Так вы ничего не пропустите: статус заказа, бонусы и акции. Разрешение можно включить в настройках браузера для этого сайта."
+    : "Расскажем, когда заказ будет готов, начислим бонусы и предупредим о специальных предложениях. Без спама.";
 
   return (
     <div
@@ -114,19 +133,20 @@ export default function PushPromptAfterRegister() {
               id="push-prompt-title"
               className="text-lg font-semibold tracking-tight text-(--lg-text)"
             >
-              Включить уведомления?
+              {title}
             </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-(--lg-text-muted)">
-              Расскажем когда заказ будет готов, начислим бонусы и предупредим о
-              специальных предложениях. Без спама.
-            </p>
+            <p className="mt-1.5 text-sm leading-relaxed text-(--lg-text-muted)">{body}</p>
           </div>
 
           {status === "ios-needs-install" ? (
             <div className="w-full rounded-2xl border border-sky-500/30 bg-sky-500/10 px-3 py-2.5 text-left text-sm text-sky-100">
-              Чтобы получать уведомления на iPhone, добавьте приложение на
-              домашний экран: <b>Поделиться</b> → <b>На экран «Домой»</b>.
+              Чтобы получать уведомления на iPhone, добавьте приложение на домашний экран:{" "}
+              <b>Поделиться</b> → <b>На экран «Домой»</b>.
             </div>
+          ) : reminderOnly ? (
+            <button type="button" onClick={close} className="btn-primary w-full px-5 py-2.5 text-sm">
+              Понятно
+            </button>
           ) : (
             <div className="flex w-full flex-col gap-2 sm:flex-row">
               <button
@@ -137,12 +157,7 @@ export default function PushPromptAfterRegister() {
               >
                 {busy ? "Включаем…" : "Включить"}
               </button>
-              <button
-                type="button"
-                onClick={close}
-                disabled={busy}
-                className="btn-ghost flex-1"
-              >
+              <button type="button" onClick={close} disabled={busy} className="btn-ghost flex-1">
                 Не сейчас
               </button>
             </div>

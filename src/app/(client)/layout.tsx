@@ -20,16 +20,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     fetchUser();
   }, [fetchUser]);
 
-  useEffect(() => {
-    const orientation = window.screen?.orientation as
-      | (ScreenOrientation & { lock?: (o: string) => Promise<void> })
-      | undefined;
-    if (typeof orientation?.lock !== "function") return;
-    orientation.lock("portrait-primary").catch(() => {
-      // iOS Safari and most desktop browsers reject this; silently ignore.
-    });
-  }, []);
-
   const handleRefresh = useCallback(async () => {
     await Promise.all([queryClient.invalidateQueries(), fetchUser()]);
     router.refresh();
@@ -37,7 +27,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <>
-      <div className="relative flex min-h-dvh flex-col overflow-hidden">
+      <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         <AnimatedGradientBackground />
         <div data-mobile-ui className="relative z-10 flex min-h-0 flex-1 flex-col">
           <Header />

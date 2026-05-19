@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Loader2, Lock, Mail, User as UserIcon } from 'lucide-react';
 import { PinInput, REGEXP_ONLY_DIGITS } from '@/components/base/input/pin-input';
 import EmailAutocompleteInput from '@/components/auth/EmailAutocompleteInput';
+import { PUSH_PROMPT_AUTH_FLAG } from '@/components/notifications/PushPromptAfterRegister';
 import { useAuthStore } from '@/store/authStore';
 
 export default function AuthPage() {
@@ -84,6 +85,11 @@ function AuthPageInner() {
           return;
         }
         setUser(data.user);
+        try {
+          sessionStorage.setItem(PUSH_PROMPT_AUTH_FLAG, "1");
+        } catch {
+          /* ignore */
+        }
         window.location.href = redirect;
       } else {
         const res = await fetch('/api/auth/register', {
@@ -126,12 +132,10 @@ function AuthPageInner() {
         return;
       }
       setUser(data.user);
-      // Mark that the user just completed registration so the post-auth
-      // PushPrompt can decide whether to show itself.
       try {
-        sessionStorage.setItem('belok_just_registered', '1');
+        sessionStorage.setItem(PUSH_PROMPT_AUTH_FLAG, "1");
       } catch {
-        /* private mode etc. — ignore */
+        /* ignore */
       }
       window.location.href = redirect;
     } catch {

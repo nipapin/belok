@@ -14,6 +14,7 @@ import {
   Users,
   Settings,
   ScanLine,
+  LogOut,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useMdUp } from '@/hooks/useMdUp';
@@ -36,7 +37,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const mdUp = useMdUp();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, fetchUser, isLoading } = useAuthStore();
+  const { user, fetchUser, isLoading, logout } = useAuthStore();
 
   useEffect(() => {
     fetchUser();
@@ -49,6 +50,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [isUnauthorized, router]);
 
   if (isLoading || isUnauthorized) return null;
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/');
+  };
 
   const drawer = (
     <div className="admin-drawer-panel flex h-full flex-col">
@@ -81,6 +87,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           );
         })}
       </nav>
+      <div className="border-t border-(--lg-ring) p-3">
+        {(user?.email || user?.phone) && (
+          <p className="mb-2 truncate px-1 text-xs text-(--lg-text-muted)">
+            {user.email ?? user.phone}
+          </p>
+        )}
+        <button type="button" className="profile-logout w-full py-2.5" onClick={handleLogout}>
+          <LogOut className="size-4 shrink-0" strokeWidth={2} />
+          Выйти
+        </button>
+      </div>
     </div>
   );
 

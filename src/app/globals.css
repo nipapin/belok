@@ -74,7 +74,7 @@ html[data-theme="light"] {
   }
 
   body {
-    @apply m-0 min-h-dvh overflow-hidden p-0 font-sans;
+    @apply m-0 h-dvh min-h-0 overflow-hidden p-0 font-sans;
     color: var(--lg-text);
     background-color: var(--pwa-chrome-top);
     background-image: var(--lg-bg-image);
@@ -84,6 +84,7 @@ html[data-theme="light"] {
   a {
     @apply text-inherit no-underline;
   }
+
 }
 
 @layer components {

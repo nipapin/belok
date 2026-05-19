@@ -18,7 +18,7 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-dvh overflow-hidden">{children}</div>
+      <div className="flex h-dvh min-h-0 flex-col overflow-hidden">{children}</div>
     </QueryClientProvider>
   );
 }
