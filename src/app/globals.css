@@ -105,6 +105,19 @@ html[data-theme="light"] {
     --lg-bg-image: linear-gradient(to bottom, #e8eef7 0%, #f6f8fc 100%);
     background-image: var(--lg-bg-image);
     background-attachment: fixed;
+
+    /* Размеры/отступы шапки навигации админки. Завязаны на safe-area,
+       чтобы корректно работать на iOS PWA с notch. Используются через
+       var() в Tailwind arbitrary properties — НЕ через calc() в классах,
+       иначе ломается синтаксис arbitrary value (нет пробелов вокруг "+"). */
+    --admin-nav-h: calc(3.5rem + env(safe-area-inset-top));
+    --admin-nav-pad-top: env(safe-area-inset-top);
+    --admin-main-pad-top: calc(4.5rem + env(safe-area-inset-top));
+    /* Gap between fixed navbar bottom and natural top of <main> content
+       (--admin-main-pad-top - --admin-nav-h). Used as negative margin-top
+       on the form toolbar so it sits flush against the navbar instead of
+       leaving a visible 1rem gap below it. */
+    --admin-main-toolbar-shift: 1rem;
   }
 
   .admin-surface .admin-drawer-panel {
@@ -123,14 +136,31 @@ html[data-theme="light"] {
     box-shadow: var(--lg-shadow);
   }
 
-  /* Шапка карточки формы (Редактировать/Новый товар): sticky чуть ниже navbar,
-     с тем же фростед-стилем, чтобы контент чисто уезжал под неё при скролле. */
+  /* Шапка формы (Редактировать/Новый товар) — полоса прямо под navbar.
+     ВАЖНО: сама `<header>` рендерится во всю ширину <main> (не ограничена
+     max-w-2xl формы), внутри центрируется контент. Без верхней границы и
+     без верхней тени, чтобы стыковаться с navbar без зазора-шва.
+     НЕ sticky: на мобильных экшены живут в `.admin-form-action-bar` внизу,
+     на md+ — в правой части этой шапки. Шапка скроллится вместе с формой,
+     поэтому не перекрывает контент при прокрутке. */
   .admin-surface .admin-form-toolbar {
     border-bottom: 1px solid color-mix(in srgb, var(--lg-text) 8%, transparent);
-    background-color: color-mix(in srgb, white 78%, var(--lg-fill));
+    background-color: color-mix(in srgb, white 80%, var(--lg-fill));
     -webkit-backdrop-filter: blur(14px) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
     backdrop-filter: blur(14px) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
     box-shadow: 0 6px 18px -12px color-mix(in srgb, var(--lg-text) 22%, transparent);
+  }
+
+  /* Мобильная action-полоса формы (Отмена / Сохранить) — фиксирована внизу
+     viewport. Контент формы получает нижний padding (см. AdminProductForm),
+     чтобы последний блок не прятался под этой полосой. Виден только на <md;
+     на md+ кнопки живут в верхней `.admin-form-toolbar`. */
+  .admin-surface .admin-form-action-bar {
+    border-top: 1px solid color-mix(in srgb, var(--lg-text) 10%, transparent);
+    background-color: color-mix(in srgb, white 92%, var(--lg-fill));
+    -webkit-backdrop-filter: blur(16px) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(16px) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: 0 -10px 28px -16px color-mix(in srgb, var(--lg-text) 28%, transparent);
   }
 
   /* Neutral status chip inside admin (replaces raw zinc-100) */

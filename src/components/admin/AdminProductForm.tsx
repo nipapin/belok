@@ -217,193 +217,223 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
   const selectClass =
     'select-pill w-full !rounded-2xl border border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] py-3.5 !text-[0.9375rem] shadow-sm';
 
+  const submitLabel = mode === 'edit' ? 'Сохранить' : 'Создать';
+  const handleSubmit = () => {
+    setError('');
+    saveMutation.mutate(form);
+  };
+
   return (
-    <div className="mx-auto w-full max-w-2xl pb-4">
-      <header className="admin-form-toolbar sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-2 -mt-4 mb-6 flex min-w-0 items-end justify-between gap-4 px-3 pt-4 pb-3 sm:mb-7 sm:px-4">
-        <div className="min-w-0">
-          <p className="admin-form-eyebrow mb-1.5">Каталог</p>
-          <h1 className="m-0 text-xl font-semibold leading-tight tracking-tight text-(--lg-text) sm:text-2xl">
-            {title}
-          </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            className="btn-icon size-11"
-            onClick={goBack}
-            disabled={saving}
-            aria-label="Отмена"
-            title="Отмена"
-          >
-            <X className="size-5" strokeWidth={2.25} />
-          </button>
-          <button
-            type="button"
-            className="btn-primary inline-flex! h-11! w-11! max-h-11! min-h-11! min-w-11! max-w-11! shrink-0! items-center! justify-center! gap-0! p-0! px-0! py-0! rounded-full!"
-            onClick={() => {
-              setError('');
-              saveMutation.mutate(form);
-            }}
-            disabled={!canSave || saving}
-            aria-label={mode === 'edit' ? 'Сохранить' : 'Создать'}
-            title={mode === 'edit' ? 'Сохранить' : 'Создать'}
-          >
-            <Save className="size-5" strokeWidth={2.25} />
-          </button>
+    <>
+      <header className="admin-form-toolbar -mx-2 -mt-(--admin-main-toolbar-shift) mb-6 px-3 pt-4 pb-3 sm:mb-7 sm:px-4 md:-ml-[calc(260px+1rem)] md:-mr-8 md:px-6">
+        <div className="mx-auto flex w-full max-w-2xl min-w-0 items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="admin-form-eyebrow mb-1.5">Каталог</p>
+            <h1 className="m-0 text-xl font-semibold leading-tight tracking-tight text-(--lg-text) sm:text-2xl">
+              {title}
+            </h1>
+          </div>
+          <div className="hidden shrink-0 items-center gap-2 md:flex">
+            <button
+              type="button"
+              className="btn-icon size-11"
+              onClick={goBack}
+              disabled={saving}
+              aria-label="Отмена"
+              title="Отмена"
+            >
+              <X className="size-5" strokeWidth={2.25} />
+            </button>
+            <button
+              type="button"
+              className="btn-primary inline-flex! h-11! w-11! max-h-11! min-h-11! min-w-11! max-w-11! shrink-0! items-center! justify-center! gap-0! p-0! px-0! py-0! rounded-full!"
+              onClick={handleSubmit}
+              disabled={!canSave || saving}
+              aria-label={submitLabel}
+              title={submitLabel}
+            >
+              <Save className="size-5" strokeWidth={2.25} />
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="flex flex-col gap-5 sm:gap-6">
-        {error && (
-          <div className="auth-alert-error rounded-2xl border border-rose-200/80 px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
-
-        <section className="admin-form-section">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0 pr-2">
-              <p className="text-sm font-semibold text-(--lg-text)">Доступен для заказа</p>
-              <p className="admin-form-hint mt-1">
-                Пока выключено, блюдо не показывается в меню и в корзину не добавляется.
-              </p>
+      <div className="mx-auto w-full max-w-2xl pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-4">
+        <div className="flex flex-col gap-5 sm:gap-6">
+          {error && (
+            <div className="auth-alert-error rounded-2xl border border-rose-200/80 px-4 py-3 text-sm">
+              {error}
             </div>
-            <Switch
-              id="product-is-available"
-              checked={form.isAvailable}
-              onChange={(v) => setForm((f) => ({ ...f, isAvailable: v }))}
-              disabled={saving}
-              aria-label="Доступен для заказа"
-            />
-          </div>
-        </section>
+          )}
 
-        <section className="admin-form-section">
-          <p className="admin-form-eyebrow">Внешний вид</p>
-          <p className="admin-form-hint mt-1.5 mb-4">
-            Превью 2:3, как в карточке товара в меню. Формат JPG, PNG, WebP — до 5 МБ.
-          </p>
-          <AdminProductImageField
-            previewUrl={currentImageUrl}
-            onFileSelect={(file) => setImageFile(file)}
-            onClear={clearProductImage}
-            showHeading={false}
-          />
-        </section>
+          <section className="admin-form-section">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0 pr-2">
+                <p className="text-sm font-semibold text-(--lg-text)">Доступен для заказа</p>
+                <p className="admin-form-hint mt-1">
+                  Пока выключено, блюдо не показывается в меню и в корзину не добавляется.
+                </p>
+              </div>
+              <Switch
+                id="product-is-available"
+                checked={form.isAvailable}
+                onChange={(v) => setForm((f) => ({ ...f, isAvailable: v }))}
+                disabled={saving}
+                aria-label="Доступен для заказа"
+              />
+            </div>
+          </section>
 
-        <section className="admin-form-section space-y-5">
-          <div>
-            <p className="admin-form-eyebrow">Основное</p>
-            <p className="admin-form-hint mt-1.5">Название и описание, как увидит гость.</p>
-          </div>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-(--lg-text)">
-              Название <span className="text-rose-500">*</span>
-            </span>
-            <input
-              className={fieldClass}
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+          <section className="admin-form-section">
+            <p className="admin-form-eyebrow">Внешний вид</p>
+            <p className="admin-form-hint mt-1.5 mb-4">
+              Превью 2:3, как в карточке товара в меню. Формат JPG, PNG, WebP — до 5 МБ.
+            </p>
+            <AdminProductImageField
+              previewUrl={currentImageUrl}
+              onFileSelect={(file) => setImageFile(file)}
+              onClear={clearProductImage}
+              showHeading={false}
             />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-(--lg-text)">Описание</span>
-            <textarea
-              className="glass-tight min-h-22 w-full resize-none rounded-2xl border border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] px-4 py-3.5 text-[0.9375rem] text-(--lg-text) shadow-[inset_0_1px_0_color-mix(in_srgb,white_35%,transparent)] outline-none focus:border-(--lg-ring-strong) focus:ring-2 focus:ring-[color-mix(in_srgb,var(--lg-text)_8%,transparent)]"
-              rows={3}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-            />
-          </label>
-        </section>
+          </section>
 
-        <section className="admin-form-section">
-          <p className="admin-form-eyebrow">Цена и раздел</p>
-          <p className="admin-form-hint mt-1.5 mb-5">Стоимость блюда и раздел витрины.</p>
-          <div className="grid gap-5 sm:grid-cols-2">
+          <section className="admin-form-section space-y-5">
+            <div>
+              <p className="admin-form-eyebrow">Основное</p>
+              <p className="admin-form-hint mt-1.5">Название и описание, как увидит гость.</p>
+            </div>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-(--lg-text)">
-                Цена (₽) <span className="text-rose-500">*</span>
+                Название <span className="text-rose-500">*</span>
               </span>
               <input
                 className={fieldClass}
-                type="number"
-                inputMode="decimal"
                 required
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-(--lg-text)">
-                Категория <span className="text-rose-500">*</span>
-              </span>
-              <select
-                className={selectClass}
-                value={form.categoryId}
-                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-              >
-                <option value="">Выберите категорию</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <span className="text-sm font-medium text-(--lg-text)">Описание</span>
+              <textarea
+                className="glass-tight min-h-22 w-full resize-none rounded-2xl border border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] px-4 py-3.5 text-[0.9375rem] text-(--lg-text) shadow-[inset_0_1px_0_color-mix(in_srgb,white_35%,transparent)] outline-none focus:border-(--lg-ring-strong) focus:ring-2 focus:ring-[color-mix(in_srgb,var(--lg-text)_8%,transparent)]"
+                rows={3}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
             </label>
-          </div>
-        </section>
+          </section>
 
-        <section className="admin-form-section">
-          <p className="admin-form-eyebrow">Пищевая ценность</p>
-          <p className="admin-form-hint mt-1.5 mb-5">На порцию — опционально, для отображения в меню.</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
-            {(
-              [
-                ['calories', 'Ккал'],
-                ['proteins', 'Белки, г'],
-                ['fats', 'Жиры, г'],
-                ['carbs', 'Углеводы, г'],
-                ['fiber', 'Клетчатка, г'],
-              ] as const
-            ).map(([field, label]) => (
-              <label key={field} className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-(--lg-text-muted)">{label}</span>
+          <section className="admin-form-section">
+            <p className="admin-form-eyebrow">Цена и раздел</p>
+            <p className="admin-form-hint mt-1.5 mb-5">Стоимость блюда и раздел витрины.</p>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-(--lg-text)">
+                  Цена (₽) <span className="text-rose-500">*</span>
+                </span>
                 <input
-                  className={fieldClass + ' py-2.5 text-sm tabular-nums'}
+                  className={fieldClass}
                   type="number"
                   inputMode="decimal"
-                  value={form[field]}
-                  onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+                  required
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
                 />
               </label>
-            ))}
-          </div>
-        </section>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-(--lg-text)">
+                  Категория <span className="text-rose-500">*</span>
+                </span>
+                <select
+                  className={selectClass}
+                  value={form.categoryId}
+                  onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                >
+                  <option value="">Выберите категорию</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
 
-        <section className="admin-form-section">
-          <p className="admin-form-eyebrow">Состав</p>
-          <p className="admin-form-hint mt-1.5 mb-4">Допы и варианты в карточке блюда.</p>
-          <div className="max-h-52 space-y-0 overflow-y-auto rounded-xl border border-[color-mix(in_srgb,var(--lg-text)_6%,transparent)] bg-[color-mix(in_srgb,white_50%,var(--lg-fill))] p-1.5">
-            {ingredients.map((ing) => (
-              <label
-                key={ing.id}
-                className="flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm text-(--lg-text) transition hover:bg-[color-mix(in_srgb,var(--lg-text)_4%,transparent)]"
-              >
-                <input
-                  type="checkbox"
-                  className="size-[1.05rem] shrink-0 rounded border-[color-mix(in_srgb,var(--lg-text)_15%,transparent)] accent-[#18181b]"
-                  checked={form.ingredientIds.includes(ing.id)}
-                  onChange={() => toggleIngredient(ing.id)}
-                />
-                <span className="min-w-0 flex-1 text-[0.9375rem] text-(--lg-text)">{ing.name}</span>
-                <span className="shrink-0 tabular-nums text-sm text-(--lg-text-muted)">+{ing.price} ₽</span>
-              </label>
-            ))}
-          </div>
-        </section>
+          <section className="admin-form-section">
+            <p className="admin-form-eyebrow">Пищевая ценность</p>
+            <p className="admin-form-hint mt-1.5 mb-5">На порцию — опционально, для отображения в меню.</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+              {(
+                [
+                  ['calories', 'Ккал'],
+                  ['proteins', 'Белки, г'],
+                  ['fats', 'Жиры, г'],
+                  ['carbs', 'Углеводы, г'],
+                  ['fiber', 'Клетчатка, г'],
+                ] as const
+              ).map(([field, label]) => (
+                <label key={field} className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-(--lg-text-muted)">{label}</span>
+                  <input
+                    className={fieldClass + ' py-2.5 text-sm tabular-nums'}
+                    type="number"
+                    inputMode="decimal"
+                    value={form[field]}
+                    onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+                  />
+                </label>
+              ))}
+            </div>
+          </section>
+
+          <section className="admin-form-section">
+            <p className="admin-form-eyebrow">Состав</p>
+            <p className="admin-form-hint mt-1.5 mb-4">Допы и варианты в карточке блюда.</p>
+            <div className="max-h-52 space-y-0 overflow-y-auto rounded-xl border border-[color-mix(in_srgb,var(--lg-text)_6%,transparent)] bg-[color-mix(in_srgb,white_50%,var(--lg-fill))] p-1.5">
+              {ingredients.map((ing) => (
+                <label
+                  key={ing.id}
+                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm text-(--lg-text) transition hover:bg-[color-mix(in_srgb,var(--lg-text)_4%,transparent)]"
+                >
+                  <input
+                    type="checkbox"
+                    className="size-[1.05rem] shrink-0 rounded border-[color-mix(in_srgb,var(--lg-text)_15%,transparent)] accent-[#18181b]"
+                    checked={form.ingredientIds.includes(ing.id)}
+                    onChange={() => toggleIngredient(ing.id)}
+                  />
+                  <span className="min-w-0 flex-1 text-[0.9375rem] text-(--lg-text)">{ing.name}</span>
+                  <span className="shrink-0 tabular-nums text-sm text-(--lg-text-muted)">+{ing.price} ₽</span>
+                </label>
+              ))}
+            </div>
+          </section>
+        </div>
       </div>
-    </div>
+
+      <div className="admin-form-action-bar fixed inset-x-0 bottom-0 z-30 px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
+        <div className="mx-auto flex w-full max-w-2xl items-center gap-2">
+          <button
+            type="button"
+            className="btn-outline flex-1 h-12 text-sm"
+            onClick={goBack}
+            disabled={saving}
+          >
+            <X className="size-4" strokeWidth={2.25} />
+            Отмена
+          </button>
+          <button
+            type="button"
+            className="btn-primary flex-1 h-12 text-sm"
+            onClick={handleSubmit}
+            disabled={!canSave || saving}
+          >
+            <Save className="size-4" strokeWidth={2.25} />
+            {submitLabel}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

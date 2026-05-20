@@ -103,7 +103,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="admin-surface h-dvh min-h-0 w-full overflow-hidden pb-[env(safe-area-inset-bottom)]">
-      <header className="admin-header-bar fixed left-0 right-0 top-0 z-[1300] flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center px-3 pt-[env(safe-area-inset-top)] md:left-[260px]">
+      <header className="admin-header-bar fixed left-0 right-0 top-0 z-[1300] flex h-(--admin-nav-h) items-center px-3 pt-(--admin-nav-pad-top) md:left-[260px]">
         {!mdUp && (
           <button
             type="button"
@@ -146,7 +146,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
       )}
 
-      <main className="box-border h-full min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide px-2 pb-8 pt-[calc(4.5rem+env(safe-area-inset-top))] md:pl-[calc(260px+1rem)] md:pr-8">
+      <main className="box-border h-full min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide px-2 pb-8 pt-(--admin-main-pad-top) md:pl-[calc(260px+1rem)] md:pr-8">
         {children}
       </main>
     </div>
