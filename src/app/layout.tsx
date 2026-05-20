@@ -41,6 +41,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // cover: страница занимает всё окно, включая зоны под notch / home indicator
+  // (с учётом env(safe-area-inset-*) в стилях). Без этого на iOS снизу
+  // образуется тёмная полоса и «сайт не на всю высоту окна».
+  viewportFit: "cover",
+  // resizes-content: при появлении клавиатуры layout viewport (а с ним и 100dvh)
+  // ужимается, поэтому фиксированная высота h-dvh не оставляет «дырку» снизу.
+  interactiveWidget: "resizes-content",
 };
 
 const themeInitScript = `(function(){try{var k='theme',s=localStorage.getItem(k);var t=(s==='light'||s==='dark')?s:'dark';document.documentElement.setAttribute('data-theme',t);var c=t==='light'?'#e8eef7':'#bacef0';var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',c);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;

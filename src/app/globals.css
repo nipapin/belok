@@ -123,6 +123,16 @@ html[data-theme="light"] {
     box-shadow: var(--lg-shadow);
   }
 
+  /* Шапка карточки формы (Редактировать/Новый товар): sticky чуть ниже navbar,
+     с тем же фростед-стилем, чтобы контент чисто уезжал под неё при скролле. */
+  .admin-surface .admin-form-toolbar {
+    border-bottom: 1px solid color-mix(in srgb, var(--lg-text) 8%, transparent);
+    background-color: color-mix(in srgb, white 78%, var(--lg-fill));
+    -webkit-backdrop-filter: blur(14px) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(14px) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright));
+    box-shadow: 0 6px 18px -12px color-mix(in srgb, var(--lg-text) 22%, transparent);
+  }
+
   /* Neutral status chip inside admin (replaces raw zinc-100) */
   .admin-chip-neutral {
     @apply rounded-full border px-2 py-0.5 text-xs font-semibold;

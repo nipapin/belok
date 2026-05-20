@@ -218,11 +218,11 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
     'select-pill w-full !rounded-2xl border border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] py-3.5 !text-[0.9375rem] shadow-sm';
 
   return (
-    <div className="mx-auto w-full max-w-2xl pb-12 sm:pb-16">
-      <header className="mb-7 flex min-w-0 items-end justify-between gap-4 sm:mb-9">
+    <div className="mx-auto w-full max-w-2xl pb-4">
+      <header className="admin-form-toolbar sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-2 -mt-4 mb-6 flex min-w-0 items-end justify-between gap-4 px-3 pt-4 pb-3 sm:mb-7 sm:px-4">
         <div className="min-w-0">
           <p className="admin-form-eyebrow mb-1.5">Каталог</p>
-          <h1 className="m-0 text-2xl font-semibold leading-tight tracking-tight text-(--lg-text) sm:text-[1.65rem]">
+          <h1 className="m-0 text-xl font-semibold leading-tight tracking-tight text-(--lg-text) sm:text-2xl">
             {title}
           </h1>
         </div>
