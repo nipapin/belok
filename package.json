@@ -10,7 +10,8 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "icons:generate": "tsx scripts/generate-icons.ts",
-    "push:keys": "tsx scripts/generate-vapid-keys.ts"
+    "push:keys": "tsx scripts/generate-vapid-keys.ts",
+    "deploy":"git pull && npm ci && npm run build && pm2 reload all"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1035.0",
