@@ -2,41 +2,58 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, QrCode, Salad, Sparkles, UserRoundPlus } from "lucide-react";
-import { brandMark } from "@/lib/brand";
+import { useQuery } from "@tanstack/react-query";
+import {
+  ArrowRight,
+  Bell,
+  Gift,
+  Heart,
+  Percent,
+  QrCode,
+  Rocket,
+  Salad,
+  Sparkles,
+  Star,
+  UserRoundPlus,
+  type LucideIcon,
+} from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useHaptic } from "@/hooks/useHaptic";
+import type { WalkthroughConfig } from "@/lib/walkthrough";
 
+// Value is the seen config version; legacy installs stored "1", which parses
+// to version 1 — exactly what they saw.
 const STORAGE_KEY = "belok-walkthrough-v1";
 
-const slides = [
-  {
-    icon: Sparkles,
-    title: `Привет! Мы — ${brandMark}`,
-    text: "Кафе здорового питания. За полминуты покажем, что здесь можно делать.",
-  },
-  {
-    icon: Salad,
-    title: "Меню и заказ",
-    text: "Выбирайте блюда, настраивайте состав под себя — уберите или добавьте ингредиенты — и оплачивайте онлайн.",
-  },
-  {
-    icon: QrCode,
-    title: "Бонусы за каждый заказ",
-    text: "Кэшбэк с каждой покупки — и в приложении, и на кассе по вашему QR-коду. Бонусами можно оплачивать заказы.",
-  },
-  {
-    icon: UserRoundPlus,
-    title: "Начнём?",
-    text: "Создайте аккаунт, чтобы копить бонусы, или просто загляните в меню.",
-  },
-] as const;
+const ICONS: Record<string, LucideIcon> = {
+  sparkles: Sparkles,
+  salad: Salad,
+  "qr-code": QrCode,
+  "user-plus": UserRoundPlus,
+  gift: Gift,
+  star: Star,
+  bell: Bell,
+  heart: Heart,
+  rocket: Rocket,
+  percent: Percent,
+};
 
-function markSeen() {
+function getSeenVersion(): number {
   try {
-    localStorage.setItem(STORAGE_KEY, "1");
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(parsed) ? parsed : 0;
   } catch {
-    // Private mode etc. — the walkthrough will just show again next time.
+    // Storage unavailable (private mode) — pretend seen so we never loop.
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
+function markSeen(version: number) {
+  try {
+    localStorage.setItem(STORAGE_KEY, String(version));
+  } catch {
+    // Ignore — worst case the walkthrough shows again next visit.
   }
 }
 
@@ -50,31 +67,36 @@ export default function WelcomeWalkthrough() {
   const [slide, setSlide] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
+  const { data } = useQuery({
+    queryKey: ["walkthrough"],
+    queryFn: () => fetch("/api/walkthrough").then((r) => r.json()),
+    staleTime: 5 * 60 * 1000,
+    enabled: !isLoading && !user,
+  });
+  const config = data?.config as WalkthroughConfig | undefined;
+
   useEffect(() => {
-    if (isLoading) return;
-    let seen = false;
-    try {
-      seen = Boolean(localStorage.getItem(STORAGE_KEY));
-    } catch {
-      seen = true;
-    }
-    if (seen) return;
-    // Logged-in visitors are not new — never bother them with the intro.
+    if (isLoading || !config) return;
     if (user) {
-      markSeen();
+      // Logged-in visitors are not new — never bother them with the intro.
+      markSeen(config.version);
       return;
     }
+    if (!config.enabled || config.slides.length === 0) return;
+    if (getSeenVersion() >= config.version) return;
+    setSlide(0);
     setOpen(true);
     // Two frames so the fade-in transition actually runs after mount.
     requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
-  }, [isLoading, user]);
+  }, [isLoading, user, config]);
 
-  if (!open) return null;
+  if (!open || !config) return null;
 
+  const slides = config.slides;
   const isLast = slide === slides.length - 1;
 
   const close = () => {
-    markSeen();
+    markSeen(config.version);
     setVisible(false);
     window.setTimeout(() => setOpen(false), 250);
   };
@@ -144,24 +166,27 @@ export default function WelcomeWalkthrough() {
             className="flex transition-transform duration-300 ease-out"
             style={{ transform: `translateX(-${slide * 100}%)` }}
           >
-            {slides.map(({ icon: Icon, title, text }) => (
-              <div key={title} className="w-full shrink-0 py-4 text-center">
-                <span className="glass-fx mx-auto mb-5 flex size-16 items-center justify-center rounded-full text-(--lg-text)">
-                  <Icon className="size-7" strokeWidth={1.5} />
-                </span>
-                <h2 className="heading-section mb-2">{title}</h2>
-                <p className="mx-auto max-w-[17rem] text-sm leading-relaxed text-(--lg-text-muted)">
-                  {text}
-                </p>
-              </div>
-            ))}
+            {slides.map(({ icon, title, text }, i) => {
+              const Icon = ICONS[icon] ?? Sparkles;
+              return (
+                <div key={`${i}-${title}`} className="w-full shrink-0 py-4 text-center">
+                  <span className="glass-fx mx-auto mb-5 flex size-16 items-center justify-center rounded-full text-(--lg-text)">
+                    <Icon className="size-7" strokeWidth={1.5} />
+                  </span>
+                  <h2 className="heading-section mb-2">{title}</h2>
+                  <p className="mx-auto max-w-[17rem] text-sm leading-relaxed text-(--lg-text-muted)">
+                    {text}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
 
         <div className="mb-4 mt-2 flex items-center justify-center gap-1.5">
           {slides.map((s, i) => (
             <button
-              key={s.title}
+              key={`${i}-${s.title}`}
               type="button"
               aria-label={`Шаг ${i + 1}`}
               onClick={() => goTo(i)}
