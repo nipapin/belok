@@ -11,7 +11,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "icons:generate": "tsx scripts/generate-icons.ts",
     "push:keys": "tsx scripts/generate-vapid-keys.ts",
-    "deploy":"git pull && npm ci && npm run build && pm2 reload all"
+    "deploy": "git pull && npm ci && npm run build && pm2 reload all"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1035.0",
@@ -25,14 +25,14 @@
     "jsonwebtoken": "^9.0.3",
     "jsqr": "^1.4.0",
     "lucide-react": "^0.544.0",
-    "next": "^16.2.6",
+    "next": "^16.2.11",
     "pg": "^8.20.0",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.72.1",
     "resend": "^6.12.3",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "uuid": "^13.0.2",
     "web-push": "^3.6.7",
     "webpack": "^5.106.2",
@@ -51,7 +51,7 @@
     "@types/uuid": "^10.0.0",
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
-    "eslint-config-next": "^16.2.6",
+    "eslint-config-next": "^16.2.11",
     "tailwindcss": "^4",
     "tsx": "^4.19.4",
     "typescript": "^5"
