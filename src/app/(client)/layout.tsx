@@ -6,6 +6,7 @@ import Header from "@/components/layout/Header";
 import PullToRefresh from "@/components/layout/PullToRefresh";
 import UpdateToast from "@/components/layout/UpdateToast";
 import PushPromptAfterRegister from "@/components/notifications/PushPromptAfterRegister";
+import WelcomeWalkthrough from "@/components/onboarding/WelcomeWalkthrough";
 import { useAuthStore } from "@/store/authStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -42,6 +43,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       </div>
       <UpdateToast />
       <PushPromptAfterRegister />
+      <WelcomeWalkthrough />
     </>
   );
 }
