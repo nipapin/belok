@@ -1,96 +1,118 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { Workbox } from "workbox-window";
-
-declare global {
-  interface Window {
-    workbox?: Workbox;
-  }
-}
+import { useEffect, useRef, useState } from "react";
 
 /**
- * Listens to the workbox-window instance exposed by `@ducanh2912/next-pwa`
- * and reports when a new service worker is installed and waiting.
+ * Reports when a new service worker is installed and waiting, and lets the
+ * user apply it (UpdateToast shows the banner).
+ *
+ * Uses the native ServiceWorker APIs instead of workbox-window events:
+ * the `waiting` event often fires before React hydrates (e.g. an update was
+ * downloaded during a previous session and is already waiting on launch),
+ * so relying on events alone silently misses updates. We always inspect
+ * `registration.waiting` directly.
  *
  * Lifecycle:
- *   1. SW detects updated `/sw.js` on the network → installs in background.
+ *   1. SW detects updated `/sw.js` → installs in background.
  *   2. With `skipWaiting: false` it goes to `waiting` state, NOT active.
  *   3. We expose `updateAvailable = true` and an `applyUpdate()` action.
- *   4. `applyUpdate()` calls `messageSkipWaiting()` → new SW activates.
- *   5. workbox-window fires `controlling` → we reload to pick up new assets.
+ *   4. `applyUpdate()` posts SKIP_WAITING → new SW activates.
+ *   5. `controllerchange` fires → we reload to pick up new assets.
  */
 export function useServiceWorkerUpdate() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [reloading, setReloading] = useState(false);
+  const reloadingRef = useRef(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
     let cancelled = false;
+    const cleanups: Array<() => void> = [];
 
-    // workbox-window may register asynchronously after window load — poll briefly.
-    const tryAttach = (attempt = 0) => {
-      const wb = window.workbox;
-      if (!wb) {
-        if (attempt < 20) setTimeout(() => tryAttach(attempt + 1), 250);
-        return;
-      }
-
-      const onWaiting = () => {
-        if (!cancelled) setUpdateAvailable(true);
-      };
-      const onControlling = () => {
-        if (cancelled) return;
-        // New SW is now in control — reload once so the page picks up new chunks.
-        // Guard against the bfcache double-fire by tracking the reloading flag.
-        if (!reloading) {
-          window.location.reload();
-        }
-      };
-
-      wb.addEventListener("waiting", onWaiting);
-      wb.addEventListener("controlling", onControlling);
-
-      // Periodically ask the SW to check for updates while the app is open
-      // (e.g. user keeps PWA open for hours/days). Hourly is plenty.
-      const checkInterval = window.setInterval(() => {
-        wb.update().catch(() => {
-          // Network errors etc. are non-fatal — workbox will retry on next visibility change.
-        });
-      }, 60 * 60 * 1000);
-
-      // Also re-check when the tab regains focus (returning from background).
-      const onVisible = () => {
-        if (document.visibilityState === "visible") {
-          wb.update().catch(() => {});
-        }
-      };
-      document.addEventListener("visibilitychange", onVisible);
-
-      return () => {
-        wb.removeEventListener("waiting", onWaiting);
-        wb.removeEventListener("controlling", onControlling);
-        window.clearInterval(checkInterval);
-        document.removeEventListener("visibilitychange", onVisible);
-      };
+    const markUpdate = () => {
+      if (!cancelled) setUpdateAvailable(true);
     };
 
-    const cleanup = tryAttach();
+    // An update is "available" when a worker is waiting AND a previous worker
+    // controls the page (i.e. this is not the very first install).
+    const checkWaiting = (reg: ServiceWorkerRegistration | undefined | null) => {
+      if (reg?.waiting && navigator.serviceWorker.controller) markUpdate();
+    };
+
+    const requestUpdate = async () => {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg || cancelled) return;
+        checkWaiting(reg);
+        await reg.update();
+        checkWaiting(reg);
+      } catch {
+        // Offline etc. — non-fatal, retried on next interval/visibility change.
+      }
+    };
+
+    // Reload once the new SW takes control — but only if the user asked for
+    // the update (guards against the first-install controllerchange fired by
+    // clientsClaim, which must not reload the page).
+    const onControllerChange = () => {
+      if (reloadingRef.current) window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    cleanups.push(() =>
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange),
+    );
+
+    // `ready` resolves once a SW is active (never in dev, where PWA is off).
+    navigator.serviceWorker.ready.then((reg) => {
+      if (cancelled) return;
+
+      // Case 1: an update is already waiting from a previous session.
+      checkWaiting(reg);
+
+      // Case 2: an update installs while the app is open.
+      const onUpdateFound = () => {
+        const installing = reg.installing;
+        if (!installing) return;
+        installing.addEventListener("statechange", () => {
+          if (installing.state === "installed" && navigator.serviceWorker.controller) {
+            markUpdate();
+          }
+        });
+      };
+      reg.addEventListener("updatefound", onUpdateFound);
+      cleanups.push(() => reg.removeEventListener("updatefound", onUpdateFound));
+    });
+
+    // Periodic re-check while the app stays open (PWA kept open for days).
+    const interval = window.setInterval(requestUpdate, 60 * 60 * 1000);
+    cleanups.push(() => window.clearInterval(interval));
+
+    // Re-check when returning from background — the main path for installed
+    // PWAs on iOS/Android, which resume instead of doing a fresh navigation.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void requestUpdate();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    cleanups.push(() => document.removeEventListener("visibilitychange", onVisible));
 
     return () => {
       cancelled = true;
-      cleanup?.();
+      for (const fn of cleanups) fn();
     };
-  }, [reloading]);
+  }, []);
 
-  const applyUpdate = () => {
-    const wb = window.workbox;
-    if (!wb) return;
+  const applyUpdate = async () => {
     setReloading(true);
-    wb.messageSkipWaiting();
-    // The `controlling` listener will reload us once the new SW takes over.
-    // Belt-and-suspenders fallback in case the event never fires:
+    reloadingRef.current = true;
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      // Generated by workbox: the SW calls self.skipWaiting() on this message.
+      reg?.waiting?.postMessage({ type: "SKIP_WAITING" });
+    } catch {
+      // Fall through to the timeout reload below.
+    }
+    // Belt-and-suspenders: reload even if `controllerchange` never fires.
     window.setTimeout(() => window.location.reload(), 3000);
   };
 

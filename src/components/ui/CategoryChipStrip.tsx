@@ -27,8 +27,20 @@ export default function CategoryChipStrip({
   onSelect,
   title,
 }: CategoryChipStripProps) {
+  const stripRef = useRef<HTMLDivElement>(null);
   const allChipRef = useRef<HTMLButtonElement>(null);
   const categoryChipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  // Scroll the strip itself instead of chip.scrollIntoView(): a smooth
+  // scrollIntoView here cancels the page's in-flight smooth scroll to the
+  // category section (browsers allow only one scrollIntoView sequence at a time).
+  function scrollStripToChip(el: HTMLButtonElement | null) {
+    const strip = stripRef.current;
+    if (!el || !strip) return;
+    const left =
+      el.getBoundingClientRect().left - strip.getBoundingClientRect().left + strip.scrollLeft - 12;
+    strip.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }
 
   useEffect(() => {
     if (loading) return;
@@ -38,18 +50,18 @@ export default function CategoryChipStrip({
     } else if (selectedId !== null) {
       el = categoryChipRefs.current.get(selectedId) ?? null;
     }
-    el?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    scrollStripToChip(el);
   }, [selectedId, loading, showAllOption]);
 
   function handleSelect(e: React.MouseEvent<HTMLButtonElement>, categoryId: string | null) {
-    e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    scrollStripToChip(e.currentTarget);
     onSelect(categoryId);
   }
 
   return (
     <>
       {title ? <h2 className="heading-section my-3">{title}</h2> : null}
-      <div className={stripClass}>
+      <div ref={stripRef} className={stripClass}>
         <span className="pointer-events-none w-0 shrink-0" aria-hidden />
         {showAllOption ? (
           <button

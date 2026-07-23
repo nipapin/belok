@@ -4,10 +4,14 @@ import { ProductCard } from "@/components/product/ProductCard";
 import CategoryChipStrip from "@/components/ui/CategoryChipStrip";
 import { Category, Product } from "@/types";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export function MenuPageInner() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  // While a click-triggered smooth scroll is in flight, the IntersectionObserver
+  // must not overwrite the selected chip with intermediate categories.
+  const suppressObserverRef = useRef(false);
+  const suppressTimerRef = useRef<number | undefined>(undefined);
 
   const { data: categoriesData, isLoading: loadingCats } = useQuery({
     queryKey: ["categories"],
@@ -46,8 +50,16 @@ export function MenuPageInner() {
     setSelectedCategory(id);
     if (!id) return;
     const section = document.getElementById(`category-${id}`);
-    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!section) return;
+    suppressObserverRef.current = true;
+    window.clearTimeout(suppressTimerRef.current);
+    suppressTimerRef.current = window.setTimeout(() => {
+      suppressObserverRef.current = false;
+    }, 1200);
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+  useEffect(() => () => window.clearTimeout(suppressTimerRef.current), []);
 
   useEffect(() => {
     if (loadingProducts || categoriesWithProducts.length === 0) return;
@@ -64,6 +76,7 @@ export function MenuPageInner() {
 
     const observer = new IntersectionObserver(
       (entries) => {
+        if (suppressObserverRef.current) return;
         for (const entry of entries) {
           const id = entry.target.id.replace("category-", "");
           visibleRatios.set(id, entry.isIntersecting ? entry.intersectionRatio : 0);

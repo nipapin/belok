@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { Camera, CheckCircle2, Keyboard, Loader2, RotateCcw, Star, UserCircle2 } from 'lucide-react';
+import { Camera, CheckCircle2, Keyboard, Loader2, Minus, Plus, RotateCcw, Star, UserCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import QrScanner from '@/components/loyalty/QrScanner';
 
@@ -24,25 +24,24 @@ interface LoyaltyUser {
   loyaltyLevel: LoyaltyLevel | null;
 }
 
-interface AwardResult {
-  bonusEarned: number;
-  cashbackPercent: number;
-  amount: number;
-  user: LoyaltyUser;
-}
+type OperationResult =
+  | { kind: 'award'; bonusEarned: number; cashbackPercent: number; amount: number; user: LoyaltyUser }
+  | { kind: 'redeem'; bonusSpent: number; user: LoyaltyUser };
 
 type Mode = 'scan' | 'manual';
 type Stage = 'lookup' | 'form' | 'success';
+type Action = 'award' | 'redeem';
 
 export default function AdminLoyaltyPage() {
   const [mode, setMode] = useState<Mode>('scan');
   const [stage, setStage] = useState<Stage>('lookup');
+  const [action, setAction] = useState<Action>('award');
   const [manualId, setManualId] = useState('');
   const [user, setUser] = useState<LoyaltyUser | null>(null);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<AwardResult | null>(null);
+  const [result, setResult] = useState<OperationResult | null>(null);
 
   const lookupUser = useCallback(async (rawId: string) => {
     const id = rawId.trim();
@@ -97,7 +96,40 @@ export default function AdminLoyaltyPage() {
         setError(typeof data.error === 'string' ? data.error : 'Не удалось начислить');
         return;
       }
-      setResult(data as AwardResult);
+      setResult({ kind: 'award', ...(data as Omit<Extract<OperationResult, { kind: 'award' }>, 'kind'>) });
+      setStage('success');
+    } catch {
+      setError('Ошибка соединения');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRedeem = async () => {
+    if (!user) return;
+    const amt = Math.round(Number(amount));
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setError('Введите количество бонусов');
+      return;
+    }
+    if (amt > Math.floor(user.bonusBalance)) {
+      setError(`Недостаточно бонусов: доступно ${Math.floor(user.bonusBalance)}`);
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/loyalty/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, amount: amt }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(typeof data.error === 'string' ? data.error : 'Не удалось списать');
+        return;
+      }
+      setResult({ kind: 'redeem', ...(data as Omit<Extract<OperationResult, { kind: 'redeem' }>, 'kind'>) });
       setStage('success');
     } catch {
       setError('Ошибка соединения');
@@ -108,6 +140,7 @@ export default function AdminLoyaltyPage() {
 
   const reset = () => {
     setStage('lookup');
+    setAction('award');
     setUser(null);
     setManualId('');
     setAmount('');
@@ -121,12 +154,18 @@ export default function AdminLoyaltyPage() {
     if (!Number.isFinite(amt) || amt <= 0) return 0;
     return Math.round(amt * (cashback / 100));
   })();
+  const redeemAmount = (() => {
+    const amt = Math.round(Number(amount));
+    if (!Number.isFinite(amt) || amt <= 0) return 0;
+    return amt;
+  })();
+  const availableBonus = Math.floor(user?.bonusBalance ?? 0);
 
   return (
     <div className="mx-auto max-w-md">
       <h1 className="heading-section mb-2">Касса · Лояльность</h1>
       <p className="mb-6 text-sm text-(--lg-text-muted)">
-        Отсканируйте QR-код клиента и начислите бонусы за сумму заказа.
+        Отсканируйте QR-код клиента, чтобы начислить или списать бонусы.
       </p>
 
       {stage === 'lookup' && (
@@ -254,37 +293,116 @@ export default function AdminLoyaltyPage() {
           </div>
 
           <div className="glass-panel p-5">
-            <label className="block text-sm font-medium text-(--lg-text)">
-              Сумма заказа, ₽
-              <input
-                className="input-pill mt-1.5 text-base"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0"
-                autoFocus
-              />
-            </label>
-            <div className="mt-3 flex items-baseline justify-between text-sm">
-              <span className="text-(--lg-text-muted)">К начислению</span>
-              <span className="font-semibold tabular-nums text-(--lg-text)">
-                +{previewBonus} бонусов
-              </span>
+            <div className="mb-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAction('award');
+                  setAmount('');
+                  setError('');
+                }}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-sm font-semibold transition ${
+                  action === 'award'
+                    ? 'border-(--lg-ring-strong) bg-[#18181b] text-white'
+                    : 'border-(--lg-ring) text-(--lg-text)'
+                }`}
+              >
+                <Plus className="size-4" strokeWidth={1.75} />
+                Начислить
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAction('redeem');
+                  setAmount('');
+                  setError('');
+                }}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-sm font-semibold transition ${
+                  action === 'redeem'
+                    ? 'border-(--lg-ring-strong) bg-[#18181b] text-white'
+                    : 'border-(--lg-ring) text-(--lg-text)'
+                }`}
+              >
+                <Minus className="size-4" strokeWidth={1.75} />
+                Списать
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleAward}
-              className="btn-primary mt-4 w-full py-3 disabled:opacity-50"
-              disabled={loading || previewBonus <= 0}
-            >
-              {loading ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <>Начислить +{previewBonus}</>
-              )}
-            </button>
+
+            {action === 'award' ? (
+              <>
+                <label className="block text-sm font-medium text-(--lg-text)">
+                  Сумма заказа, ₽
+                  <input
+                    className="input-pill mt-1.5 text-base"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0"
+                    autoFocus
+                  />
+                </label>
+                <div className="mt-3 flex items-baseline justify-between text-sm">
+                  <span className="text-(--lg-text-muted)">К начислению</span>
+                  <span className="font-semibold tabular-nums text-(--lg-text)">
+                    +{previewBonus} бонусов
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAward}
+                  className="btn-primary mt-4 w-full py-3 disabled:opacity-50"
+                  disabled={loading || previewBonus <= 0}
+                >
+                  {loading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <>Начислить +{previewBonus}</>
+                  )}
+                </button>
+              </>
+            ) : (
+              <>
+                <label className="block text-sm font-medium text-(--lg-text)">
+                  Бонусов к списанию
+                  <input
+                    className="input-pill mt-1.5 text-base"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={availableBonus}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0"
+                    autoFocus
+                  />
+                </label>
+                <div className="mt-3 flex items-baseline justify-between text-sm">
+                  <span className="text-(--lg-text-muted)">Доступно</span>
+                  <button
+                    type="button"
+                    onClick={() => setAmount(String(availableBonus))}
+                    className="font-semibold tabular-nums text-(--lg-text) underline decoration-dotted underline-offset-2"
+                    disabled={availableBonus <= 0}
+                  >
+                    {availableBonus} бонусов
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRedeem}
+                  className="btn-primary mt-4 w-full py-3 disabled:opacity-50"
+                  disabled={loading || redeemAmount <= 0 || redeemAmount > availableBonus}
+                >
+                  {loading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <>Списать −{redeemAmount}</>
+                  )}
+                </button>
+              </>
+            )}
           </div>
 
           {error && <p className="auth-alert-error">{error}</p>}
@@ -303,15 +421,18 @@ export default function AdminLoyaltyPage() {
         <div className="space-y-4">
           <div className="glass-panel p-6 text-center">
             <CheckCircle2 className="mx-auto size-12 text-emerald-500" strokeWidth={1.5} />
-            <p className="mt-3 text-base font-semibold text-(--lg-text)">Бонусы начислены</p>
+            <p className="mt-3 text-base font-semibold text-(--lg-text)">
+              {result.kind === 'award' ? 'Бонусы начислены' : 'Бонусы списаны'}
+            </p>
             <p className="mt-1 text-sm text-(--lg-text-muted)">
-              {result.user.name || 'Клиент'} · сумма заказа {result.amount} ₽
+              {result.user.name || 'Клиент'}
+              {result.kind === 'award' ? ` · сумма заказа ${result.amount} ₽` : ''}
             </p>
             <p className="mt-4 text-3xl font-bold tabular-nums text-(--lg-text)">
-              +{result.bonusEarned}
+              {result.kind === 'award' ? `+${result.bonusEarned}` : `−${result.bonusSpent}`}
             </p>
             <p className="mt-1 text-xs text-(--lg-text-muted)">
-              Кэшбэк {result.cashbackPercent}% · новый баланс{' '}
+              {result.kind === 'award' ? `Кэшбэк ${result.cashbackPercent}% · ` : ''}новый баланс{' '}
               <span className="font-semibold tabular-nums text-(--lg-text)">
                 {Math.floor(result.user.bonusBalance)}
               </span>
