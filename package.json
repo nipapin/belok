@@ -11,10 +11,10 @@
     "db:seed": "tsx scripts/seed.ts",
     "icons:generate": "tsx scripts/generate-icons.ts",
     "push:keys": "tsx scripts/generate-vapid-keys.ts",
-    "deploy": "git pull && npm ci && npm run build && pm2 reload all"
+    "deploy": "git pull && npm ci --no-fund --no-audit && npm run build && pm2 reload all"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1035.0",
+    "@aws-sdk/client-s3": "^3.1104.0",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.99.0",
@@ -25,7 +25,7 @@
     "jsonwebtoken": "^9.0.3",
     "jsqr": "^1.4.0",
     "lucide-react": "^0.544.0",
-    "next": "^16.2.11",
+    "next": "^16.3.0",
     "pg": "^8.20.0",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
@@ -51,12 +51,18 @@
     "@types/uuid": "^10.0.0",
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
-    "eslint-config-next": "^16.2.11",
+    "eslint-config-next": "^16.3.0",
     "tailwindcss": "^4",
-    "tsx": "^4.19.4",
+    "tsx": "^4.23.9",
     "typescript": "^5"
   },
   "overrides": {
-    "serialize-javascript": "^7.0.5"
+    "serialize-javascript": "^7.0.5",
+    "esbuild": "^0.28.1"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "sharp": true,
+    "unrs-resolver": true
   }
 }
