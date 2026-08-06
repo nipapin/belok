@@ -80,3 +80,22 @@ export async function sendVerificationCode(to: string, code: string): Promise<vo
   `;
   await sendEmail({ to, subject, text, html });
 }
+
+export async function sendPasswordResetCode(to: string, code: string): Promise<void> {
+  const subject = `Восстановление пароля в Belok: ${code}`;
+  const text =
+    `Здравствуйте!\n\n` +
+    `Вы запросили сброс пароля в приложении Belok.\n\n` +
+    `Ваш код:\n\n` +
+    `    ${code}\n\n` +
+    `Код действителен 10 минут. Если вы не запрашивали сброс пароля — проигнорируйте это письмо, аккаунт в безопасности.\n`;
+  const html = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;color:#111">
+      <p>Здравствуйте!</p>
+      <p>Вы запросили сброс пароля в приложении <b>Belok</b>.</p>
+      <p style="font-size:32px;letter-spacing:8px;font-weight:700;background:#f5f5f5;padding:16px 24px;border-radius:12px;text-align:center;font-variant-numeric:tabular-nums">${code}</p>
+      <p style="color:#666;font-size:13px">Код действителен 10 минут. Если вы не запрашивали сброс — проигнорируйте письмо, аккаунт в безопасности.</p>
+    </div>
+  `;
+  await sendEmail({ to, subject, text, html });
+}

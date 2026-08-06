@@ -9,7 +9,7 @@ export type OrderStatus =
 export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'CANCELLED';
 export type BonusType = 'EARNED' | 'SPENT' | 'EXPIRED' | 'MANUAL';
 export type IngredientAction = 'ADD' | 'REMOVE';
-export type VerificationPurpose = 'REGISTER' | 'LOGIN';
+export type VerificationPurpose = 'REGISTER' | 'LOGIN' | 'PASSWORD_RESET';
 
 export interface LoyaltyLevelRow {
   id: string;

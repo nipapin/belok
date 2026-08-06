@@ -69,6 +69,15 @@ export async function revokeSession(sessionId: string): Promise<void> {
   });
 }
 
+/** Revoke every active session for a user (e.g. after password reset). */
+export async function revokeAllSessionsForUser(userId: string): Promise<void> {
+  await query(
+    `UPDATE "sessions" SET "revokedAt" = NOW()
+      WHERE "userId" = $1 AND "revokedAt" IS NULL`,
+    [userId]
+  );
+}
+
 export async function setSessionCookie(sessionId: string): Promise<void> {
   const secure = await secureFlagFromIncomingHeaders();
   const cookieStore = await cookies();

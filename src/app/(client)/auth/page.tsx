@@ -16,8 +16,8 @@ export default function AuthPage() {
   );
 }
 
-type Mode = 'login' | 'register';
-type Step = 'credentials' | 'code';
+type Mode = 'login' | 'register' | 'forgot';
+type Step = 'credentials' | 'code' | 'reset';
 
 function AuthPageInner() {
   const searchParams = useSearchParams();
@@ -28,6 +28,7 @@ function AuthPageInner() {
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,6 +53,17 @@ function AuthPageInner() {
     setMode(next);
     setStep('credentials');
     setCode('');
+    setPassword('');
+    setPasswordConfirm('');
+    clearMessages();
+  }
+
+  function goToForgot() {
+    setMode('forgot');
+    setStep('credentials');
+    setPassword('');
+    setPasswordConfirm('');
+    setCode('');
     clearMessages();
   }
 
@@ -60,6 +72,27 @@ function AuthPageInner() {
     clearMessages();
     setLoading(true);
     try {
+      if (mode === 'forgot') {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(data?.error || 'Не удалось отправить код');
+          return;
+        }
+        setStep('reset');
+        setCode('');
+        setPassword('');
+        setPasswordConfirm('');
+        setInfo(data?.message || `Если аккаунт существует, код отправлен на ${email}`);
+        startCountdown();
+        return;
+      }
+
       if (mode === 'login') {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
@@ -86,7 +119,7 @@ function AuthPageInner() {
         }
         setUser(data.user);
         try {
-          sessionStorage.setItem(PUSH_PROMPT_AUTH_FLAG, "1");
+          sessionStorage.setItem(PUSH_PROMPT_AUTH_FLAG, '1');
         } catch {
           /* ignore */
         }
@@ -133,7 +166,51 @@ function AuthPageInner() {
       }
       setUser(data.user);
       try {
-        sessionStorage.setItem(PUSH_PROMPT_AUTH_FLAG, "1");
+        sessionStorage.setItem(PUSH_PROMPT_AUTH_FLAG, '1');
+      } catch {
+        /* ignore */
+      }
+      window.location.href = redirect;
+    } catch {
+      setError('Ошибка соединения');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResetPassword(event?: React.FormEvent) {
+    event?.preventDefault();
+    clearMessages();
+
+    if (password.length < 8) {
+      setError('Пароль должен быть не короче 8 символов');
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setError('Пароли не совпадают');
+      return;
+    }
+    if (code.length < 6) {
+      setError('Введите 6-значный код из письма');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error || 'Не удалось сбросить пароль');
+        return;
+      }
+      setUser(data.user);
+      try {
+        sessionStorage.setItem(PUSH_PROMPT_AUTH_FLAG, '1');
       } catch {
         /* ignore */
       }
@@ -150,7 +227,9 @@ function AuthPageInner() {
     clearMessages();
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/resend-code', {
+      const endpoint =
+        mode === 'forgot' ? '/api/auth/forgot-password' : '/api/auth/resend-code';
+      const res = await fetch(endpoint, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -161,7 +240,11 @@ function AuthPageInner() {
         setError(data.error || 'Не удалось отправить код повторно');
         return;
       }
-      setInfo(`Код отправлен повторно на ${email}`);
+      setInfo(
+        mode === 'forgot'
+          ? data?.message || `Если аккаунт существует, код отправлен на ${email}`
+          : `Код отправлен повторно на ${email}`
+      );
       startCountdown();
     } catch {
       setError('Ошибка соединения');
@@ -170,50 +253,61 @@ function AuthPageInner() {
     }
   }
 
+  const emailLooksValid = email.includes('@') && email.includes('.');
   const credentialsValid =
-    email.includes('@') &&
-    email.includes('.') &&
-    password.length >= (mode === 'register' ? 8 : 1);
+    mode === 'forgot'
+      ? emailLooksValid
+      : emailLooksValid && password.length >= (mode === 'register' ? 8 : 1);
+  const resetValid =
+    code.length === 6 && password.length >= 8 && password === passwordConfirm;
 
   return (
     <div className="mx-auto flex min-h-[min(100%,calc(100dvh-5.5rem))] max-w-md flex-col items-center justify-center px-2 pb-10 pt-8 sm:pt-12">
       <div className="glass-panel-strong w-full p-6 sm:p-8">
         {step === 'credentials' ? (
           <>
-            <div className="mb-5 flex items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)] p-1">
-              <button
-                type="button"
-                onClick={() => switchMode('login')}
-                className={
-                  'flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-colors ' +
-                  (mode === 'login'
-                    ? 'bg-(--lg-fill) text-(--lg-text) shadow-sm'
-                    : 'text-(--lg-text-muted) hover:text-(--lg-text)')
-                }
-              >
-                Вход
-              </button>
-              <button
-                type="button"
-                onClick={() => switchMode('register')}
-                className={
-                  'flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-colors ' +
-                  (mode === 'register'
-                    ? 'bg-(--lg-fill) text-(--lg-text) shadow-sm'
-                    : 'text-(--lg-text-muted) hover:text-(--lg-text)')
-                }
-              >
-                Регистрация
-              </button>
-            </div>
+            {mode !== 'forgot' ? (
+              <div className="mb-5 flex items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)] p-1">
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className={
+                    'flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-colors ' +
+                    (mode === 'login'
+                      ? 'bg-(--lg-fill) text-(--lg-text) shadow-sm'
+                      : 'text-(--lg-text-muted) hover:text-(--lg-text)')
+                  }
+                >
+                  Вход
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode('register')}
+                  className={
+                    'flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-colors ' +
+                    (mode === 'register'
+                      ? 'bg-(--lg-fill) text-(--lg-text) shadow-sm'
+                      : 'text-(--lg-text-muted) hover:text-(--lg-text)')
+                  }
+                >
+                  Регистрация
+                </button>
+              </div>
+            ) : null}
 
             <h2 className="mb-1 text-lg font-semibold tracking-tight text-(--lg-text)">
-              {mode === 'login' ? 'Вход в Belok' : 'Создание аккаунта'}
+              {mode === 'login'
+                ? 'Вход в Belok'
+                : mode === 'register'
+                  ? 'Создание аккаунта'
+                  : 'Восстановление пароля'}
             </h2>
             <p className="mb-5 text-sm text-(--lg-text-muted)">
               {mode === 'login'
                 ? 'Введите email и пароль.'
-                : 'Мы отправим 6-значный код на email — чтобы подтвердить, что почта ваша.'}
+                : mode === 'register'
+                  ? 'Мы отправим 6-значный код на email — чтобы подтвердить, что почта ваша.'
+                  : 'Укажите email — пришлём 6-значный код для сброса пароля.'}
             </p>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -253,27 +347,41 @@ function AuthPageInner() {
                 </div>
               </label>
 
-              <label className="block">
-                <span className="sr-only">Пароль</span>
-                <div className="relative">
-                  <Lock
-                    className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-(--lg-text-muted) opacity-80"
-                    strokeWidth={1.75}
-                  />
-                  <input
-                    type="password"
-                    className="input-pill min-h-12 pl-11 text-[1.0625rem]"
-                    autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                    placeholder={
-                      mode === 'register' ? 'Пароль (мин. 8 символов)' : 'Пароль'
-                    }
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    minLength={mode === 'register' ? 8 : undefined}
-                    aria-label="Пароль"
-                  />
+              {mode !== 'forgot' ? (
+                <label className="block">
+                  <span className="sr-only">Пароль</span>
+                  <div className="relative">
+                    <Lock
+                      className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-(--lg-text-muted) opacity-80"
+                      strokeWidth={1.75}
+                    />
+                    <input
+                      type="password"
+                      className="input-pill min-h-12 pl-11 text-[1.0625rem]"
+                      autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                      placeholder={
+                        mode === 'register' ? 'Пароль (мин. 8 символов)' : 'Пароль'
+                      }
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      minLength={mode === 'register' ? 8 : undefined}
+                      aria-label="Пароль"
+                    />
+                  </div>
+                </label>
+              ) : null}
+
+              {mode === 'login' ? (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-(--lg-text-muted) underline-offset-2 transition hover:text-(--lg-text) hover:underline"
+                    onClick={goToForgot}
+                  >
+                    Забыли пароль?
+                  </button>
                 </div>
-              </label>
+              ) : null}
 
               {error ? <div className="auth-alert-error">{error}</div> : null}
               {info && !error ? <div className="auth-alert-info">{info}</div> : null}
@@ -284,7 +392,135 @@ function AuthPageInner() {
                 disabled={loading || !credentialsValid}
               >
                 {loading ? <Loader2 className="size-5 shrink-0 animate-spin" /> : null}
-                {mode === 'login' ? 'Войти' : 'Получить код по email'}
+                {mode === 'login'
+                  ? 'Войти'
+                  : mode === 'register'
+                    ? 'Получить код по email'
+                    : 'Отправить код'}
+              </button>
+
+              {mode === 'forgot' ? (
+                <button
+                  type="button"
+                  className="btn-ghost w-full"
+                  onClick={() => switchMode('login')}
+                >
+                  Вернуться ко входу
+                </button>
+              ) : null}
+            </form>
+          </>
+        ) : step === 'reset' ? (
+          <>
+            <h2 className="mb-1 text-lg font-semibold tracking-tight text-(--lg-text)">
+              Новый пароль
+            </h2>
+            <p className="mb-4 text-sm text-(--lg-text-muted)">
+              Введите код из письма на{' '}
+              <span className="font-medium text-(--lg-text)">{email}</span> и задайте новый
+              пароль.
+            </p>
+
+            <form onSubmit={handleResetPassword} className="flex flex-col gap-3">
+              <div>
+                <PinInput
+                  value={code}
+                  onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
+                  maxLength={6}
+                  pattern={REGEXP_ONLY_DIGITS}
+                  disabled={loading}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  containerClassName="w-full"
+                  aria-label="Код из письма"
+                >
+                  <PinInput.Label className="sr-only">Код из письма</PinInput.Label>
+                  <PinInput.Group>
+                    <PinInput.Slot index={0} />
+                    <PinInput.Slot index={1} />
+                    <PinInput.Slot index={2} />
+                    <PinInput.Slot index={3} />
+                    <PinInput.Slot index={4} />
+                    <PinInput.Slot index={5} />
+                  </PinInput.Group>
+                  <PinInput.Description>Введите 6 цифр из письма</PinInput.Description>
+                </PinInput>
+              </div>
+
+              <label className="block">
+                <span className="sr-only">Новый пароль</span>
+                <div className="relative">
+                  <Lock
+                    className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-(--lg-text-muted) opacity-80"
+                    strokeWidth={1.75}
+                  />
+                  <input
+                    type="password"
+                    className="input-pill min-h-12 pl-11 text-[1.0625rem]"
+                    autoComplete="new-password"
+                    placeholder="Новый пароль (мин. 8 символов)"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    minLength={8}
+                    aria-label="Новый пароль"
+                  />
+                </div>
+              </label>
+
+              <label className="block">
+                <span className="sr-only">Повторите пароль</span>
+                <div className="relative">
+                  <Lock
+                    className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-(--lg-text-muted) opacity-80"
+                    strokeWidth={1.75}
+                  />
+                  <input
+                    type="password"
+                    className="input-pill min-h-12 pl-11 text-[1.0625rem]"
+                    autoComplete="new-password"
+                    placeholder="Повторите пароль"
+                    value={passwordConfirm}
+                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                    minLength={8}
+                    aria-label="Повторите пароль"
+                  />
+                </div>
+              </label>
+
+              {error ? <div className="auth-alert-error">{error}</div> : null}
+              {info && !error ? <div className="auth-alert-info">{info}</div> : null}
+
+              <button
+                type="submit"
+                className="btn-primary mt-1 min-h-12 w-full text-[0.9375rem]"
+                disabled={loading || !resetValid}
+              >
+                {loading ? <Loader2 className="size-5 shrink-0 animate-spin" /> : null}
+                Сохранить пароль
+              </button>
+
+              <button
+                type="button"
+                className="btn-ghost w-full"
+                onClick={() => void handleResend()}
+                disabled={resendCountdown > 0 || loading}
+              >
+                {resendCountdown > 0
+                  ? `Отправить повторно через ${resendCountdown} с`
+                  : 'Отправить код повторно'}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost w-full"
+                onClick={() => {
+                  setStep('credentials');
+                  setCode('');
+                  setPassword('');
+                  setPasswordConfirm('');
+                  clearMessages();
+                }}
+              >
+                Изменить email
               </button>
             </form>
           </>
@@ -294,8 +530,9 @@ function AuthPageInner() {
               Подтвердите email
             </h2>
             <p className="mb-4 text-sm text-(--lg-text-muted)">
-              Мы отправили 6-значный код на <span className="font-medium text-(--lg-text)">{email}</span>.
-              Введите его — это нужно один раз, чтобы убедиться, что почта ваша.
+              Мы отправили 6-значный код на{' '}
+              <span className="font-medium text-(--lg-text)">{email}</span>. Введите его —
+              это нужно один раз, чтобы убедиться, что почта ваша.
             </p>
 
             <div className="mb-4">
