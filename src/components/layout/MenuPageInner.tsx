@@ -1,10 +1,14 @@
 "use client";
 
 import { ProductCard } from "@/components/product/ProductCard";
+import { FoodCardSkeleton } from "@/components/product/FoodCard";
 import CategoryChipStrip from "@/components/ui/CategoryChipStrip";
 import { Category, Product } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+const productCarouselClass = "product-carousel";
+const productSlideClass = "flex w-[42%] max-w-[204px] shrink-0 snap-start sm:w-[220px]";
 
 export function MenuPageInner() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -97,8 +101,10 @@ export function MenuPageInner() {
         }
       },
       {
-        threshold: [0.15, 0.3, 0.5, 0.75],
-        rootMargin: "-120px 0px -45% 0px",
+        // Sections are shorter with horizontal carousels — keep more of the
+        // viewport in play so the active chip doesn't jump.
+        threshold: [0.2, 0.4, 0.6, 0.8],
+        rootMargin: "-100px 0px -35% 0px",
       },
     );
 
@@ -119,9 +125,11 @@ export function MenuPageInner() {
       </div>
 
       {loadingProducts ? (
-        <div className="grid grid-cols-2 gap-1">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="glass-tight w-full h-full aspect-2/3 animate-pulse" />
+        <div className={productCarouselClass}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className={productSlideClass}>
+              <FoodCardSkeleton />
+            </div>
           ))}
         </div>
       ) : null}
@@ -133,20 +141,22 @@ export function MenuPageInner() {
           return (
             <section key={category.id} id={`category-${category.id}`} className="mb-6 scroll-mt-24">
               <h2 className="heading-section mb-3">{category.name}</h2>
-              <div className="grid grid-cols-2 gap-1">
+              <div className={productCarouselClass}>
                 {categoryProducts.map((product, productIndex) => (
-                  <ProductCard
-                    key={product.id}
-                    eager={categoryIndex === 0 && productIndex < 2}
-                    product={{
-                      id: product.id,
-                      name: product.name,
-                      price: product.price,
-                      image: product.image,
-                      calories: product.calories,
-                      proteins: product.proteins,
-                    }}
-                  />
+                  <div key={product.id} className={productSlideClass}>
+                    <ProductCard
+                      eager={categoryIndex === 0 && productIndex < 2}
+                      product={{
+                        id: product.id,
+                        name: product.name,
+                        price: product.price,
+                        image: product.image,
+                        calories: product.calories,
+                        proteins: product.proteins,
+                        categoryName: category.name,
+                      }}
+                    />
+                  </div>
                 ))}
               </div>
             </section>
@@ -156,19 +166,21 @@ export function MenuPageInner() {
       {!loadingProducts && uncategorizedProducts.length > 0 && (
         <section id="category-other" className="mb-6 scroll-mt-24">
           <h2 className="heading-section mb-3">Другое</h2>
-          <div className="grid grid-cols-2 gap-1">
+          <div className={productCarouselClass}>
             {uncategorizedProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={{
-                  id: product.id,
-                  name: product.name,
-                  price: product.price,
-                  image: product.image,
-                  calories: product.calories,
-                  proteins: product.proteins,
-                }}
-              />
+              <div key={product.id} className={productSlideClass}>
+                <ProductCard
+                  product={{
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    image: product.image,
+                    calories: product.calories,
+                    proteins: product.proteins,
+                    categoryName: product.category?.name,
+                  }}
+                />
+              </div>
             ))}
           </div>
         </section>

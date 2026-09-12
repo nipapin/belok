@@ -15,6 +15,7 @@ import {
   Settings,
   ScanLine,
   Sparkles,
+  Home,
   LogOut,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -30,6 +31,7 @@ const menuItems = [
   { label: 'Касса · Лояльность', icon: ScanLine, path: '/admin/loyalty' },
   { label: 'Пользователи', icon: Users, path: '/admin/users' },
   { label: 'Уведомления', icon: Bell, path: '/admin/notifications' },
+  { label: 'Главная', icon: Home, path: '/admin/home' },
   { label: 'Приветствие', icon: Sparkles, path: '/admin/walkthrough' },
   { label: 'Настройки', icon: Settings, path: '/admin/settings' },
 ];

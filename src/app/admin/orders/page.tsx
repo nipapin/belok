@@ -11,6 +11,19 @@ const statusLabels: Record<string, { label: string; chip: string }> = {
   CANCELLED: { label: 'Отменён', chip: 'bg-rose-100 text-rose-800' },
 };
 
+interface OrderCustomization {
+  action: 'ADD' | 'REMOVE';
+  priceDelta: number;
+  ingredient: { id: string; name: string; price: number } | null;
+}
+
+interface OrderItem {
+  product: { name: string } | null;
+  quantity: number;
+  unitPrice: number;
+  customizations: OrderCustomization[];
+}
+
 interface Order {
   id: string;
   status: string;
@@ -18,9 +31,40 @@ interface Order {
   bonusUsed: number;
   discountAmount: number;
   paymentStatus: string;
+  comment: string | null;
   createdAt: string;
   user: { phone: string | null; email: string | null; name: string | null };
-  items: { product: { name: string }; quantity: number; unitPrice: number }[];
+  items: OrderItem[];
+}
+
+function OrderItemsList({ items }: { items: OrderItem[] }) {
+  return (
+    <div className="space-y-2">
+      {items.map((item, i) => {
+        const adds = item.customizations.filter((c) => c.action === 'ADD');
+        const removes = item.customizations.filter((c) => c.action === 'REMOVE');
+        return (
+          <div key={i} className="text-xs leading-relaxed text-(--lg-text-muted)">
+            <span className="font-medium text-(--lg-text)">
+              {item.product?.name ?? 'Товар'} ×{item.quantity}
+            </span>
+            <span className="ml-1 tabular-nums">· {item.unitPrice} ₽</span>
+            {adds.map((c, j) => (
+              <span key={`a-${j}`} className="mt-0.5 block text-emerald-700">
+                + {c.ingredient?.name ?? 'добавка'}
+                {c.priceDelta > 0 ? ` (+${c.priceDelta} ₽)` : ''}
+              </span>
+            ))}
+            {removes.map((c, j) => (
+              <span key={`r-${j}`} className="mt-0.5 block text-rose-700">
+                − {c.ingredient?.name ?? 'ингредиент'}
+              </span>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function AdminOrdersPage() {
@@ -29,6 +73,7 @@ export default function AdminOrdersPage() {
   const { data } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: () => fetch('/api/admin/orders').then((r) => r.json()),
+    refetchInterval: 10_000,
   });
   const orders: Order[] = data?.orders ?? [];
 
@@ -48,7 +93,7 @@ export default function AdminOrdersPage() {
 
       <div className="hidden min-[900px]:block">
         <div className="admin-table-wrap overflow-x-auto">
-          <table className="admin-table min-w-[900px]">
+          <table className="admin-table min-w-[960px]">
             <thead>
               <tr>
                 <th>ID</th>
@@ -65,17 +110,25 @@ export default function AdminOrdersPage() {
                 <tr key={order.id}>
                   <td className="font-mono text-xs">{order.id.slice(0, 8)}</td>
                   <td>{order.user?.name || order.user?.email || order.user?.phone || '—'}</td>
-                  <td>
-                    {order.items.map((item, i) => (
-                      <span key={i} className="block text-xs text-(--lg-text-muted)">
-                        {item.product.name} ×{item.quantity}
-                      </span>
-                    ))}
+                  <td className="max-w-[280px]">
+                    <OrderItemsList items={order.items} />
+                    {order.comment ? (
+                      <p className="mt-1.5 text-xs italic text-(--lg-text-muted)">
+                        Комментарий: {order.comment}
+                      </p>
+                    ) : null}
                   </td>
                   <td>
                     <span className="font-semibold">{order.total} ₽</span>
+                    {order.discountAmount > 0 && (
+                      <span className="mt-0.5 block text-xs text-sky-700">
+                        Скидка: −{order.discountAmount} ₽
+                      </span>
+                    )}
                     {order.bonusUsed > 0 && (
-                      <span className="mt-0.5 block text-xs text-amber-700">Бонусы: −{order.bonusUsed} ₽</span>
+                      <span className="mt-0.5 block text-xs text-amber-700">
+                        Бонусы: −{order.bonusUsed} ₽
+                      </span>
                     )}
                   </td>
                   <td>
@@ -122,19 +175,25 @@ export default function AdminOrdersPage() {
                 {new Date(order.createdAt).toLocaleString('ru-RU')}
               </p>
             </div>
-            <p className="text-sm font-medium text-(--lg-text)">{order.user?.name || order.user?.email || order.user?.phone || '—'}</p>
-            <div className="text-xs leading-relaxed text-(--lg-text-muted)">
-              {order.items.map((item, i) => (
-                <span key={i} className="block">
-                  {item.product.name} ×{item.quantity}
-                </span>
-              ))}
-            </div>
+            <p className="text-sm font-medium text-(--lg-text)">
+              {order.user?.name || order.user?.email || order.user?.phone || '—'}
+            </p>
+            <OrderItemsList items={order.items} />
+            {order.comment ? (
+              <p className="text-xs italic text-(--lg-text-muted)">Комментарий: {order.comment}</p>
+            ) : null}
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] pt-3">
               <div>
                 <span className="text-lg font-bold tabular-nums text-(--lg-text)">{order.total} ₽</span>
+                {order.discountAmount > 0 ? (
+                  <span className="mt-0.5 block text-xs text-sky-700">
+                    Скидка: −{order.discountAmount} ₽
+                  </span>
+                ) : null}
                 {order.bonusUsed > 0 ? (
-                  <span className="mt-0.5 block text-xs text-amber-700">Бонусы: −{order.bonusUsed} ₽</span>
+                  <span className="mt-0.5 block text-xs text-amber-700">
+                    Бонусы: −{order.bonusUsed} ₽
+                  </span>
                 ) : null}
               </div>
               <span

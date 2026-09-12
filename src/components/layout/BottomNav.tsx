@@ -7,6 +7,7 @@ import { startTransition, useCallback, useLayoutEffect, useMemo, useRef, useStat
 import NavItem from "../ui/NavItem";
 import UserQrModal from "../loyalty/UserQrModal";
 import { useAuthStore } from "@/store/authStore";
+import { useAuthModalStore } from "@/store/authModalStore";
 import { useHaptic } from "@/hooks/useHaptic";
 
 type NavItemConfig = {
@@ -16,7 +17,7 @@ type NavItemConfig = {
   /** Внешний путь — клик переводит на него (и определяет активность). */
   path?: string;
   /** Локальное действие (например, открыть модалку с QR). */
-  action?: "qr";
+  action?: "qr" | "auth";
   /** Аватар вместо иконки (только для профиля). */
   avatarUrl?: string | null;
 };
@@ -26,6 +27,8 @@ export default function BottomNav() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const haptic = useHaptic();
+  const openAuth = useAuthModalStore((s) => s.openAuth);
+  const authModalOpen = useAuthModalStore((s) => s.open);
   const navRef = useRef<HTMLElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [lozenge, setLozenge] = useState({ x: 0, y: 0, width: 0, height: 0, visible: false });
@@ -43,7 +46,7 @@ export default function BottomNav() {
     if (!user) {
       return [
         ...base,
-        { id: "profile", label: MenuLabel.PROFILE, icon: User, path: "/profile" },
+        { id: "profile", label: MenuLabel.PROFILE, icon: User, action: "auth" },
       ];
     }
 
@@ -73,13 +76,17 @@ export default function BottomNav() {
       const idx = navItems.findIndex((i) => i.action === "qr");
       if (idx >= 0) return idx;
     }
+    if (authModalOpen) {
+      const idx = navItems.findIndex((i) => i.action === "auth");
+      if (idx >= 0) return idx;
+    }
     return navItems.findIndex((item) => {
       if (!item.path) return false;
       return item.path === "/"
         ? profilePathAlias === "/"
         : profilePathAlias.startsWith(item.path);
     });
-  }, [navItems, profilePathAlias, qrOpen]);
+  }, [navItems, profilePathAlias, qrOpen, authModalOpen]);
 
   const updateLozenge = useCallback(() => {
     const nav = navRef.current;
@@ -116,6 +123,11 @@ export default function BottomNav() {
     if (item.action === "qr") {
       haptic("medium");
       setQrOpen(true);
+      return;
+    }
+    if (item.action === "auth") {
+      haptic("selection");
+      openAuth();
       return;
     }
     if (item.path) {

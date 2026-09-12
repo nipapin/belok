@@ -23,17 +23,111 @@ declare global {
   }
 }
 
+const DECODE_INTERVAL_MS = 100;
+const COOLDOWN_MS = 1500;
+const SAME_VALUE_COOLDOWN_MS = 3000;
+
 export default function QrScanner({ onScan, paused = false }: QrScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const detectorRef = useRef<NativeBarcodeDetector | null>(null);
+  const onScanRef = useRef(onScan);
+  const pausedRef = useRef(paused);
+  const lastDecodeAtRef = useRef(0);
+  const cooldownUntilRef = useRef(0);
+  const lastValueRef = useRef<{ value: string; at: number } | null>(null);
   const [error, setError] = useState<string>('');
   const [starting, setStarting] = useState(true);
 
   useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
+
+  useEffect(() => {
     let cancelled = false;
+
+    function stopStream() {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    }
+
+    function handleDetected(rawValue: string) {
+      const now = performance.now();
+      if (now < cooldownUntilRef.current) return;
+
+      const last = lastValueRef.current;
+      if (last && last.value === rawValue && now - last.at < SAME_VALUE_COOLDOWN_MS) {
+        return;
+      }
+
+      cooldownUntilRef.current = now + COOLDOWN_MS;
+      lastValueRef.current = { value: rawValue, at: now };
+      onScanRef.current(rawValue);
+    }
+
+    async function loop() {
+      if (cancelled) return;
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+
+      if (pausedRef.current || !video || !canvas || video.readyState < 2) {
+        rafRef.current = window.requestAnimationFrame(loop);
+        return;
+      }
+
+      const now = performance.now();
+      if (now - lastDecodeAtRef.current < DECODE_INTERVAL_MS) {
+        rafRef.current = window.requestAnimationFrame(loop);
+        return;
+      }
+      lastDecodeAtRef.current = now;
+
+      try {
+        if (detectorRef.current) {
+          const results = await detectorRef.current.detect(video);
+          if (results && results.length > 0 && results[0]?.rawValue) {
+            handleDetected(results[0].rawValue);
+          }
+        } else {
+          const w = video.videoWidth;
+          const h = video.videoHeight;
+          if (w > 0 && h > 0) {
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (ctx) {
+              ctx.drawImage(video, 0, 0, w, h);
+              const imgData = ctx.getImageData(0, 0, w, h);
+              const code = jsQR(imgData.data, w, h, {
+                inversionAttempts: 'dontInvert',
+              });
+              if (code && code.data) {
+                handleDetected(code.data);
+              }
+            }
+          }
+        }
+      } catch {
+        /* keep scanning */
+      }
+
+      rafRef.current = window.requestAnimationFrame(loop);
+    }
 
     async function start() {
       try {
@@ -43,6 +137,9 @@ export default function QrScanner({ onScan, paused = false }: QrScannerProps) {
           return;
         }
 
+        setStarting(true);
+        setError('');
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
           audio: false,
@@ -51,7 +148,17 @@ export default function QrScanner({ onScan, paused = false }: QrScannerProps) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
+
+        stopStream();
         streamRef.current = stream;
+
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.onended = () => {
+            if (cancelled) return;
+            void start();
+          };
+        }
 
         const video = videoRef.current;
         if (!video) return;
@@ -71,7 +178,8 @@ export default function QrScanner({ onScan, paused = false }: QrScannerProps) {
 
         canvasRef.current = document.createElement('canvas');
         setStarting(false);
-        loop();
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = window.requestAnimationFrame(loop);
       } catch (e) {
         const err = e as { name?: string; message?: string };
         if (err.name === 'NotAllowedError') {
@@ -85,67 +193,30 @@ export default function QrScanner({ onScan, paused = false }: QrScannerProps) {
       }
     }
 
-    async function loop() {
+    function onVisibilityChange() {
       if (cancelled) return;
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-
-      if (paused || !video || !canvas || video.readyState < 2) {
-        rafRef.current = window.requestAnimationFrame(loop);
-        return;
-      }
-
-      try {
-        if (detectorRef.current) {
-          const results = await detectorRef.current.detect(video);
-          if (results && results.length > 0 && results[0]?.rawValue) {
-            onScan(results[0].rawValue);
-            return;
-          }
+      if (document.visibilityState === 'visible') {
+        const track = streamRef.current?.getVideoTracks()[0];
+        if (!track || track.readyState === 'ended') {
+          void start();
         } else {
-          const w = video.videoWidth;
-          const h = video.videoHeight;
-          if (w > 0 && h > 0) {
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            if (ctx) {
-              ctx.drawImage(video, 0, 0, w, h);
-              const imgData = ctx.getImageData(0, 0, w, h);
-              const code = jsQR(imgData.data, w, h, {
-                inversionAttempts: 'dontInvert',
-              });
-              if (code && code.data) {
-                onScan(code.data);
-                return;
-              }
-            }
+          const video = videoRef.current;
+          if (video?.paused) {
+            void video.play().catch(() => {});
           }
         }
-      } catch {
-        /* keep scanning */
       }
-
-      rafRef.current = window.requestAnimationFrame(loop);
     }
 
-    start();
+    void start();
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       cancelled = true;
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      stopStream();
     };
-  }, [onScan, paused]);
+  }, []);
 
   return (
     <div className="qr-scanner-frame relative aspect-square w-full overflow-hidden rounded-2xl bg-black">

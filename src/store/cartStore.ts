@@ -52,6 +52,10 @@ interface CartState {
   getTotalItems: () => number;
   getTotalPrice: () => number;
   getItemPrice: (item: CartItem) => number;
+  /** Quantity of the plain (no customizations) line for a product. */
+  getPlainLineQuantity: (productId: string) => number;
+  /** Find the plain cart line id for a product, if any. */
+  getPlainLineId: (productId: string) => string | null;
 }
 
 export const useCartStore = create<CartState>()(
@@ -100,6 +104,19 @@ export const useCartStore = create<CartState>()(
       getTotalPrice: () => {
         const { items, getItemPrice } = get();
         return items.reduce((sum, item) => sum + getItemPrice(item), 0);
+      },
+
+      getPlainLineQuantity: (productId) => {
+        return get()
+          .items.filter((i) => i.productId === productId && i.customizations.length === 0)
+          .reduce((sum, i) => sum + i.quantity, 0);
+      },
+
+      getPlainLineId: (productId) => {
+        const line = get().items.find(
+          (i) => i.productId === productId && i.customizations.length === 0
+        );
+        return line?.id ?? null;
       },
     }),
     {

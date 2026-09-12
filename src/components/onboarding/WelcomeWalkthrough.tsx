@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+import { useAuthModalStore } from "@/store/authModalStore";
 import { useHaptic } from "@/hooks/useHaptic";
 import type { WalkthroughConfig } from "@/lib/walkthrough";
 
@@ -61,6 +62,7 @@ export default function WelcomeWalkthrough() {
   const { user, isLoading } = useAuthStore();
   const router = useRouter();
   const haptic = useHaptic();
+  const openAuth = useAuthModalStore((s) => s.openAuth);
 
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -118,7 +120,7 @@ export default function WelcomeWalkthrough() {
   const onRegister = () => {
     haptic("medium");
     close();
-    router.push("/auth");
+    openAuth({ preferRegister: true });
   };
 
   const onMenu = () => {

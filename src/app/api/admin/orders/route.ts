@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import type {
+  IngredientRow,
   OrderItemCustomizationRow,
   OrderItemRow,
   OrderRow,
@@ -54,7 +55,16 @@ export async function GET() {
         : Promise.resolve([] as OrderItemCustomizationRow[]),
     ]);
 
+    const ingredientIds = Array.from(new Set(customizations.map((c) => c.ingredientId)));
+    const ingredients = ingredientIds.length
+      ? await query<IngredientRow>(
+          `SELECT * FROM "ingredients" WHERE id = ANY($1::text[])`,
+          [ingredientIds]
+        )
+      : [];
+
     const productMap = new Map(products.map((p) => [p.id, p]));
+    const ingredientMap = new Map(ingredients.map((i) => [i.id, i]));
 
     const result = orders.map((o) => ({
       id: o.id,
@@ -80,7 +90,17 @@ export async function GET() {
         .map((it) => ({
           ...it,
           product: productMap.get(it.productId) ?? null,
-          customizations: customizations.filter((c) => c.orderItemId === it.id),
+          customizations: customizations
+            .filter((c) => c.orderItemId === it.id)
+            .map((c) => {
+              const ingredient = ingredientMap.get(c.ingredientId);
+              return {
+                ...c,
+                ingredient: ingredient
+                  ? { id: ingredient.id, name: ingredient.name, price: ingredient.price }
+                  : null,
+              };
+            }),
         })),
     }));
 

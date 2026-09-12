@@ -7,6 +7,8 @@ import PullToRefresh from "@/components/layout/PullToRefresh";
 import UpdateToast from "@/components/layout/UpdateToast";
 import PushPromptAfterRegister from "@/components/notifications/PushPromptAfterRegister";
 import WelcomeWalkthrough from "@/components/onboarding/WelcomeWalkthrough";
+import AuthModal from "@/components/auth/AuthModal";
+import AuthQueryOpener from "@/components/auth/AuthQueryOpener";
 import { useAuthStore } from "@/store/authStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -34,7 +36,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           <Header />
           <PullToRefresh
             onRefresh={handleRefresh}
-            className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden scrollbar-hide px-2 pt-[var(--client-header-stack-height)] pb-[calc(var(--client-nav-bar-height)+var(--client-nav-edge-gap))]"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden scrollbar-hide px-4 pt-[var(--client-header-stack-height)] pb-[calc(var(--client-nav-bar-height)+var(--client-nav-edge-gap))]"
           >
             {children}
           </PullToRefresh>
@@ -44,6 +46,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       <UpdateToast />
       <PushPromptAfterRegister />
       <WelcomeWalkthrough />
+      <AuthQueryOpener />
+      <AuthModal />
     </>
   );
 }

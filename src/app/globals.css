@@ -24,7 +24,7 @@ html {
   --lg-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
   --lg-shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.16);
   --lg-text: rgba(255, 255, 255, 0.94);
-  --lg-text-muted: rgba(255, 255, 255, 0.62);
+  --lg-text-muted: rgba(255, 255, 255, 0.8);
   --lg-chip-label: rgba(255, 255, 255, 0.92);
   --lg-chip-label-active: #ffffff;
   --lg-bg-image: linear-gradient(to top, #646669 0%, #bacef0 100%);
@@ -35,6 +35,31 @@ html {
   --client-nav-edge-gap: 12px;
   --pwa-chrome-top: #bacef0;
   background-color: var(--pwa-chrome-top);
+
+  /* Food card tokens — 4pt grid, premium healthy-food UI */
+  --food-space: 4px;
+  --food-radius: 26px;
+  --food-accent: #22c55e;
+  --food-accent-hover: #4ade80;
+  --food-accent-pressed: #16a34a;
+  --food-ink: #0f172a;
+  --food-muted: #64748b;
+  --food-surface: #f8fafc;
+  --food-cta-size: 48px;
+  --food-spring: 480ms cubic-bezier(0.22, 1.15, 0.36, 1);
+  --food-press: 140ms cubic-bezier(0.22, 1, 0.36, 1);
+  --food-card-bg: color-mix(in srgb, var(--lg-fill) 90%, transparent);
+  --food-card-text: var(--lg-text);
+  --food-card-muted: var(--lg-text-muted);
+  --food-chip-bg: color-mix(in srgb, #ffffff 14%, transparent);
+  --food-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 8px 24px rgba(15, 23, 42, 0.1),
+    0 20px 40px -12px rgba(15, 23, 42, 0.16);
+  --food-shadow-hover:
+    0 2px 4px rgba(15, 23, 42, 0.06),
+    0 16px 40px rgba(15, 23, 42, 0.14),
+    0 28px 56px -16px rgba(15, 23, 42, 0.2);
 }
 
 html[data-theme="light"] {
@@ -56,6 +81,19 @@ html[data-theme="light"] {
   --lg-bg-image: linear-gradient(to bottom, #e8eef7 0%, #f6f8fc 100%);
   --pwa-chrome-top: #e8eef7;
   background-color: var(--pwa-chrome-top);
+
+  --food-card-bg: color-mix(in srgb, #f8fafc 92%, white);
+  --food-card-text: #0f172a;
+  --food-card-muted: #64748b;
+  --food-chip-bg: #f1f5f9;
+  --food-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(15, 23, 42, 0.08),
+    0 20px 40px -12px rgba(15, 23, 42, 0.1);
+  --food-shadow-hover:
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 16px 40px rgba(15, 23, 42, 0.1),
+    0 28px 56px -16px rgba(15, 23, 42, 0.12);
 }
 
 @layer base {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, CheckCircle2, Keyboard, Loader2, Minus, Plus, RotateCcw, Star, UserCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import QrScanner from '@/components/loyalty/QrScanner';
@@ -42,6 +42,16 @@ export default function AdminLoyaltyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<OperationResult | null>(null);
+  const loadingRef = useRef(loading);
+  const stageRef = useRef(stage);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  useEffect(() => {
+    stageRef.current = stage;
+  }, [stage]);
 
   const lookupUser = useCallback(async (rawId: string) => {
     const id = rawId.trim();
@@ -70,10 +80,10 @@ export default function AdminLoyaltyPage() {
 
   const handleScan = useCallback(
     (value: string) => {
-      if (loading || stage !== 'lookup') return;
+      if (loadingRef.current || stageRef.current !== 'lookup') return;
       lookupUser(value);
     },
-    [loading, stage, lookupUser]
+    [lookupUser]
   );
 
   const handleAward = async () => {
