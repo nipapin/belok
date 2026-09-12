@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, withTransaction } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { createPayment, YOOKASSA_DESCRIPTION_MAX, truncateYooKassaText } from '@/lib/yookassa';
-import { brandMark } from '@/lib/brand';
 import type {
   IngredientAction,
   OrderItemCustomizationRow,
@@ -206,41 +204,9 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    let paymentUrl: string | null = null;
-    try {
-      const itemsSummary = computedItems
-        .map((item) => {
-          const product = productMap.get(item.productId);
-          const name = product?.name ?? 'Товар';
-          return item.quantity > 1 ? `${name}×${item.quantity}` : name;
-        })
-        .join(', ');
-      const shortId = orderId.slice(0, 8);
-      const description = truncateYooKassaText(
-        `Заказ №${shortId}: ${itemsSummary}`,
-        YOOKASSA_DESCRIPTION_MAX
-      );
-
-      const payment = await createPayment({
-        amount: total,
-        orderId,
-        description,
-        returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/orders/${orderId}`,
-        metadata: {
-          items: itemsSummary,
-          brand: brandMark,
-        },
-      });
-
-      await query(`UPDATE "orders" SET "paymentId" = $1 WHERE id = $2`, [payment.id, orderId]);
-      paymentUrl = payment.confirmation?.confirmation_url ?? null;
-    } catch (paymentError) {
-      console.error('Payment creation failed:', paymentError);
-    }
-
     const order = await fetchOrderWithItems(orderId);
 
-    return NextResponse.json({ order, paymentUrl });
+    return NextResponse.json({ order });
   } catch (error) {
     console.error('Create order error:', error);
     return NextResponse.json({ error: 'Ошибка создания заказа' }, { status: 500 });

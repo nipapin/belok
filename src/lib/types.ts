@@ -115,7 +115,6 @@ export interface OrderRow {
   bonusUsed: number;
   bonusEarned: number;
   paymentStatus: PaymentStatus;
-  paymentId: string | null;
   comment: string | null;
   createdAt: Date;
   updatedAt: Date;

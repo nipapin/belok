@@ -75,7 +75,6 @@ export async function GET() {
       bonusUsed: o.bonusUsed,
       bonusEarned: o.bonusEarned,
       paymentStatus: o.paymentStatus,
-      paymentId: o.paymentId,
       comment: o.comment,
       createdAt: o.createdAt,
       updatedAt: o.updatedAt,

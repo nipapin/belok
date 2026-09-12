@@ -91,7 +91,7 @@ async function sendToOneSubscription(
 ): Promise<SendResult | null> {
   configureVapid();
   try {
-    return await webpush.sendNotification(
+    const result = await webpush.sendNotification(
       {
         endpoint: sub.endpoint,
         keys: { p256dh: sub.p256dh, auth: sub.auth },
@@ -99,15 +99,33 @@ async function sendToOneSubscription(
       JSON.stringify(payload),
       { TTL: 60 * 60 * 24 } // store on push service for up to 24h if device offline
     );
+    console.info('[push] delivered', {
+      userId: sub.userId,
+      statusCode: result.statusCode,
+      endpoint: sub.endpoint.slice(0, 48),
+    });
+    return result;
   } catch (err) {
-    const code = (err as WebPushError | { statusCode?: number })?.statusCode;
+    const pushErr = err as WebPushError & { body?: string; message?: string };
+    const code = pushErr?.statusCode;
     // 404 / 410 = subscription is gone (user uninstalled, denied, expired).
     if (code === 404 || code === 410) {
+      console.warn('[push] stale subscription removed', {
+        code,
+        userId: sub.userId,
+        endpoint: sub.endpoint.slice(0, 48),
+      });
       await query(`DELETE FROM "push_subscriptions" WHERE endpoint = $1`, [sub.endpoint]);
       return null;
     }
     // 413 = payload too large; 429 = rate limited; others — log & continue.
-    console.warn('[push] sendNotification failed', { code, endpoint: sub.endpoint });
+    console.warn('[push] sendNotification failed', {
+      code,
+      userId: sub.userId,
+      endpoint: sub.endpoint.slice(0, 48),
+      body: typeof pushErr?.body === 'string' ? pushErr.body.slice(0, 200) : undefined,
+      message: pushErr?.message,
+    });
     return null;
   }
 }
@@ -120,7 +138,10 @@ export async function sendPushToUserIds(
   userIds: string[],
   payload: PushPayload
 ): Promise<{ recipients: number; delivered: number }> {
-  if (userIds.length === 0) return { recipients: 0, delivered: 0 };
+  if (userIds.length === 0) {
+    console.info('[push] skip: empty audience', { title: payload.title });
+    return { recipients: 0, delivered: 0 };
+  }
 
   const subs = await query<SubscriptionRow>(
     `SELECT id, "userId", endpoint, p256dh, auth
@@ -129,11 +150,30 @@ export async function sendPushToUserIds(
     [userIds]
   );
 
-  if (subs.length === 0) return { recipients: userIds.length, delivered: 0 };
+  console.info('[push] sending', {
+    title: payload.title,
+    users: userIds.length,
+    subscriptions: subs.length,
+  });
+
+  if (subs.length === 0) {
+    console.warn('[push] no subscriptions for audience', {
+      title: payload.title,
+      users: userIds.length,
+    });
+    return { recipients: userIds.length, delivered: 0 };
+  }
 
   // Fan out in parallel; web-push is non-blocking for our process.
   const results = await Promise.all(subs.map((sub) => sendToOneSubscription(sub, payload)));
   const delivered = results.filter((r) => r !== null).length;
+
+  console.info('[push] done', {
+    title: payload.title,
+    recipients: userIds.length,
+    subscriptions: subs.length,
+    delivered,
+  });
 
   return { recipients: userIds.length, delivered };
 }

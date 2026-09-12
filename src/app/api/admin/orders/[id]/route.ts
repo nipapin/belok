@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import { tryNotifyUser } from '@/lib/push';
+import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import type {
   OrderItemRow,
   OrderRow,
@@ -68,8 +69,10 @@ export async function PUT(
 
     await query(`UPDATE "orders" SET status = $1 WHERE id = $2`, [status, id]);
 
-    // Best-effort push notification: never blocks or fails the API response.
     if (before && before.status !== status) {
+      await settleOrderLoyalty(id, status as OrderStatus);
+
+      // Best-effort push notification: never blocks or fails the API response.
       const tpl = STATUS_PUSH[status as OrderStatus];
       if (tpl) {
         void tryNotifyUser(before.userId, {
@@ -121,7 +124,6 @@ export async function PUT(
         bonusUsed: order.bonusUsed,
         bonusEarned: order.bonusEarned,
         paymentStatus: order.paymentStatus,
-        paymentId: order.paymentId,
         comment: order.comment,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
