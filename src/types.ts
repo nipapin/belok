@@ -19,6 +19,7 @@ export interface Product {
   fats: number | null;
   carbs: number | null;
   fiber: number | null;
+  weightGrams: number | null;
   categoryId: string;
   category: { id: string; name: string };
   ingredients: ProductIngredient[];

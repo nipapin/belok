@@ -1,8 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
-import Image from "next/image";
-import { Heart } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NutritionChip } from "./NutritionChip";
 import { PriceCTA } from "./PriceCTA";
 import "./food-card.css";
@@ -25,13 +23,11 @@ type FoodCardProps = {
   product: FoodCardModel;
   quantity: number;
   busy?: boolean;
-  favorite?: boolean;
   eager?: boolean;
   onOpen: () => void;
   onAdd: (event: React.MouseEvent) => void;
   onIncrement: (event: React.MouseEvent) => void;
   onDecrement: (event: React.MouseEvent) => void;
-  onToggleFavorite?: (event: React.MouseEvent) => void;
 };
 
 function nutritionChips(product: FoodCardNutrition): string[] {
@@ -56,17 +52,21 @@ export function FoodCard({
   product,
   quantity,
   busy = false,
-  favorite = false,
   eager = false,
   onOpen,
   onAdd,
   onIncrement,
   onDecrement,
-  onToggleFavorite,
 }: FoodCardProps) {
   const mediaRef = useRef<HTMLDivElement>(null);
+  const [imgFailed, setImgFailed] = useState(false);
   const chips = nutritionChips(product);
   const openLabel = `Открыть ${product.name}, ${product.price} руб.`;
+  const showImage = Boolean(product.image) && !imgFailed;
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [product.image]);
 
   const resetParallax = useCallback(() => {
     const el = mediaRef.current;
@@ -100,15 +100,18 @@ export function FoodCard({
           aria-label={openLabel}
         >
           <div ref={mediaRef} className="food-card__media">
-            {product.image ? (
-              <Image
-                src={product.image}
+            {showImage ? (
+              // Direct S3 URL — Next optimizer times out on twcstorage and
+              // leaves a blank media well that looks like a skeleton on scroll.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={product.image!}
                 alt={product.name}
-                fill
-                sizes="(max-width: 640px) 46vw, 200px"
-                className="food-card__img object-cover"
+                className="food-card__img"
                 loading={eager ? "eager" : "lazy"}
                 fetchPriority={eager ? "high" : "auto"}
+                decoding="async"
+                onError={() => setImgFailed(true)}
               />
             ) : (
               <span className="food-card__fallback" aria-hidden>
@@ -131,28 +134,6 @@ export function FoodCard({
             ) : null}
           </div>
         </button>
-
-        {onToggleFavorite ? (
-          <button
-            type="button"
-            className="food-card__fav"
-            aria-label={
-              favorite
-                ? `Убрать ${product.name} из избранного`
-                : `Добавить ${product.name} в избранное`
-            }
-            aria-pressed={favorite}
-            onClick={onToggleFavorite}
-          >
-            <span className="food-card__fav-glyph">
-              <Heart
-                className="size-4"
-                strokeWidth={2.25}
-                fill={favorite ? "currentColor" : "none"}
-              />
-            </span>
-          </button>
-        ) : null}
 
         <div
           className="food-card__footer"

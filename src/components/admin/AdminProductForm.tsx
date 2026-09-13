@@ -34,6 +34,7 @@ export interface AdminProduct {
   fats: number | null;
   carbs: number | null;
   fiber: number | null;
+  weightGrams: number | null;
   sortOrder: number;
   category: { id: string; name: string };
   ingredients: ProductIngredient[];
@@ -56,6 +57,7 @@ const emptyForm = {
   fats: '',
   carbs: '',
   fiber: '',
+  weightGrams: '',
   sortOrder: 0,
   ingredientIds: [] as string[],
 };
@@ -114,6 +116,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
       fats: product.fats?.toString() || '',
       carbs: product.carbs?.toString() || '',
       fiber: product.fiber?.toString() || '',
+      weightGrams: product.weightGrams?.toString() || '',
       sortOrder: product.sortOrder,
       ingredientIds: product.ingredients.map((pi) => pi.ingredientId),
     });
@@ -287,7 +290,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
           <section className="admin-form-section">
             <p className="admin-form-eyebrow">Внешний вид</p>
             <p className="admin-form-hint mt-1.5 mb-4">
-              Превью 2:3, как в карточке товара в меню. Формат JPG, PNG, WebP — до 5 МБ.
+              Превью 1:1, как в карточке товара в меню. Формат JPG, PNG, WebP — до 5 МБ.
             </p>
             <AdminProductImageField
               previewUrl={currentImageUrl}
@@ -364,9 +367,10 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
           <section className="admin-form-section">
             <p className="admin-form-eyebrow">Пищевая ценность</p>
             <p className="admin-form-hint mt-1.5 mb-5">На порцию — опционально, для отображения в меню.</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
               {(
                 [
+                  ['weightGrams', 'Вес, г'],
                   ['calories', 'Ккал'],
                   ['proteins', 'Белки, г'],
                   ['fats', 'Жиры, г'],

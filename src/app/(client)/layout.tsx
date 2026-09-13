@@ -6,6 +6,7 @@ import Header from "@/components/layout/Header";
 import PullToRefresh from "@/components/layout/PullToRefresh";
 import UpdateToast from "@/components/layout/UpdateToast";
 import PushPromptAfterRegister from "@/components/notifications/PushPromptAfterRegister";
+import PwaInstallPrompt from "@/components/pwa/PwaInstallPrompt";
 import WelcomeWalkthrough from "@/components/onboarding/WelcomeWalkthrough";
 import AuthModal from "@/components/auth/AuthModal";
 import AuthQueryOpener from "@/components/auth/AuthQueryOpener";
@@ -44,6 +45,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         <BottomNav />
       </div>
       <UpdateToast />
+      <PwaInstallPrompt />
       <PushPromptAfterRegister />
       <WelcomeWalkthrough />
       <AuthQueryOpener />

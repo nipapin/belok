@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { isIosDevice, isStandalonePwa } from "@/lib/clientPlatform";
 
 export type PushPermission = "default" | "granted" | "denied";
 
@@ -24,29 +25,6 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(buffer);
   for (let i = 0; i < raw.length; ++i) out[i] = raw.charCodeAt(i);
   return out;
-}
-
-function isIOSSafari(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  const iPad =
-    /Macintosh/.test(ua) &&
-    typeof navigator.maxTouchPoints === "number" &&
-    navigator.maxTouchPoints > 1;
-  return /iPhone|iPod|iPad/.test(ua) || iPad;
-}
-
-function isStandalonePWA(): boolean {
-  if (typeof window === "undefined") return false;
-  // iOS-specific
-  if (
-    "standalone" in window.navigator &&
-    (window.navigator as Navigator & { standalone?: boolean }).standalone
-  ) {
-    return true;
-  }
-  // Standards-based
-  return window.matchMedia?.("(display-mode: standalone)").matches ?? false;
 }
 
 function isPushSupported(): boolean {
@@ -80,7 +58,7 @@ export function usePushSubscription() {
     if (!isPushSupported()) {
       // iOS Safari pre-16.4 has no PushManager. iOS 16.4+ has it but only
       // exposes it in standalone PWA context.
-      if (isIOSSafari() && !isStandalonePWA()) {
+      if (isIosDevice() && !isStandalonePwa()) {
         setStatus("ios-needs-install");
       } else {
         setStatus("unsupported");
@@ -114,7 +92,7 @@ export function usePushSubscription() {
 
     try {
       if (!isPushSupported()) {
-        if (isIOSSafari() && !isStandalonePWA()) {
+        if (isIosDevice() && !isStandalonePwa()) {
           setError(
             "Чтобы получать уведомления на iPhone, добавьте приложение на домашний экран"
           );

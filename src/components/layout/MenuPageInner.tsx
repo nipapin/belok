@@ -8,7 +8,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const productCarouselClass = "product-carousel";
-const productSlideClass = "flex w-[42%] max-w-[204px] shrink-0 snap-start sm:w-[220px]";
+const productSlideClass =
+  "flex w-[min(72vw,280px)] min-w-[220px] shrink-0 snap-start sm:w-[240px]";
 
 export function MenuPageInner() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -153,6 +154,7 @@ export function MenuPageInner() {
                         image: product.image,
                         calories: product.calories,
                         proteins: product.proteins,
+                        weightGrams: product.weightGrams,
                         categoryName: category.name,
                       }}
                     />
@@ -177,6 +179,7 @@ export function MenuPageInner() {
                     image: product.image,
                     calories: product.calories,
                     proteins: product.proteins,
+                    weightGrams: product.weightGrams,
                     categoryName: product.category?.name,
                   }}
                 />

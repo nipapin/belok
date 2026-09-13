@@ -83,6 +83,7 @@ export interface ProductRow {
   fats: number | null;
   carbs: number | null;
   fiber: number | null;
+  weightGrams: number | null;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;

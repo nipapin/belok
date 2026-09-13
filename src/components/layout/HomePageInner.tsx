@@ -19,7 +19,8 @@ import { useEffect, useMemo } from "react";
 import { useAuthStore } from "@/store/authStore";
 
 const productCarouselClass = "product-carousel";
-const productSlideClass = "flex w-[42%] max-w-[204px] shrink-0 snap-start sm:w-[220px]";
+const productSlideClass =
+  "flex w-[min(72vw,280px)] min-w-[220px] shrink-0 snap-start sm:w-[240px]";
 
 function telHref(phone: string): string {
   const digits = phone.replace(/[^\d+]/g, "");
@@ -114,6 +115,7 @@ function ProductsBlockView({
               image: product.image,
               calories: product.calories,
               proteins: product.proteins,
+              weightGrams: product.weightGrams,
               categoryName: product.category?.name,
             }}
           />
@@ -133,7 +135,7 @@ function ProductsBlockView({
       {block.layout === "carousel" ? (
         <div className={productCarouselClass}>{cards}</div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-3">{cards}</div>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-3">{cards}</div>
       )}
     </section>
   );

@@ -25,6 +25,7 @@ interface UpdateProductBody {
   fats?: string | number | null;
   carbs?: string | number | null;
   fiber?: string | number | null;
+  weightGrams?: string | number | null;
   sortOrder?: number;
   ingredients?: IngredientLink[];
 }
@@ -87,6 +88,7 @@ export async function PUT(
     if (body.fats !== undefined) add('fats', toNum(body.fats));
     if (body.carbs !== undefined) add('carbs', toNum(body.carbs));
     if (body.fiber !== undefined) add('fiber', toNum(body.fiber));
+    if (body.weightGrams !== undefined) add('weightGrams', toNum(body.weightGrams));
     if (body.sortOrder !== undefined) add('sortOrder', body.sortOrder);
 
     await withTransaction(async (client) => {

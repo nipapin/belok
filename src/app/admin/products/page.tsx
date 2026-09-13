@@ -33,6 +33,7 @@ interface Product {
   fats: number | null;
   carbs: number | null;
   fiber: number | null;
+  weightGrams: number | null;
   sortOrder: number;
   category: { id: string; name: string };
   ingredients: ProductIngredient[];

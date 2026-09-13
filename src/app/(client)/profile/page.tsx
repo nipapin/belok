@@ -11,6 +11,7 @@ import { useHydrated } from "@/hooks/useHydrated";
 import { useQuery } from "@tanstack/react-query";
 import LoyaltyCard from "@/components/loyalty/LoyaltyCard";
 import PushToggle from "@/components/notifications/PushToggle";
+import PwaInstallCard from "@/components/pwa/PwaInstallCard";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -145,6 +146,9 @@ export default function ProfilePage() {
         >
           Войти или зарегистрироваться
         </button>
+        <div className="mt-6 w-full max-w-xs">
+          <PwaInstallCard />
+        </div>
       </div>
     );
   }
@@ -296,6 +300,8 @@ export default function ProfilePage() {
             <span className="font-medium text-(--lg-text)">{item.label}</span>
           </button>
         ))}
+
+        <PwaInstallCard />
 
         <div className="mt-4">
           <PushToggle />

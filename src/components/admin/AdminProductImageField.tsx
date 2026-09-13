@@ -61,7 +61,7 @@ export default function AdminProductImageField({
           'relative w-full overflow-hidden rounded-2xl transition-all duration-200',
           previewUrl
             ? 'ring-1 ring-[color-mix(in_srgb,var(--lg-text)_10%,transparent)] shadow-sm'
-            : 'aspect-2/3 border border-dashed',
+            : 'aspect-square border border-dashed',
           previewUrl
             ? ''
             : dragOver
@@ -86,7 +86,7 @@ export default function AdminProductImageField({
         onDrop={onDrop}
       >
         {previewUrl ? (
-          <div className="relative aspect-2/3 w-full">
+          <div className="relative aspect-square w-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={previewUrl}

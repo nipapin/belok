@@ -149,6 +149,11 @@ export default function ProductDetailPage() {
               {product.category.name}
             </span>
             <h1 className="heading-section text-balance">{product.name}</h1>
+            {product.weightGrams != null ? (
+              <p className="mt-1 text-sm font-medium tabular-nums text-[var(--lg-text-muted)]">
+                {product.weightGrams} г
+              </p>
+            ) : null}
           </div>
           <p className="shrink-0 text-xl font-bold tracking-tight tabular-nums text-[var(--lg-text)]">
             {product.price} ₽
@@ -159,17 +164,20 @@ export default function ProductDetailPage() {
           <p className="mb-4 text-sm leading-relaxed text-[var(--lg-text-muted)]">{product.description}</p>
         )}
 
-        {([product.calories, product.proteins, product.fats, product.carbs, product.fiber] as (number | null)[]).some(
+        {([product.weightGrams, product.calories, product.proteins, product.fats, product.carbs, product.fiber] as (number | null)[]).some(
           (v) => v != null,
         ) && (
           <div className="mb-6 grid grid-cols-6 gap-1">
             {[
-              { label: "Ккал", value: product.calories, span: 'col-span-2' },
-              { label: "Белки, г", value: product.proteins, span: 'col-span-2' },
-              { label: "Жиры, г", value: product.fats, span: 'col-span-2' },
-              { label: "Углеводы, г", value: product.carbs, span: 'col-span-3' },
-              { label: "Клетчатка, г", value: product.fiber, span: 'col-span-3' },
-            ].map((item) => (
+              { label: "Вес, г", value: product.weightGrams, span: "col-span-2" },
+              { label: "Ккал", value: product.calories, span: "col-span-2" },
+              { label: "Белки, г", value: product.proteins, span: "col-span-2" },
+              { label: "Жиры, г", value: product.fats, span: "col-span-2" },
+              { label: "Углеводы, г", value: product.carbs, span: "col-span-2" },
+              { label: "Клетчатка, г", value: product.fiber, span: "col-span-2" },
+            ]
+              .filter((item) => item.value != null)
+              .map((item) => (
               <div key={item.label} className={`glass-tight text-center flex items-baseline justify-center gap-1 ${item.span} p-2`}>
                 <p className="text-base font-bold text-[var(--lg-text)]">{item.value ?? "—"}</p>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--lg-text-muted)]">

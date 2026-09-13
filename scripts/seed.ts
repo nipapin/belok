@@ -21,6 +21,7 @@ interface ProductSeed {
   fats: number;
   carbs: number;
   fiber: number;
+  weightGrams: number;
   sortOrder: number;
   ingredients: IngredientLink[];
 }
@@ -69,7 +70,7 @@ const products: ProductSeed[] = [
     name: 'Протеиновый боул',
     description: 'Сытный боул с куриной грудкой, киноа, авокадо и свежими овощами',
     price: 490, image: '/products/protein-bowl.jpg', categoryId: 'cat-bowls',
-    calories: 520, proteins: 42, fats: 18, carbs: 48, fiber: 6, sortOrder: 0,
+    calories: 520, proteins: 42, fats: 18, carbs: 48, fiber: 6, weightGrams: 420, sortOrder: 0,
     ingredients: [
       { ingredientId: 'ing-chicken', isDefault: true,  isRemovable: true,  isExtra: false },
       { ingredientId: 'ing-quinoa',  isDefault: true,  isRemovable: true,  isExtra: false },
@@ -85,7 +86,7 @@ const products: ProductSeed[] = [
     name: 'Боул с лососем',
     description: 'Нежный лосось на подушке из бурого риса с эдамаме и авокадо',
     price: 650, image: '/products/salmon-bowl.jpg', categoryId: 'cat-bowls',
-    calories: 580, proteins: 38, fats: 24, carbs: 52, fiber: 5, sortOrder: 1,
+    calories: 580, proteins: 38, fats: 24, carbs: 52, fiber: 5, weightGrams: 450, sortOrder: 1,
     ingredients: [
       { ingredientId: 'ing-salmon',   isDefault: true,  isRemovable: true,  isExtra: false },
       { ingredientId: 'ing-rice',     isDefault: true,  isRemovable: true,  isExtra: false },
@@ -99,7 +100,7 @@ const products: ProductSeed[] = [
     name: 'Веган-боул с тофу',
     description: 'Маринованный тофу, киноа, хумус и свежие овощи',
     price: 420, image: '/products/tofu-bowl.jpg', categoryId: 'cat-bowls',
-    calories: 440, proteins: 28, fats: 16, carbs: 50, fiber: 9, sortOrder: 2,
+    calories: 440, proteins: 28, fats: 16, carbs: 50, fiber: 9, weightGrams: 400, sortOrder: 2,
     ingredients: [
       { ingredientId: 'ing-tofu',    isDefault: true,  isRemovable: true,  isExtra: false },
       { ingredientId: 'ing-quinoa',  isDefault: true,  isRemovable: true,  isExtra: false },
@@ -114,7 +115,7 @@ const products: ProductSeed[] = [
     name: 'Зелёный смузи',
     description: 'Шпинат, банан, семена чиа и миндальное молоко',
     price: 320, image: '/products/green-smoothie.jpg', categoryId: 'cat-smoothies',
-    calories: 220, proteins: 8, fats: 6, carbs: 34, fiber: 4, sortOrder: 0,
+    calories: 220, proteins: 8, fats: 6, carbs: 34, fiber: 4, weightGrams: 350, sortOrder: 0,
     ingredients: [
       { ingredientId: 'ing-spinach', isDefault: true,  isRemovable: true,  isExtra: false },
       { ingredientId: 'ing-banana',  isDefault: true,  isRemovable: true,  isExtra: false },
@@ -128,7 +129,7 @@ const products: ProductSeed[] = [
     name: 'Ягодный смузи',
     description: 'Микс лесных ягод с бананом и протеином',
     price: 350, image: '/products/berry-smoothie.jpg', categoryId: 'cat-smoothies',
-    calories: 260, proteins: 18, fats: 4, carbs: 40, fiber: 5, sortOrder: 1,
+    calories: 260, proteins: 18, fats: 4, carbs: 40, fiber: 5, weightGrams: 350, sortOrder: 1,
     ingredients: [
       { ingredientId: 'ing-berries', isDefault: true,  isRemovable: true,  isExtra: false },
       { ingredientId: 'ing-banana',  isDefault: true,  isRemovable: true,  isExtra: false },
@@ -142,7 +143,7 @@ const products: ProductSeed[] = [
     name: 'Цезарь с курицей',
     description: 'Классический салат Цезарь с куриной грудкой гриль',
     price: 390, image: '/products/caesar-salad.jpg', categoryId: 'cat-salads',
-    calories: 380, proteins: 32, fats: 20, carbs: 18, fiber: 3, sortOrder: 0,
+    calories: 380, proteins: 32, fats: 20, carbs: 18, fiber: 3, weightGrams: 280, sortOrder: 0,
     ingredients: [
       { ingredientId: 'ing-chicken', isDefault: true,  isRemovable: true,  isExtra: false },
       { ingredientId: 'ing-cheese',  isDefault: true,  isRemovable: true,  isExtra: false },
@@ -156,7 +157,7 @@ const products: ProductSeed[] = [
     name: 'Гранола-бар',
     description: 'Домашний батончик с орехами, мёдом и семенами',
     price: 180, image: '/products/granola-bar.jpg', categoryId: 'cat-snacks',
-    calories: 250, proteins: 8, fats: 12, carbs: 30, fiber: 3, sortOrder: 0,
+    calories: 250, proteins: 8, fats: 12, carbs: 30, fiber: 3, weightGrams: 80, sortOrder: 0,
     ingredients: [
       { ingredientId: 'ing-granola', isDefault: true, isRemovable: false, isExtra: false },
       { ingredientId: 'ing-nuts',    isDefault: true, isRemovable: false, isExtra: false },
@@ -168,7 +169,7 @@ const products: ProductSeed[] = [
     name: 'Протеиновый шейк',
     description: 'Молочный шейк с двойной порцией протеина и бананом',
     price: 290, image: '/products/protein-shake.jpg', categoryId: 'cat-drinks',
-    calories: 300, proteins: 30, fats: 6, carbs: 32, fiber: 2, sortOrder: 0,
+    calories: 300, proteins: 30, fats: 6, carbs: 32, fiber: 2, weightGrams: 400, sortOrder: 0,
     ingredients: [
       { ingredientId: 'ing-protein', isDefault: true,  isRemovable: false, isExtra: false },
       { ingredientId: 'ing-banana',  isDefault: true,  isRemovable: true,  isExtra: false },
@@ -213,8 +214,8 @@ async function upsertIngredient(client: PoolClient, i: typeof ingredients[number
 async function upsertProduct(client: PoolClient, p: ProductSeed) {
   await client.query(
     `INSERT INTO "products"
-       ("id","name","description","price","image","categoryId","calories","proteins","fats","carbs","fiber","sortOrder")
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       ("id","name","description","price","image","categoryId","calories","proteins","fats","carbs","fiber","weightGrams","sortOrder")
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
      ON CONFLICT ("id") DO UPDATE SET
        "name" = EXCLUDED."name",
        "description" = EXCLUDED."description",
@@ -226,10 +227,11 @@ async function upsertProduct(client: PoolClient, p: ProductSeed) {
        "fats" = EXCLUDED."fats",
        "carbs" = EXCLUDED."carbs",
        "fiber" = EXCLUDED."fiber",
+       "weightGrams" = EXCLUDED."weightGrams",
        "sortOrder" = EXCLUDED."sortOrder"`,
     [
       p.id, p.name, p.description, p.price, p.image, p.categoryId,
-      p.calories, p.proteins, p.fats, p.carbs, p.fiber, p.sortOrder,
+      p.calories, p.proteins, p.fats, p.carbs, p.fiber, p.weightGrams, p.sortOrder,
     ]
   );
 

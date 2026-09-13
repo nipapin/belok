@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { isIosDevice } from "@/lib/clientPlatform";
 
 export type HapticIntensity =
   | "selection" // tiny tick — UI selection / pill toggle
@@ -35,17 +36,6 @@ const IOS_REPEATS: Record<HapticIntensity, number> = {
   warning: 2,
   error: 3,
 };
-
-function isIOS() {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  // iPad on iPadOS 13+ reports MacIntel; sniff touch + Mac to catch it.
-  const iPad =
-    /Macintosh/.test(ua) &&
-    typeof navigator.maxTouchPoints === "number" &&
-    navigator.maxTouchPoints > 1;
-  return /iPhone|iPod|iPad/.test(ua) || iPad;
-}
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return false;
@@ -98,7 +88,7 @@ export function useHaptic() {
     }
 
     // 2) iOS switch-click trick
-    if (!isIOS()) return;
+    if (!isIosDevice()) return;
 
     let label = iosNodeRef.current;
     if (!label) {
