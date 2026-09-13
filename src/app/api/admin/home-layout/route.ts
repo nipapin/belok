@@ -5,15 +5,16 @@ import {
   HOME_LAYOUT_SETTING_KEY,
   defaultHomeLayout,
   sanitizeHomeBlocks,
+  sanitizeHomeLayout,
   type HomeLayoutConfig,
 } from '@/lib/homeLayout';
 
 async function readConfig(): Promise<HomeLayoutConfig> {
-  const row = await queryOne<{ value: HomeLayoutConfig }>(
+  const row = await queryOne<{ value: unknown }>(
     `SELECT value FROM "app_settings" WHERE key = $1`,
     [HOME_LAYOUT_SETTING_KEY]
   );
-  return row?.value ?? defaultHomeLayout;
+  return sanitizeHomeLayout(row?.value) ?? defaultHomeLayout;
 }
 
 export async function GET() {

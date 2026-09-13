@@ -4,6 +4,7 @@ import { queryOne, withTransaction } from '@/lib/db';
 import { getUserWithLoyaltyById } from '@/lib/auth';
 import { requireAdmin } from '@/lib/adminAuth';
 import { tryNotifyUser } from '@/lib/push';
+import { getNotificationSettings } from '@/lib/notificationSettings';
 import type { LoyaltyLevelRow } from '@/lib/types';
 
 interface AwardBody {
@@ -74,8 +75,9 @@ export async function POST(request: NextRequest) {
 
     const updated = await getUserWithLoyaltyById(userId);
 
+    const notifyLoyalty = (await getNotificationSettings()).autoPushLoyalty;
     // Best-effort push: bonus credit + level-up (if it happened).
-    if (bonusEarned > 0) {
+    if (notifyLoyalty && bonusEarned > 0) {
       void tryNotifyUser(userId, {
         title: `+${bonusEarned} ₽ бонусов`,
         body: `Кэшбэк ${cashbackPercent}% за заказ ${amount} ₽. Можно тратить в следующем заказе.`,
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest) {
         tag: 'bonus',
       });
     }
-    if (updated && targetUser.loyaltyLevelId !== updated.loyaltyLevelId && updated.loyaltyLevel) {
+    if (notifyLoyalty && updated && targetUser.loyaltyLevelId !== updated.loyaltyLevelId && updated.loyaltyLevel) {
       // Level changed during this award — congratulate.
       const nextLevelInfo = await queryOne<LoyaltyLevelRow>(
         `SELECT id, name, "minSpent", "cashbackPercent", "discountPercent", "sortOrder"

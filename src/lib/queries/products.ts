@@ -106,7 +106,7 @@ export async function fetchProductsWithRelations(
      FROM "products" p
      JOIN "categories" c ON c."id" = p."categoryId"
      ${whereSql}
-     ORDER BY p."sortOrder" ASC, p."name" ASC`,
+     ORDER BY c."sortOrder" ASC, p."sortOrder" ASC, p."name" ASC`,
     params
   );
 

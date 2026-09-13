@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import Image from 'next/image';
+import AdminNotificationSettings from '@/components/admin/AdminNotificationSettings';
 
 type AudienceType = 'ALL' | 'LOYALTY_LEVEL' | 'USER';
 
@@ -212,6 +213,8 @@ export default function AdminNotificationsPage() {
           </p>
         </div>
       </header>
+
+      <AdminNotificationSettings />
 
       {/* Composer */}
       <div className="glass-panel-strong p-5 sm:p-6">

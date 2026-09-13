@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import { tryNotifyUser } from '@/lib/push';
+import { getNotificationSettings } from '@/lib/notificationSettings';
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import type {
   OrderItemRow,
@@ -76,9 +77,8 @@ export async function PUT(
         console.error('Order loyalty settlement failed:', loyaltyError);
       }
 
-      // Best-effort push notification: never blocks or fails the API response.
       const tpl = STATUS_PUSH[status as OrderStatus];
-      if (tpl) {
+      if (tpl && (await getNotificationSettings()).autoPushOrderStatus) {
         void tryNotifyUser(before.userId, {
           title: tpl.title,
           body: tpl.body,

@@ -77,10 +77,12 @@ function GalleryBlockView({ block }: { block: GalleryHomeBlock }) {
 function ProductsBlockView({
   block,
   products,
+  hitIds,
   loading,
 }: {
   block: ProductsHomeBlock;
   products: Product[];
+  hitIds: string[];
   loading: boolean;
 }) {
   const list = useMemo(() => {
@@ -91,8 +93,16 @@ function ProductsBlockView({
         .filter((p): p is Product => Boolean(p))
         .slice(0, block.limit);
     }
+    if (block.mode === "hits") {
+      const map = new Map(products.map((p) => [p.id, p]));
+      const sourceIds = hitIds.length > 0 ? hitIds : block.productIds;
+      const ordered = sourceIds
+        .map((id) => map.get(id))
+        .filter((p): p is Product => Boolean(p));
+      return ordered.slice(0, block.limit);
+    }
     return products.slice(0, block.limit);
-  }, [block, products]);
+  }, [block, products, hitIds]);
 
   const cards = loading
     ? Array.from({ length: Math.min(block.limit, 4) }).map((_, i) => (
@@ -117,6 +127,7 @@ function ProductsBlockView({
               proteins: product.proteins,
               weightGrams: product.weightGrams,
               categoryName: product.category?.name,
+              createdAt: product.createdAt,
             }}
           />
         );
@@ -235,12 +246,14 @@ function HomeBlockView({
   block,
   products,
   categories,
+  hitIds,
   loadingProducts,
   loadingCategories,
 }: {
   block: HomeBlock;
   products: Product[];
   categories: Category[];
+  hitIds: string[];
   loadingProducts: boolean;
   loadingCategories: boolean;
 }) {
@@ -251,7 +264,12 @@ function HomeBlockView({
       return <GalleryBlockView block={block} />;
     case "products":
       return (
-        <ProductsBlockView block={block} products={products} loading={loadingProducts} />
+        <ProductsBlockView
+          block={block}
+          products={products}
+          hitIds={hitIds}
+          loading={loadingProducts}
+        />
       );
     case "categories":
       return (
@@ -286,6 +304,7 @@ export function HomePageInner() {
 
   const needsProducts = enabledBlocks.some((b) => b.type === "products");
   const needsCategories = enabledBlocks.some((b) => b.type === "categories");
+  const needsHits = enabledBlocks.some((b) => b.type === "products" && b.mode === "hits");
 
   const { data: productsData, isLoading: loadingProducts } = useQuery({
     queryKey: ["products"],
@@ -298,6 +317,13 @@ export function HomePageInner() {
     queryFn: () => fetch("/api/products/categories").then((r) => r.json()),
     enabled: needsCategories,
   });
+
+  const { data: hitsData } = useQuery({
+    queryKey: ["hits"],
+    queryFn: () => fetch("/api/hits").then((r) => r.json()),
+    enabled: needsHits,
+  });
+  const hitIds: string[] = hitsData?.productIds ?? [];
 
   const products: Product[] = productsData?.products ?? [];
   const categories: Category[] = categoriesData?.categories ?? [];
@@ -328,6 +354,7 @@ export function HomePageInner() {
           block={block}
           products={products}
           categories={categories}
+          hitIds={hitIds}
           loadingProducts={loadingProducts}
           loadingCategories={loadingCategories}
         />

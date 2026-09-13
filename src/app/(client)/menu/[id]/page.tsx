@@ -6,6 +6,7 @@ import { ArrowLeft, Minus, Plus, ShoppingCart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCartStore, type CartItemCustomization } from "@/store/cartStore";
 import { Product, ProductIngredient } from "@/types";
+import { isNewProduct } from "@/lib/productFlags";
 
 function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
   return (
@@ -145,9 +146,16 @@ export default function ProductDetailPage() {
       <div className="mx-auto max-w-lg pt-4">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <span className="mb-2 inline-block rounded-full border border-[var(--lg-ring)] bg-[color-mix(in_srgb,var(--lg-fill)_90%,transparent)] px-3 py-1 text-xs font-semibold text-[var(--lg-text-muted)] backdrop-blur-md">
-              {product.category.name}
-            </span>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="inline-block rounded-full border border-[var(--lg-ring)] bg-[color-mix(in_srgb,var(--lg-fill)_90%,transparent)] px-3 py-1 text-xs font-semibold text-[var(--lg-text-muted)] backdrop-blur-md">
+                {product.category.name}
+              </span>
+              {isNewProduct(product.createdAt) ? (
+                <span className="inline-block rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
+                  Новинка
+                </span>
+              ) : null}
+            </div>
             <h1 className="heading-section text-balance">{product.name}</h1>
             {product.weightGrams != null ? (
               <p className="mt-1 text-sm font-medium tabular-nums text-[var(--lg-text-muted)]">

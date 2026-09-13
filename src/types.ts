@@ -21,6 +21,7 @@ export interface Product {
   fiber: number | null;
   weightGrams: number | null;
   categoryId: string;
+  createdAt?: string;
   category: { id: string; name: string };
   ingredients: ProductIngredient[];
 }

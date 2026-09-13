@@ -251,6 +251,21 @@ export async function tryNotifyUser(
   }
 }
 
+/** Best-effort fan-out to every ADMIN (kitchen / seller devices). */
+export async function tryNotifyAdmins(payload: PushPayload): Promise<void> {
+  try {
+    const rows = await query<{ id: string }>(
+      `SELECT id FROM "users" WHERE role = 'ADMIN'`
+    );
+    await sendPushToUserIds(
+      rows.map((r) => r.id),
+      payload
+    );
+  } catch (err) {
+    console.warn('[push] tryNotifyAdmins failed', err);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // History writer — for ADMIN broadcasts only. System events are NOT logged
 // (would clutter the journal).

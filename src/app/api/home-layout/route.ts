@@ -3,7 +3,7 @@ import { queryOne } from '@/lib/db';
 import {
   HOME_LAYOUT_SETTING_KEY,
   defaultHomeLayout,
-  type HomeLayoutConfig,
+  sanitizeHomeLayout,
 } from '@/lib/homeLayout';
 
 /**
@@ -12,11 +12,12 @@ import {
  */
 export async function GET() {
   try {
-    const row = await queryOne<{ value: HomeLayoutConfig }>(
+    const row = await queryOne<{ value: unknown }>(
       `SELECT value FROM "app_settings" WHERE key = $1`,
       [HOME_LAYOUT_SETTING_KEY]
     );
-    return NextResponse.json({ config: row?.value ?? defaultHomeLayout });
+    const config = sanitizeHomeLayout(row?.value) ?? defaultHomeLayout;
+    return NextResponse.json({ config });
   } catch (e) {
     console.error('Home layout config error:', e);
     return NextResponse.json({ config: defaultHomeLayout });

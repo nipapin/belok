@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { PoolClient } from 'pg';
 import { queryOne, withTransaction } from '@/lib/db';
 import { tryNotifyUser } from '@/lib/push';
+import { getNotificationSettings } from '@/lib/notificationSettings';
 import type { LoyaltyLevelRow, OrderRow, OrderStatus } from '@/lib/types';
 
 interface OrderLoyaltyRow extends OrderRow {
@@ -122,6 +123,9 @@ export async function settleOrderLoyalty(orderId: string, nextStatus: OrderStatu
   });
 
   if (!userId) return;
+
+  const settings = await getNotificationSettings();
+  if (!settings.autoPushLoyalty) return;
 
   if (bonusEarned > 0) {
     void tryNotifyUser(userId, {

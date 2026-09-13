@@ -27,7 +27,7 @@ export interface GalleryHomeBlock extends HomeBlockBase {
 
 export interface ProductsHomeBlock extends HomeBlockBase {
   type: 'products';
-  mode: 'latest' | 'picked';
+  mode: 'latest' | 'picked' | 'hits';
   productIds: string[];
   limit: number;
   layout: 'grid' | 'carousel';
@@ -74,9 +74,9 @@ export function createEmptyBlock(type: HomeBlockType): HomeBlock {
       return {
         id,
         type,
-        title: 'Популярное',
+        title: 'Хиты',
         enabled: true,
-        mode: 'latest',
+        mode: 'hits',
         productIds: [],
         limit: 4,
         layout: 'grid',
@@ -108,11 +108,11 @@ export const defaultHomeLayout: HomeLayoutConfig = {
       images: [],
     },
     {
-      id: 'popular',
+      id: 'hits',
       type: 'products',
-      title: 'Популярное',
+      title: 'Хиты',
       enabled: true,
-      mode: 'latest',
+      mode: 'hits',
       productIds: [],
       limit: 4,
       layout: 'grid',
@@ -195,7 +195,7 @@ function sanitizeOneBlock(raw: unknown): HomeBlock | null {
       return { id, type, title, enabled, text, images };
     }
     case 'products': {
-      const mode = obj.mode === 'picked' ? 'picked' : 'latest';
+      const mode = obj.mode === 'picked' ? 'picked' : obj.mode === 'hits' ? 'hits' : 'latest';
       const layout = obj.layout === 'carousel' ? 'carousel' : 'grid';
       const limitRaw = typeof obj.limit === 'number' ? obj.limit : Number(obj.limit);
       const limit = Number.isFinite(limitRaw)
@@ -242,5 +242,19 @@ export function sanitizeHomeLayout(raw: unknown): HomeLayoutConfig | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const blocks = sanitizeHomeBlocks((raw as { blocks?: unknown }).blocks);
   if (!blocks) return null;
-  return { blocks };
+  return { blocks: migratePopularBlock(blocks) };
+}
+
+/** Maps the legacy «Популярное» products block to Хиты. */
+function migratePopularBlock(blocks: HomeBlock[]): HomeBlock[] {
+  return blocks.map((block) => {
+    if (block.type !== 'products') return block;
+    if (block.id !== 'popular') return block;
+    return {
+      ...block,
+      id: 'hits',
+      title: block.title === 'Популярное' ? 'Хиты' : block.title,
+      mode: 'hits',
+    };
+  });
 }

@@ -1,28 +1,14 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
-const statusLabels: Record<string, { label: string; chip: string }> = {
-  PENDING: { label: 'Ожидает', chip: 'admin-chip-neutral' },
-  CONFIRMED: { label: 'Подтверждён', chip: 'bg-sky-100 text-sky-800' },
-  PREPARING: { label: 'Готовится', chip: 'bg-amber-100 text-amber-900' },
-  READY: { label: 'Готов', chip: 'bg-emerald-100 text-emerald-800' },
-  COMPLETED: { label: 'Выполнен', chip: 'bg-emerald-100 text-emerald-900' },
-  CANCELLED: { label: 'Отменён', chip: 'bg-rose-100 text-rose-800' },
-};
-
-interface OrderCustomization {
-  action: 'ADD' | 'REMOVE';
-  priceDelta: number;
-  ingredient: { id: string; name: string; price: number } | null;
-}
-
-interface OrderItem {
-  product: { name: string } | null;
-  quantity: number;
-  unitPrice: number;
-  customizations: OrderCustomization[];
-}
+import { useHaptic } from '@/hooks/useHaptic';
+import { usePushSubscription } from '@/hooks/usePushSubscription';
+import {
+  ORDER_STATUS_LABELS,
+  OrderItemsList,
+  type OrderItemView,
+} from '@/components/admin/OrderItemsList';
 
 interface Order {
   id: string;
@@ -34,48 +20,57 @@ interface Order {
   comment: string | null;
   createdAt: string;
   user: { phone: string | null; email: string | null; name: string | null };
-  items: OrderItem[];
+  items: OrderItemView[];
 }
 
-function OrderItemsList({ items }: { items: OrderItem[] }) {
-  return (
-    <div className="space-y-2">
-      {items.map((item, i) => {
-        const adds = item.customizations.filter((c) => c.action === 'ADD');
-        const removes = item.customizations.filter((c) => c.action === 'REMOVE');
-        return (
-          <div key={i} className="text-xs leading-relaxed text-(--lg-text-muted)">
-            <span className="font-medium text-(--lg-text)">
-              {item.product?.name ?? 'Товар'} ×{item.quantity}
-            </span>
-            <span className="ml-1 tabular-nums">· {item.unitPrice} ₽</span>
-            {adds.map((c, j) => (
-              <span key={`a-${j}`} className="mt-0.5 block text-emerald-700">
-                + {c.ingredient?.name ?? 'добавка'}
-                {c.priceDelta > 0 ? ` (+${c.priceDelta} ₽)` : ''}
-              </span>
-            ))}
-            {removes.map((c, j) => (
-              <span key={`r-${j}`} className="mt-0.5 block text-rose-700">
-                − {c.ingredient?.name ?? 'ингредиент'}
-              </span>
-            ))}
-          </div>
-        );
-      })}
-    </div>
-  );
+function customerLabel(order: Order): string {
+  return order.user?.name || order.user?.email || order.user?.phone || 'Клиент';
+}
+
+function announceNewOrders(orders: Order[]) {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  for (const order of orders) {
+    try {
+      new Notification('Новый заказ', {
+        body: `${customerLabel(order)} · ${order.total} ₽`,
+        tag: `order-new-${order.id}`,
+      });
+    } catch {
+      /* Safari can throw if the page is not yet fully active */
+    }
+  }
 }
 
 export default function AdminOrdersPage() {
   const queryClient = useQueryClient();
+  const haptic = useHaptic();
+  const push = usePushSubscription();
+  const seenIds = useRef<Set<string> | null>(null);
+  const [freshCount, setFreshCount] = useState(0);
 
   const { data } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: () => fetch('/api/admin/orders').then((r) => r.json()),
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: true,
   });
   const orders: Order[] = data?.orders ?? [];
+
+  useEffect(() => {
+    const ids = new Set(orders.map((order) => order.id));
+    if (seenIds.current === null) {
+      seenIds.current = ids;
+      return;
+    }
+    const newcomers = orders.filter(
+      (order) => !seenIds.current!.has(order.id) && order.status === 'PENDING'
+    );
+    seenIds.current = ids;
+    if (newcomers.length === 0) return;
+    setFreshCount((n) => n + newcomers.length);
+    haptic('warning');
+    announceNewOrders(newcomers);
+  }, [orders, haptic]);
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -90,6 +85,39 @@ export default function AdminOrdersPage() {
   return (
     <div>
       <h1 className="heading-section mb-6">Заказы</h1>
+      {push.status === 'not-subscribed' || push.status === 'ios-needs-install' || push.status === 'denied' ? (
+        <div className="mb-4 rounded-2xl border border-(--lg-ring) bg-(--lg-fill) px-4 py-3 text-sm text-(--lg-text)">
+          <p className="font-medium">Push-уведомления о заказах выключены</p>
+          <p className="mt-1 text-(--lg-text-muted)">
+            {push.status === 'ios-needs-install'
+              ? 'Добавьте приложение на домашний экран, затем включите уведомления.'
+              : push.status === 'denied'
+                ? 'Разрешите уведомления в системных настройках телефона.'
+                : 'Включите, чтобы узнавать о заказах, даже если админка закрыта.'}
+          </p>
+          {push.status === 'not-subscribed' ? (
+            <button
+              type="button"
+              className="mt-3 rounded-xl bg-[#18181b] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+              disabled={push.busy}
+              onClick={() => void push.enable()}
+            >
+              Включить уведомления
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {freshCount > 0 ? (
+        <button
+          type="button"
+          className="mb-4 w-full rounded-2xl border border-amber-400/40 bg-amber-100 px-4 py-3 text-left text-sm font-semibold text-amber-950"
+          onClick={() => setFreshCount(0)}
+        >
+          {freshCount === 1
+            ? 'Пришёл новый заказ — обновили список'
+            : `Новых заказов: ${freshCount} — обновили список`}
+        </button>
+      ) : null}
 
       <div className="hidden min-[900px]:block">
         <div className="admin-table-wrap overflow-x-auto">
@@ -152,7 +180,7 @@ export default function AdminOrdersPage() {
                       onChange={(e) => updateStatus.mutate({ id: order.id, status: e.target.value })}
                       aria-label="Статус заказа"
                     >
-                      {Object.entries(statusLabels).map(([key, val]) => (
+                      {Object.entries(ORDER_STATUS_LABELS).map(([key, val]) => (
                         <option key={key} value={key}>
                           {val.label}
                         </option>
@@ -214,7 +242,7 @@ export default function AdminOrdersPage() {
                 onChange={(e) => updateStatus.mutate({ id: order.id, status: e.target.value })}
                 aria-label="Статус заказа"
               >
-                {Object.entries(statusLabels).map(([key, val]) => (
+                {Object.entries(ORDER_STATUS_LABELS).map(([key, val]) => (
                   <option key={key} value={key}>
                     {val.label}
                   </option>

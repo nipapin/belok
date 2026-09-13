@@ -53,6 +53,12 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
 
     await withTransaction(async (client) => {
+      const maxRow = await client.query<{ max: number | string | null }>(
+        `SELECT MAX("sortOrder") AS max FROM "products" WHERE "categoryId" = $1`,
+        [body.categoryId]
+      );
+      const nextSort = Number(maxRow.rows[0]?.max ?? -1) + 1;
+
       await client.query(
         `INSERT INTO "products"
           (id, name, description, price, image, "categoryId", "isAvailable",
@@ -72,7 +78,7 @@ export async function POST(request: NextRequest) {
           toNum(body.carbs),
           toNum(body.fiber),
           toNum(body.weightGrams),
-          body.sortOrder ?? 0,
+          nextSort,
         ]
       );
 

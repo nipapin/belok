@@ -79,7 +79,7 @@
   top: calc(var(--food-space) * 3);
   left: calc(var(--food-space) * 3);
   z-index: 2;
-  max-width: calc(100% - 24px);
+  max-width: 52%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -94,6 +94,15 @@
   color: var(--food-ink);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   backdrop-filter: blur(12px) saturate(140%);
+}
+
+.food-card__badge--new {
+  left: auto;
+  right: calc(var(--food-space) * 3);
+  max-width: 45%;
+  border-color: transparent;
+  background: color-mix(in srgb, #059669 88%, white);
+  color: #fff;
 }
 
 .food-card__body {

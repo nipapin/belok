@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NutritionChip } from "./NutritionChip";
 import { PriceCTA } from "./PriceCTA";
+import { isNewProduct } from "@/lib/productFlags";
 import "./food-card.css";
 
 export type FoodCardNutrition = {
@@ -17,6 +18,7 @@ export type FoodCardModel = {
   price: number;
   image: string | null;
   categoryName?: string | null;
+  createdAt?: string | null;
 } & FoodCardNutrition;
 
 type FoodCardProps = {
@@ -120,6 +122,9 @@ export function FoodCard({
             )}
             {product.categoryName ? (
               <span className="food-card__badge">{product.categoryName}</span>
+            ) : null}
+            {isNewProduct(product.createdAt) ? (
+              <span className="food-card__badge food-card__badge--new">Новинка</span>
             ) : null}
           </div>
 

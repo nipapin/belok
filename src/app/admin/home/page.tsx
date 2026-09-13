@@ -288,10 +288,16 @@ export default function AdminHomePage() {
                       value={block.mode}
                       onChange={(e) =>
                         updateBlock(i, {
-                          mode: e.target.value === 'picked' ? 'picked' : 'latest',
+                          mode:
+                            e.target.value === 'picked'
+                              ? 'picked'
+                              : e.target.value === 'hits'
+                                ? 'hits'
+                                : 'latest',
                         })
                       }
                     >
+                      <option value="hits">Хиты (из экрана Хиты)</option>
                       <option value="latest">Последние / первые</option>
                       <option value="picked">Выбранные</option>
                     </select>
@@ -327,6 +333,11 @@ export default function AdminHomePage() {
                     </select>
                   </label>
                 </div>
+                {block.mode === 'hits' && (
+                  <p className="text-xs text-(--lg-text-muted)">
+                    Состав и порядок блюд задаются в разделе «Хиты».
+                  </p>
+                )}
                 {block.mode === 'picked' && (
                   <div>
                     <p className="mb-2 text-sm font-medium text-(--lg-text)">Выберите блюда</p>

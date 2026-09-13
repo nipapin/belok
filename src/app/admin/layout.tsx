@@ -2,30 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import {
-  ArrowLeft,
-  Bell,
-  LayoutDashboard,
-  Menu,
-  UtensilsCrossed,
-  Tags,
-  ChefHat,
-  Receipt,
-  Users,
-  Settings,
-  ScanLine,
-  Sparkles,
-  Home,
-  LogOut,
-} from 'lucide-react';
+import { Bell, LayoutDashboard, Menu, UtensilsCrossed, Tags, ChefHat, Receipt, Users, Settings, ScanLine, Sparkles, Home, LogOut, Flame, ExternalLink } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { useMdUp } from '@/hooks/useMdUp';
 import { brandMark } from '@/lib/brand';
+import AdminNewOrderWatcher from '@/components/admin/AdminNewOrderWatcher';
 
 const menuItems = [
   { label: 'Дашборд', icon: LayoutDashboard, path: '/admin' },
   { label: 'Товары', icon: UtensilsCrossed, path: '/admin/products' },
   { label: 'Категории', icon: Tags, path: '/admin/categories' },
+  { label: 'Хиты', icon: Flame, path: '/admin/hits' },
   { label: 'Ингредиенты', icon: ChefHat, path: '/admin/ingredients' },
   { label: 'Заказы', icon: Receipt, path: '/admin/orders' },
   { label: 'Касса · Лояльность', icon: ScanLine, path: '/admin/loyalty' },
@@ -42,6 +30,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const mdUp = useMdUp();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, fetchUser, isLoading, logout } = useAuthStore();
+  const { data: ordersData } = useQuery<{ orders?: { status: string }[] }>({
+    queryKey: ['admin-orders'],
+    queryFn: () => fetch('/api/admin/orders').then((r) => r.json()),
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
+    enabled: !isLoading && user?.role === 'ADMIN',
+  });
+  const pendingCount = (ordersData?.orders ?? []).filter((o) => o.status === 'PENDING').length;
 
   useEffect(() => {
     fetchUser();
@@ -86,7 +82,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               }`}
             >
               <Icon className="size-5 shrink-0" strokeWidth={selected ? 2 : 1.75} />
-              {item.label}
+              <span className="min-w-0 flex-1">{item.label}</span>
+              {item.path === '/admin/orders' && pendingCount > 0 ? (
+                <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold leading-5 text-white">
+                  {pendingCount > 99 ? '99+' : pendingCount}
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -107,26 +108,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="admin-surface h-dvh min-h-0 w-full overflow-hidden pb-[env(safe-area-inset-bottom)]">
-      <header className="admin-header-bar fixed left-0 right-0 top-0 z-[1300] flex h-(--admin-nav-h) items-center px-3 pt-(--admin-nav-pad-top) md:left-[260px]">
+      <header className="admin-header-bar fixed left-0 right-0 top-0 z-[1300] flex h-(--admin-nav-h) items-center gap-2 px-3 pt-(--admin-nav-pad-top) md:left-[260px]">
         {!mdUp && (
           <button
             type="button"
-            className="btn-icon mr-2 size-9 md:hidden"
+            className="btn-icon size-9 md:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Меню"
           >
             <Menu className="size-5" />
           </button>
         )}
+        <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-(--lg-text)">Панель управления</h1>
         <button
           type="button"
-          className="btn-icon mr-2 size-9"
+          className="btn-ghost shrink-0 gap-1.5 px-2.5 py-1.5 text-xs font-semibold sm:text-sm"
           onClick={() => router.push('/')}
-          aria-label="На сайт"
         >
-          <ArrowLeft className="size-5" />
+          <ExternalLink className="size-3.5 shrink-0 sm:size-4" strokeWidth={2} />
+          Вернуться на сайт
         </button>
-        <h1 className="truncate text-base font-semibold text-(--lg-text)">Панель управления</h1>
       </header>
 
       {!mdUp && mobileOpen && (
@@ -151,6 +152,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       <main className="box-border h-full min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide px-2 pb-8 pt-(--admin-main-pad-top) md:pl-[calc(260px+1rem)] md:pr-8">
+        <AdminNewOrderWatcher />
         {children}
       </main>
     </div>

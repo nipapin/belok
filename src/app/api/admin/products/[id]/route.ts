@@ -89,7 +89,18 @@ export async function PUT(
     if (body.carbs !== undefined) add('carbs', toNum(body.carbs));
     if (body.fiber !== undefined) add('fiber', toNum(body.fiber));
     if (body.weightGrams !== undefined) add('weightGrams', toNum(body.weightGrams));
-    if (body.sortOrder !== undefined) add('sortOrder', body.sortOrder);
+
+    const categoryChanged =
+      body.categoryId !== undefined && body.categoryId !== existing.categoryId;
+    if (categoryChanged) {
+      const maxRow = await queryOne<{ max: number | string | null }>(
+        `SELECT MAX("sortOrder") AS max FROM "products" WHERE "categoryId" = $1`,
+        [body.categoryId]
+      );
+      add('sortOrder', Number(maxRow?.max ?? -1) + 1);
+    } else if (body.sortOrder !== undefined) {
+      add('sortOrder', body.sortOrder);
+    }
 
     await withTransaction(async (client) => {
       if (sets.length > 0) {
