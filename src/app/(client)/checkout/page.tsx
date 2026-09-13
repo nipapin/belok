@@ -60,12 +60,7 @@ export default function CheckoutPage() {
 
       haptic('success');
       clearCart();
-
-      if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-      } else {
-        router.push(`/orders/${data.order.id}`);
-      }
+      router.push(`/orders/${data.order.id}`);
     } catch {
       haptic('error');
       setError('Ошибка соединения');
@@ -156,7 +151,7 @@ export default function CheckoutPage() {
 
       {user?.loyaltyLevel && (
         <div className="mb-4 rounded-2xl border border-sky-200/80 bg-sky-50/90 px-2 py-3 text-sm text-sky-950 backdrop-blur-sm">
-          После оплаты начислим кэшбэк {user.loyaltyLevel.cashbackPercent}% (≈
+          После выполнения заказа начислим кэшбэк {user.loyaltyLevel.cashbackPercent}% (≈
           {Math.round(total * (user.loyaltyLevel.cashbackPercent / 100))} бонусов)
         </div>
       )}
@@ -170,9 +165,9 @@ export default function CheckoutPage() {
         {loading ? (
           <Loader2 className="size-5 animate-spin" />
         ) : (
-          <CreditCard className="size-5" strokeWidth={1.75} />
+          <Check className="size-5" strokeWidth={1.75} />
         )}
-        {loading ? 'Оформляем…' : `Оплатить ${total} ₽`}
+        {loading ? 'Оформляем…' : `Оформить заказ · ${total} ₽`}
       </button>
     </div>
   );

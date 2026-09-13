@@ -179,7 +179,7 @@ export default function AdminSettingsPage() {
         <ul className="list-inside list-disc space-y-2 text-sm text-(--lg-text-muted)">
           <li>Бонусами можно оплатить до 100% стоимости заказа.</li>
           <li>1 бонус равен 1 ₽.</li>
-          <li>Кэшбэк начисляется после успешной оплаты.</li>
+          <li>Кэшбэк начисляется после выполнения заказа.</li>
           <li>Уровень лояльности повышается при достижении суммы покупок.</li>
         </ul>
       </div>

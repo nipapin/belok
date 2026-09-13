@@ -70,7 +70,11 @@ export async function PUT(
     await query(`UPDATE "orders" SET status = $1 WHERE id = $2`, [status, id]);
 
     if (before && before.status !== status) {
-      await settleOrderLoyalty(id, status as OrderStatus);
+      try {
+        await settleOrderLoyalty(id, status as OrderStatus);
+      } catch (loyaltyError) {
+        console.error('Order loyalty settlement failed:', loyaltyError);
+      }
 
       // Best-effort push notification: never blocks or fails the API response.
       const tpl = STATUS_PUSH[status as OrderStatus];
