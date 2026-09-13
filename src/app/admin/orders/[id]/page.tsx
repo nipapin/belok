@@ -9,6 +9,8 @@ import {
   type OrderItemView,
 } from '@/components/admin/OrderItemsList';
 
+import { isKioskSource, orderCustomerLabel } from '@/lib/orderCustomer';
+
 interface AdminOrder {
   id: string;
   status: string;
@@ -18,6 +20,8 @@ interface AdminOrder {
   bonusEarned: number;
   paymentStatus: string;
   comment: string | null;
+  guestEmail: string | null;
+  source: string;
   createdAt: string;
   updatedAt: string;
   user: {
@@ -25,7 +29,7 @@ interface AdminOrder {
     email: string | null;
     phone: string | null;
     name: string | null;
-  };
+  } | null;
   items: OrderItemView[];
 }
 
@@ -87,7 +91,8 @@ export default function AdminOrderDetailPage() {
   }
 
   const status = ORDER_STATUS_LABELS[order.status];
-  const customer = order.user?.name || order.user?.email || order.user?.phone || 'Клиент';
+  const customer = orderCustomerLabel(order);
+  const kiosk = isKioskSource(order.source);
 
   return (
     <div className="space-y-4">
@@ -116,12 +121,22 @@ export default function AdminOrderDetailPage() {
 
       <section className="glass-panel space-y-2 p-4">
         <h2 className="text-sm font-semibold text-(--lg-text)">Клиент</h2>
-        <p className="text-base font-medium text-(--lg-text)">{customer}</p>
+        <p className="text-base font-medium text-(--lg-text)">
+          {customer}
+          {kiosk ? (
+            <span className="ml-2 inline-block rounded-full bg-violet-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+              Касса
+            </span>
+          ) : null}
+        </p>
         {order.user?.phone ? (
           <p className="text-sm text-(--lg-text-muted)">{order.user.phone}</p>
         ) : null}
-        {order.user?.email ? (
-          <p className="text-sm text-(--lg-text-muted)">{order.user.email}</p>
+        {order.user?.email || order.guestEmail ? (
+          <p className="text-sm text-(--lg-text-muted)">{order.user?.email || order.guestEmail}</p>
+        ) : null}
+        {!order.user && order.guestEmail ? (
+          <p className="text-xs text-(--lg-text-muted)">Приглашение отправлено — аккаунт ещё не создан</p>
         ) : null}
       </section>
 

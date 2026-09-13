@@ -8,7 +8,7 @@ import type {
 } from '@/lib/types';
 
 interface OrderUserRow {
-  user_id: string;
+  user_id: string | null;
   user_email: string | null;
   user_phone: string | null;
   user_name: string | null;
@@ -23,7 +23,7 @@ export async function fetchAdminOrderById(id: string) {
        u."phone" AS "user_phone",
        u."name"  AS "user_name"
      FROM "orders" o
-     JOIN "users" u ON u."id" = o."userId"
+     LEFT JOIN "users" u ON u."id" = o."userId"
      WHERE o.id = $1`,
     [id]
   );
@@ -68,14 +68,18 @@ export async function fetchAdminOrderById(id: string) {
     bonusEarned: order.bonusEarned,
     paymentStatus: order.paymentStatus,
     comment: order.comment,
+    guestEmail: order.guestEmail,
+    source: order.source,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
-    user: {
-      id: order.user_id,
-      email: order.user_email,
-      phone: order.user_phone,
-      name: order.user_name,
-    },
+    user: order.user_id
+      ? {
+          id: order.user_id,
+          email: order.user_email,
+          phone: order.user_phone,
+          name: order.user_name,
+        }
+      : null,
     items: items.map((it) => ({
       ...it,
       product: productMap.get(it.productId) ?? null,

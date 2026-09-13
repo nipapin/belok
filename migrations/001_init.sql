@@ -203,7 +203,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "product_ingredients_productId_ingredientId_ke
 
 CREATE TABLE IF NOT EXISTS "orders" (
     "id" TEXT PRIMARY KEY,
-    "userId" TEXT NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "userId" TEXT REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
     "total" DOUBLE PRECISION NOT NULL,
     "discountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
@@ -211,9 +211,14 @@ CREATE TABLE IF NOT EXISTS "orders" (
     "bonusEarned" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "paymentStatus" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
     "comment" TEXT,
+    "guestEmail" TEXT,
+    "source" TEXT NOT NULL DEFAULT 'APP',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS "orders_guestEmail_idx" ON "orders"("guestEmail")
+    WHERE "guestEmail" IS NOT NULL;
+CREATE INDEX IF NOT EXISTS "orders_source_idx" ON "orders"("source");
 
 DROP TRIGGER IF EXISTS orders_set_updated_at ON "orders";
 CREATE TRIGGER orders_set_updated_at BEFORE UPDATE ON "orders"

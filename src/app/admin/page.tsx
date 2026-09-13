@@ -9,6 +9,8 @@ import {
   type OrderItemView,
 } from '@/components/admin/OrderItemsList';
 
+import { orderCustomerLabel } from '@/lib/orderCustomer';
+
 interface StatCard {
   label: string;
   value: string | number;
@@ -21,7 +23,8 @@ interface DashboardOrder {
   total: number;
   createdAt: string;
   comment: string | null;
-  user: { phone: string | null; email: string | null; name: string | null };
+  user: { phone: string | null; email: string | null; name: string | null } | null;
+  guestEmail?: string | null;
   items: OrderItemView[];
 }
 
@@ -96,7 +99,7 @@ export default function AdminDashboard() {
                 <div>
                   <p className="text-sm font-semibold text-(--lg-text)">№{order.id.slice(0, 8)}</p>
                   <p className="text-xs text-(--lg-text-muted)">
-                    {order.user?.name || order.user?.email || order.user?.phone || '—'} ·{' '}
+                    {orderCustomerLabel(order)} ·{' '}
                     {new Date(order.createdAt).toLocaleString('ru-RU')}
                   </p>
                 </div>

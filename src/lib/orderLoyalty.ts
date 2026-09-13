@@ -6,7 +6,7 @@ import { getNotificationSettings } from '@/lib/notificationSettings';
 import type { LoyaltyLevelRow, OrderRow, OrderStatus } from '@/lib/types';
 
 interface OrderLoyaltyRow extends OrderRow {
-  user_totalSpent: number;
+  user_totalSpent: number | null;
   user_loyaltyLevelId: string | null;
   ll_cashbackPercent: number | null;
 }
@@ -22,7 +22,7 @@ async function loadOrderForLoyalty(
        u."loyaltyLevelId"  AS "user_loyaltyLevelId",
        l."cashbackPercent" AS "ll_cashbackPercent"
      FROM "orders" o
-     JOIN "users" u ON u."id" = o."userId"
+     LEFT JOIN "users" u ON u."id" = o."userId"
      LEFT JOIN "loyalty_levels" l ON l."id" = u."loyaltyLevelId"
      WHERE o.id = $1
      FOR UPDATE OF o`,
@@ -53,6 +53,7 @@ export async function settleOrderLoyalty(orderId: string, nextStatus: OrderStatu
         orderId,
       ]);
 
+      if (!order.userId) return;
       if (order.bonusEarned > 0) return;
 
       cashbackPercent = order.ll_cashbackPercent ?? 3;
@@ -83,7 +84,7 @@ export async function settleOrderLoyalty(orderId: string, nextStatus: OrderStatu
         ]
       );
 
-      const newTotalSpent = order.user_totalSpent + order.total;
+      const newTotalSpent = (order.user_totalSpent ?? 0) + order.total;
       const nextLevel = await client.query<LoyaltyLevelRow>(
         `SELECT id FROM "loyalty_levels"
           WHERE "minSpent" <= $1
@@ -108,7 +109,7 @@ export async function settleOrderLoyalty(orderId: string, nextStatus: OrderStatu
       orderId,
     ]);
 
-    if (order.bonusUsed > 0) {
+    if (order.bonusUsed > 0 && order.userId) {
       await client.query(
         `UPDATE "users" SET "bonusBalance" = "bonusBalance" + $1 WHERE id = $2`,
         [order.bonusUsed, order.userId]

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import {
   OrderItemsList,
   type OrderItemView,
 } from '@/components/admin/OrderItemsList';
+import { isKioskSource, orderCustomerLabel } from '@/lib/orderCustomer';
 
 interface Order {
   id: string;
@@ -20,13 +21,24 @@ interface Order {
   discountAmount: number;
   paymentStatus: string;
   comment: string | null;
+  guestEmail: string | null;
+  source: string;
   createdAt: string;
-  user: { phone: string | null; email: string | null; name: string | null };
+  user: { phone: string | null; email: string | null; name: string | null } | null;
   items: OrderItemView[];
 }
 
 function customerLabel(order: Order): string {
-  return order.user?.name || order.user?.email || order.user?.phone || 'Клиент';
+  return orderCustomerLabel(order);
+}
+
+function SourceBadge({ source }: { source: string }) {
+  if (!isKioskSource(source)) return null;
+  return (
+    <span className="ml-1.5 inline-block rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+      Касса
+    </span>
+  );
 }
 
 function announceNewOrders(orders: Order[]) {
@@ -57,7 +69,7 @@ export default function AdminOrdersPage() {
     refetchInterval: 5_000,
     refetchIntervalInBackground: true,
   });
-  const orders: Order[] = data?.orders ?? [];
+  const orders: Order[] = useMemo(() => data?.orders ?? [], [data?.orders]);
 
   useEffect(() => {
     const ids = new Set(orders.map((order) => order.id));
@@ -155,7 +167,10 @@ export default function AdminOrdersPage() {
                       {order.id.slice(0, 8)}
                     </Link>
                   </td>
-                  <td>{order.user?.name || order.user?.email || order.user?.phone || '—'}</td>
+                  <td>
+                    {customerLabel(order)}
+                    <SourceBadge source={order.source} />
+                  </td>
                   <td className="max-w-[280px]">
                     <OrderItemsList items={order.items} />
                     {order.comment ? (
@@ -224,7 +239,8 @@ export default function AdminOrdersPage() {
                 </p>
               </div>
               <p className="text-sm font-medium text-(--lg-text)">
-                {order.user?.name || order.user?.email || order.user?.phone || '—'}
+                {customerLabel(order)}
+                <SourceBadge source={order.source} />
               </p>
               <OrderItemsList items={order.items} />
               {order.comment ? (

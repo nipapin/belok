@@ -20,11 +20,18 @@ function AuthQueryOpenerInner() {
       redirect && redirect.startsWith('/') && !redirect.startsWith('//')
         ? redirect
         : null;
-    openAuth({ redirect: safe });
+    const emailRaw = searchParams.get('email')?.trim() ?? '';
+    openAuth({
+      redirect: safe,
+      preferRegister: searchParams.get('register') === '1',
+      initialEmail: emailRaw || null,
+    });
 
     const next = new URLSearchParams(searchParams.toString());
     next.delete('auth');
     next.delete('redirect');
+    next.delete('register');
+    next.delete('email');
     const q = next.toString();
     router.replace(q ? `${pathname}?${q}` : pathname);
   }, [searchParams, pathname, router, openAuth]);

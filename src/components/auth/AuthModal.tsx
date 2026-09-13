@@ -12,6 +12,7 @@ export default function AuthModal() {
   const open = useAuthModalStore((s) => s.open);
   const redirect = useAuthModalStore((s) => s.redirect);
   const preferRegister = useAuthModalStore((s) => s.preferRegister);
+  const initialEmail = useAuthModalStore((s) => s.initialEmail);
   const closeAuth = useAuthModalStore((s) => s.closeAuth);
   const fetchUser = useAuthStore((s) => s.fetchUser);
 
@@ -71,9 +72,10 @@ export default function AuthModal() {
           </button>
         </div>
         <AuthForm
-          key={preferRegister ? 'register' : 'login'}
+          key={`${preferRegister ? 'register' : 'login'}-${initialEmail ?? ''}`}
           compact
           initialMode={preferRegister ? 'register' : 'login'}
+          initialEmail={initialEmail ?? undefined}
           onSuccess={() => void handleSuccess()}
         />
       </div>

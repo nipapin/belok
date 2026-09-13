@@ -82,7 +82,7 @@ export async function PUT(
 
     // Read the previous status so we don't push if the admin re-saves the
     // same status (or for some flow that just refreshes the row).
-    const before = await queryOne<{ status: OrderStatus; userId: string }>(
+    const before = await queryOne<{ status: OrderStatus; userId: string | null }>(
       `SELECT status, "userId" FROM "orders" WHERE id = $1`,
       [id]
     );
@@ -97,7 +97,7 @@ export async function PUT(
       }
 
       const tpl = STATUS_PUSH[status as OrderStatus];
-      if (tpl && (await getNotificationSettings()).autoPushOrderStatus) {
+      if (tpl && before.userId && (await getNotificationSettings()).autoPushOrderStatus) {
         void tryNotifyUser(before.userId, {
           title: tpl.title,
           body: tpl.body,

@@ -10,6 +10,7 @@ export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'CANCELLED';
 export type BonusType = 'EARNED' | 'SPENT' | 'EXPIRED' | 'MANUAL';
 export type IngredientAction = 'ADD' | 'REMOVE';
 export type VerificationPurpose = 'REGISTER' | 'LOGIN' | 'PASSWORD_RESET';
+export type OrderSource = 'APP' | 'KIOSK';
 
 export interface LoyaltyLevelRow {
   id: string;
@@ -109,7 +110,7 @@ export interface ProductWithRelations extends ProductRow {
 
 export interface OrderRow {
   id: string;
-  userId: string;
+  userId: string | null;
   status: OrderStatus;
   total: number;
   discountAmount: number;
@@ -117,6 +118,8 @@ export interface OrderRow {
   bonusEarned: number;
   paymentStatus: PaymentStatus;
   comment: string | null;
+  guestEmail: string | null;
+  source: OrderSource;
   createdAt: Date;
   updatedAt: Date;
 }

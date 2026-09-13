@@ -10,7 +10,7 @@ import type {
 } from '@/lib/types';
 
 interface OrderUserRow {
-  user_id: string;
+  user_id: string | null;
   user_email: string | null;
   user_phone: string | null;
   user_name: string | null;
@@ -28,7 +28,7 @@ export async function GET() {
          u."phone" AS "user_phone",
          u."name"  AS "user_name"
        FROM "orders" o
-       JOIN "users" u ON u."id" = o."userId"
+       LEFT JOIN "users" u ON u."id" = o."userId"
        ORDER BY o."createdAt" DESC`
     );
 
@@ -76,14 +76,18 @@ export async function GET() {
       bonusEarned: o.bonusEarned,
       paymentStatus: o.paymentStatus,
       comment: o.comment,
+      guestEmail: o.guestEmail,
+      source: o.source,
       createdAt: o.createdAt,
       updatedAt: o.updatedAt,
-      user: {
-        id: o.user_id,
-        email: o.user_email,
-        phone: o.user_phone,
-        name: o.user_name,
-      },
+      user: o.user_id
+        ? {
+            id: o.user_id,
+            email: o.user_email,
+            phone: o.user_phone,
+            name: o.user_name,
+          }
+        : null,
       items: items
         .filter((it) => it.orderId === o.id)
         .map((it) => ({

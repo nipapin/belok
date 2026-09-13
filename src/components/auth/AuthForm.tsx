@@ -64,6 +64,7 @@ type AuthFormProps = {
   /** Called after successful login / verify / password reset (user already set in store). */
   onSuccess: () => void;
   initialMode?: AuthFormMode;
+  initialEmail?: string;
   /** Compact spacing for modal. */
   compact?: boolean;
 };
@@ -71,13 +72,14 @@ type AuthFormProps = {
 export default function AuthForm({
   onSuccess,
   initialMode = 'login',
+  initialEmail,
   compact = false,
 }: AuthFormProps) {
   const { setUser } = useAuthStore();
 
   const [mode, setMode] = useState<AuthFormMode>(initialMode);
   const [step, setStep] = useState<Step>('credentials');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail ?? '');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [name, setName] = useState('');
@@ -95,7 +97,8 @@ export default function AuthForm({
     setPasswordConfirm('');
     setError('');
     setInfo('');
-  }, [initialMode]);
+    if (initialEmail) setEmail(initialEmail);
+  }, [initialMode, initialEmail]);
 
   useEffect(() => {
     if (resendCountdown <= 0) return;
