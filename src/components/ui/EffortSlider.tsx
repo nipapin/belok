@@ -30,7 +30,7 @@ export default function EffortSlider({
   const dots = useMemo(
     () =>
       Array.from({ length: DOTS }, (_, i) => {
-        const t = DOTS === 1 ? 0 : i / (DOTS - 1);
+        const t = i / (DOTS - 1);
         const dist = Math.abs(t - pct);
         const near = Math.max(0, 1 - dist * 2.8);
         const filled = t <= pct + 0.04;
