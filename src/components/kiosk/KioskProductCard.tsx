@@ -22,6 +22,8 @@ function sameCard(prev: KioskProductCardProps, next: KioskProductCardProps) {
     a.price === b.price &&
     a.calories === b.calories &&
     a.proteins === b.proteins &&
+    a.fats === b.fats &&
+    a.carbs === b.carbs &&
     a.weightGrams === b.weightGrams &&
     a.categoryName === b.categoryName &&
     a.createdAt === b.createdAt

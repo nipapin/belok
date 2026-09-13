@@ -242,10 +242,10 @@ export default function KioskApp() {
           <ul className="space-y-3">
             {items.map((item) => (
               <li key={item.id} className="glass-panel flex items-center gap-3 p-3">
-                <div className="size-16 overflow-hidden rounded-xl bg-[color-mix(in_srgb,var(--lg-fill)_50%,transparent)]">
+                <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-white">
                   {item.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.image} alt="" className="h-full w-full object-cover" />
+                    <img src={item.image} alt="" className="box-border h-full w-full object-contain p-1" />
                   ) : null}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -381,6 +381,8 @@ export default function KioskApp() {
                     createdAt: product.createdAt,
                     calories: product.calories,
                     proteins: product.proteins,
+                    fats: product.fats,
+                    carbs: product.carbs,
                     weightGrams: product.weightGrams,
                   }}
                   onOpen={() => setOpenProductId(product.id)}

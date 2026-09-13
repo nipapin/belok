@@ -125,12 +125,18 @@ export default function ProductDetailPage() {
   return (
     <div className="">
       <div className="relative -mx-4 -mt-(--client-header-stack-height)">
-        <div className="flex w-full items-center justify-center aspect-square">
+        <div className="relative aspect-square w-full bg-white">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.image} alt="" className="h-full w-full object-cover" />
+            <img
+              src={product.image}
+              alt=""
+              className="absolute inset-0 box-border size-full object-contain object-center p-4"
+            />
           ) : (
-            <span className="text-[6rem] font-bold leading-none text-[var(--lg-text-muted)]">{product.name[0]}</span>
+            <span className="flex size-full items-center justify-center text-[6rem] font-bold leading-none text-slate-400">
+              {product.name[0]}
+            </span>
           )}
         </div>
         <button

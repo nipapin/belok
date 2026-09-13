@@ -125,6 +125,8 @@ function ProductsBlockView({
               image: product.image,
               calories: product.calories,
               proteins: product.proteins,
+              fats: product.fats,
+              carbs: product.carbs,
               weightGrams: product.weightGrams,
               categoryName: product.category?.name,
               createdAt: product.createdAt,

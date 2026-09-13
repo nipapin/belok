@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { nutritionChips } from '@/components/product/FoodCard';
+import { NutritionChip } from '@/components/product/NutritionChip';
 import { isNewProduct } from '@/lib/productFlags';
 import { useKioskCartStore, type CartItemCustomization } from '@/store/kioskCartStore';
 import type { Product } from '@/types';
+import '@/components/product/food-card.css';
 
 function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
   return (
@@ -79,6 +82,7 @@ export default function KioskProductModal({ productId, onClose }: KioskProductMo
 
   const extrasTotal = getCustomizations().reduce((s, c) => s + c.priceDelta, 0);
   const linePrice = product ? (product.price + extrasTotal) * quantity : 0;
+  const chips = product ? nutritionChips(product) : [];
 
   function handleAdd() {
     if (!product) return;
@@ -115,14 +119,14 @@ export default function KioskProductModal({ productId, onClose }: KioskProductMo
             <p className="py-10 text-center text-(--lg-text-muted)">Товар не найден</p>
           ) : (
             <>
-              <div className="mt-3 aspect-[16/10] overflow-hidden rounded-2xl bg-[color-mix(in_srgb,var(--lg-fill)_50%,transparent)]">
+              <div className="food-card__media mt-3 overflow-hidden rounded-2xl">
                 {product.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={product.image} alt="" className="h-full w-full object-cover" />
+                  <img src={product.image} alt="" className="food-card__img" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-6xl font-bold text-(--lg-text-muted)">
+                  <span className="food-card__fallback" aria-hidden>
                     {product.name[0]}
-                  </div>
+                  </span>
                 )}
               </div>
               <div className="mt-4 flex items-start justify-between gap-3">
@@ -141,6 +145,13 @@ export default function KioskProductModal({ productId, onClose }: KioskProductMo
                 </div>
                 <p className="shrink-0 text-2xl font-bold tabular-nums">{product.price} ₽</p>
               </div>
+              {chips.length > 0 ? (
+                <div className="food-card__chips mt-3">
+                  {chips.map((label) => (
+                    <NutritionChip key={label} label={label} />
+                  ))}
+                </div>
+              ) : null}
               {product.description ? (
                 <p className="mt-3 text-sm leading-relaxed text-(--lg-text-muted)">{product.description}</p>
               ) : null}

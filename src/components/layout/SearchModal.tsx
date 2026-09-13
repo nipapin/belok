@@ -160,10 +160,10 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                     onClick={() => handlePick(p.id)}
                     className="glass-tight lg-interactive flex w-full items-center gap-3 p-2 pr-4 text-left"
                   >
-                    <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-zinc-100/30">
+                    <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-white">
                       {p.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.image} alt="" className="size-full object-cover" />
+                        <img src={p.image} alt="" className="box-border size-full object-contain p-1" />
                       ) : (
                         <span className="flex size-full items-center justify-center text-2xl font-bold text-[var(--lg-text-muted)]">
                           {p.name[0]}

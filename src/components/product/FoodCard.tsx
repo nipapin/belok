@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { NutritionChip } from "./NutritionChip";
 import { PriceCTA } from "./PriceCTA";
 import { isNewProduct } from "@/lib/productFlags";
@@ -9,6 +9,8 @@ import "./food-card.css";
 export type FoodCardNutrition = {
   calories?: number | null;
   proteins?: number | null;
+  fats?: number | null;
+  carbs?: number | null;
   weightGrams?: number | null;
 };
 
@@ -32,11 +34,13 @@ type FoodCardProps = {
   onDecrement: (event: React.MouseEvent) => void;
 };
 
-function nutritionChips(product: FoodCardNutrition): string[] {
+export function nutritionChips(product: FoodCardNutrition): string[] {
   const chips: string[] = [];
-  if (product.calories != null) chips.push(`${product.calories} ккал`);
   if (product.weightGrams != null) chips.push(`${product.weightGrams} г`);
+  if (product.calories != null) chips.push(`${product.calories} ккал`);
   if (product.proteins != null) chips.push(`Б ${product.proteins} г`);
+  if (product.fats != null) chips.push(`Ж ${product.fats} г`);
+  if (product.carbs != null) chips.push(`У ${product.carbs} г`);
   return chips;
 }
 
@@ -61,14 +65,10 @@ export function FoodCard({
   onDecrement,
 }: FoodCardProps) {
   const mediaRef = useRef<HTMLDivElement>(null);
-  const [imgFailed, setImgFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const chips = nutritionChips(product);
   const openLabel = `Открыть ${product.name}, ${product.price} руб.`;
-  const showImage = Boolean(product.image) && !imgFailed;
-
-  useEffect(() => {
-    setImgFailed(false);
-  }, [product.image]);
+  const showImage = Boolean(product.image) && failedSrc !== product.image;
 
   const resetParallax = useCallback(() => {
     const el = mediaRef.current;
@@ -115,7 +115,7 @@ export function FoodCard({
                 fetchPriority={eager ? "high" : "auto"}
                 decoding="async"
                 draggable={false}
-                onError={() => setImgFailed(true)}
+                onError={() => setFailedSrc(product.image)}
               />
             ) : (
               <span className="food-card__fallback" aria-hidden>
