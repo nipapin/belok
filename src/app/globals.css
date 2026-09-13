@@ -141,6 +141,8 @@ html[data-theme="light"] {
     --lg-backdrop-bright: 0.98;
     --lg-backdrop-sat: 140%;
     --lg-bg-image: linear-gradient(to bottom, #e8eef7 0%, #f6f8fc 100%);
+    /* Literal: `color: var(--lg-text)` is dropped when the var is set on this rule. */
+    color: #18181b;
     background-image: var(--lg-bg-image);
     background-attachment: fixed;
 
@@ -448,6 +450,62 @@ html[data-theme="light"] {
     border-color: var(--lg-ring-strong);
     background: color-mix(in srgb, var(--lg-text) 6%, transparent);
     color: var(--lg-text);
+  }
+
+  .effort-slider__bloom {
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
+    opacity: var(--effort, 0);
+    transform: translate(-50%, -50%) scale(calc(0.55 + var(--effort, 0) * 1.15));
+    filter: blur(8px);
+  }
+
+  .effort-slider__dot {
+    background: #fff;
+    transition:
+      width 160ms ease,
+      height 160ms ease,
+      opacity 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .effort-slider__input {
+    touch-action: none;
+  }
+
+  .effort-slider__input::-webkit-slider-runnable-track {
+    height: 100%;
+    background: transparent;
+  }
+
+  .effort-slider__input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+  }
+
+  .effort-slider__input::-moz-range-track {
+    height: 100%;
+    background: transparent;
+    border: 0;
+  }
+
+  .effort-slider__input::-moz-range-thumb {
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .effort-slider__dot {
+      transition: none;
+    }
   }
 
   .input-pill {

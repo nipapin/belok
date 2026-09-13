@@ -37,6 +37,23 @@ interface PushPayload {
 const DEFAULT_ICON = '/icons/icon-192x192.png';
 const DEFAULT_BADGE = '/icons/icon-96x96.png';
 
+function toPushPath(raw: unknown): string {
+  if (typeof raw !== 'string' || !raw) return '/';
+  try {
+    if (/^https?:\/\//i.test(raw)) {
+      const parsed = new URL(raw);
+      return `${parsed.pathname}${parsed.search}${parsed.hash}` || '/';
+    }
+  } catch {
+    return '/';
+  }
+  return raw.startsWith('/') ? raw : `/${raw}`;
+}
+
+function toSameOriginUrl(raw: unknown): string {
+  return new URL(toPushPath(raw), self.location.origin).href;
+}
+
 function parsePushPayload(event: PushEvent): PushPayload {
   try {
     if (!event.data) return {};
@@ -51,19 +68,23 @@ async function showPushNotification(event: PushEvent): Promise<void> {
   const nested = payload.notification;
   const title = nested?.title || payload.title || 'бело́к';
   const body = nested?.body || payload.body || '';
-  const url = nested?.navigate || payload.url || '/';
+  const path = toPushPath(payload.url || nested?.navigate);
+  const url = toSameOriginUrl(path);
   const tag = nested?.tag || payload.tag || 'default';
 
   // WebKit honours title/body/tag/data and ignores the rest. Keep the extra
   // fields for Android, but if showNotification rejects, retry with the
   // minimal set so a failed option never becomes a silent push (iOS revokes
   // the subscription after a few of those).
-  const rich: NotificationOptions = {
+  // `navigate` is the iOS tap target and must be same-origin with this SW,
+  // otherwise the PWA opens a Next.js 404.
+  const rich: NotificationOptions & { navigate?: string } = {
     body,
     icon: nested?.icon || payload.icon || DEFAULT_ICON,
     badge: nested?.badge || payload.badge || DEFAULT_BADGE,
     tag,
-    data: { url },
+    data: { url, path },
+    navigate: url,
     lang: 'ru',
     dir: 'ltr',
   };
@@ -71,7 +92,7 @@ async function showPushNotification(event: PushEvent): Promise<void> {
   try {
     await self.registration.showNotification(title, rich);
   } catch {
-    await self.registration.showNotification(title, { body, tag, data: { url } });
+    await self.registration.showNotification(title, { body, tag, data: { url, path } });
   }
 
   const nav = self.navigator as Navigator & {
@@ -96,20 +117,19 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
     void nav.clearAppBadge().catch(() => {});
   }
 
-  const target = (event.notification.data && event.notification.data.url) || '/';
-  const targetUrl = new URL(target, self.location.origin).href;
+  const data = event.notification.data as { url?: string; path?: string } | undefined;
+  const path = toPushPath(data?.path || data?.url);
+  const targetUrl = toSameOriginUrl(path);
 
   event.waitUntil(
     (async () => {
       const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       for (const client of all) {
-        if (client.url === targetUrl && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      for (const client of all) {
-        if ('navigate' in client && 'focus' in client) {
+        client.postMessage({ type: 'PUSH_NAVIGATE', url: path });
+        if ('navigate' in client) {
           await client.navigate(targetUrl).catch(() => {});
+        }
+        if ('focus' in client) {
           return client.focus();
         }
       }

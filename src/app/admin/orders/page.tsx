@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useHaptic } from '@/hooks/useHaptic';
 import { usePushSubscription } from '@/hooks/usePushSubscription';
@@ -42,6 +44,7 @@ function announceNewOrders(orders: Order[]) {
 }
 
 export default function AdminOrdersPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const haptic = useHaptic();
   const push = usePushSubscription();
@@ -79,7 +82,10 @@ export default function AdminOrdersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       }).then((r) => r.json()),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-order'] });
+    },
   });
 
   return (
@@ -135,8 +141,20 @@ export default function AdminOrdersPage() {
             </thead>
             <tbody>
               {orders.map((order) => (
-                <tr key={order.id}>
-                  <td className="font-mono text-xs">{order.id.slice(0, 8)}</td>
+                <tr
+                  key={order.id}
+                  className="cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--lg-text)_5%,transparent)]"
+                  onClick={() => router.push(`/admin/orders/${order.id}`)}
+                >
+                  <td className="font-mono text-xs">
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="font-mono text-xs underline-offset-2 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {order.id.slice(0, 8)}
+                    </Link>
+                  </td>
                   <td>{order.user?.name || order.user?.email || order.user?.phone || '—'}</td>
                   <td className="max-w-[280px]">
                     <OrderItemsList items={order.items} />
@@ -177,6 +195,7 @@ export default function AdminOrdersPage() {
                     <select
                       className="select-pill max-w-[160px] py-2 text-xs font-medium"
                       value={order.status}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) => updateStatus.mutate({ id: order.id, status: e.target.value })}
                       aria-label="Статус заказа"
                     >
@@ -196,45 +215,47 @@ export default function AdminOrdersPage() {
 
       <div className="space-y-3 min-[900px]:hidden">
         {orders.map((order) => (
-          <div key={order.id} className="glass-panel space-y-3 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="font-mono text-xs text-(--lg-text-muted)">#{order.id.slice(0, 8)}</p>
-              <p className="text-xs text-(--lg-text-muted)">
-                {new Date(order.createdAt).toLocaleString('ru-RU')}
-              </p>
-            </div>
-            <p className="text-sm font-medium text-(--lg-text)">
-              {order.user?.name || order.user?.email || order.user?.phone || '—'}
-            </p>
-            <OrderItemsList items={order.items} />
-            {order.comment ? (
-              <p className="text-xs italic text-(--lg-text-muted)">Комментарий: {order.comment}</p>
-            ) : null}
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] pt-3">
-              <div>
-                <span className="text-lg font-bold tabular-nums text-(--lg-text)">{order.total} ₽</span>
-                {order.discountAmount > 0 ? (
-                  <span className="mt-0.5 block text-xs text-sky-700">
-                    Скидка: −{order.discountAmount} ₽
-                  </span>
-                ) : null}
-                {order.bonusUsed > 0 ? (
-                  <span className="mt-0.5 block text-xs text-amber-700">
-                    Бонусы: −{order.bonusUsed} ₽
-                  </span>
-                ) : null}
+          <div key={order.id} className="glass-panel p-4">
+            <Link href={`/admin/orders/${order.id}`} className="block space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="font-mono text-xs text-(--lg-text-muted)">#{order.id.slice(0, 8)}</p>
+                <p className="text-xs text-(--lg-text-muted)">
+                  {new Date(order.createdAt).toLocaleString('ru-RU')}
+                </p>
               </div>
-              <span
-                className={
-                  order.paymentStatus === 'SUCCEEDED'
-                    ? 'inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
-                    : 'admin-chip-neutral'
-                }
-              >
-                {order.paymentStatus === 'SUCCEEDED' ? 'Оплачен' : order.paymentStatus}
-              </span>
-            </div>
-            <label className="block text-xs font-medium text-(--lg-text-muted)">
+              <p className="text-sm font-medium text-(--lg-text)">
+                {order.user?.name || order.user?.email || order.user?.phone || '—'}
+              </p>
+              <OrderItemsList items={order.items} />
+              {order.comment ? (
+                <p className="text-xs italic text-(--lg-text-muted)">Комментарий: {order.comment}</p>
+              ) : null}
+              <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] pt-3">
+                <div>
+                  <span className="text-lg font-bold tabular-nums text-(--lg-text)">{order.total} ₽</span>
+                  {order.discountAmount > 0 ? (
+                    <span className="mt-0.5 block text-xs text-sky-700">
+                      Скидка: −{order.discountAmount} ₽
+                    </span>
+                  ) : null}
+                  {order.bonusUsed > 0 ? (
+                    <span className="mt-0.5 block text-xs text-amber-700">
+                      Бонусы: −{order.bonusUsed} ₽
+                    </span>
+                  ) : null}
+                </div>
+                <span
+                  className={
+                    order.paymentStatus === 'SUCCEEDED'
+                      ? 'inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
+                      : 'admin-chip-neutral'
+                  }
+                >
+                  {order.paymentStatus === 'SUCCEEDED' ? 'Оплачен' : order.paymentStatus}
+                </span>
+              </div>
+            </Link>
+            <label className="mt-3 block text-xs font-medium text-(--lg-text-muted)">
               Статус
               <select
                 className="select-pill mt-1 w-full py-2.5 text-sm font-medium"

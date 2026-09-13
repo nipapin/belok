@@ -37,7 +37,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           <Header />
           <PullToRefresh
             onRefresh={handleRefresh}
-            className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden scrollbar-hide px-4 pt-[var(--client-header-stack-height)] pb-[calc(var(--client-nav-bar-height)+var(--client-nav-edge-gap))]"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden scrollbar-hide px-4 pt-[var(--client-header-stack-height)] pb-[calc(var(--client-nav-bar-height)+var(--client-nav-edge-gap)+env(safe-area-inset-bottom))]"
           >
             {children}
           </PullToRefresh>

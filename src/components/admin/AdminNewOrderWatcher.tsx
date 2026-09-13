@@ -94,7 +94,7 @@ export default function AdminNewOrderWatcher() {
       type="button"
       onClick={() => {
         setToast(null);
-        router.push('/admin/orders');
+        router.push(latestId ? `/admin/orders/${latestId}` : '/admin/orders');
       }}
       className="fixed right-3 top-[calc(var(--admin-nav-h)+0.75rem)] z-[1400] flex max-w-[min(100%-1.5rem,22rem)] items-center gap-2 rounded-2xl border border-(--lg-ring) bg-(--lg-fill) px-3 py-2.5 text-left text-sm font-semibold text-(--lg-text) shadow-(--lg-shadow) md:right-8"
     >

@@ -138,7 +138,7 @@ export default function BottomNav() {
 
   return (
     <>
-      <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-1200 flex justify-center px-2 pt-[var(--client-nav-edge-gap)] pb-3">
+      <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-1200 flex justify-center px-2 pt-[var(--client-nav-edge-gap)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <nav
           ref={navRef}
           role="navigation"

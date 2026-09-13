@@ -114,14 +114,14 @@ export default function AdminHitsPage() {
               <button
                 key={p.id}
                 type="button"
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-(--lg-text) hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
                 onClick={() => {
                   setDirtyIds([...productIds, p.id]);
                   setQuery('');
                 }}
               >
                 <Plus className="size-4 shrink-0 text-(--lg-text-muted)" />
-                <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
                 <span className="tabular-nums text-xs text-(--lg-text-muted)">{p.price} ₽</span>
               </button>
             ))}

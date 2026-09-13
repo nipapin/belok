@@ -2,7 +2,7 @@ import { after, NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, withTransaction } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { tryNotifyAdmins } from '@/lib/push';
+import { tryNotifyAdmins, absolutePushUrl } from '@/lib/push';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 import type {
   IngredientAction,
@@ -230,13 +230,14 @@ export async function POST(request: NextRequest) {
       name: productMap.get(item.productId)?.name ?? 'Товар',
       quantity: item.quantity,
     }));
+    const adminOrderUrl = absolutePushUrl(`/admin/orders/${orderId}`, request);
     after(async () => {
       const settings = await getNotificationSettings();
       if (!settings.adminNewOrdersPush) return;
       await tryNotifyAdmins({
         title: 'Новый заказ',
         body: buildNewOrderPushBody({ customer, items: itemLines, total }),
-        url: '/admin/orders',
+        url: adminOrderUrl,
         tag: `order-new-${orderId}`,
       });
     });

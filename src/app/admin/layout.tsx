@@ -65,7 +65,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
       <nav className="mt-2 flex-1 space-y-1 px-2">
         {menuItems.map((item) => {
-          const selected = pathname === item.path;
+          const selected =
+            item.path === '/admin'
+              ? pathname === '/admin'
+              : pathname === item.path || pathname.startsWith(`${item.path}/`);
           const Icon = item.icon;
           return (
             <button
@@ -107,7 +110,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   return (
-    <div className="admin-surface h-dvh min-h-0 w-full overflow-hidden pb-[env(safe-area-inset-bottom)]">
+    <div className="admin-surface h-dvh min-h-0 w-full overflow-hidden text-(--lg-text) pb-[env(safe-area-inset-bottom)]">
       <header className="admin-header-bar fixed left-0 right-0 top-0 z-[1300] flex h-(--admin-nav-h) items-center gap-2 px-3 pt-(--admin-nav-pad-top) md:left-[260px]">
         {!mdUp && (
           <button

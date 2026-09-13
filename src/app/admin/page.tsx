@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Banknote, Receipt, Users, UtensilsCrossed } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -86,7 +87,11 @@ export default function AdminDashboard() {
         {orders.slice(0, 5).map((order) => {
           const status = ORDER_STATUS_LABELS[order.status];
           return (
-            <div key={order.id} className="glass-panel space-y-3 p-4">
+            <Link
+              key={order.id}
+              href={`/admin/orders/${order.id}`}
+              className="glass-panel block space-y-3 p-4 transition hover:border-(--lg-ring-strong) hover:bg-(--lg-fill-hover)"
+            >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold text-(--lg-text)">№{order.id.slice(0, 8)}</p>
@@ -108,7 +113,7 @@ export default function AdminDashboard() {
               {order.comment ? (
                 <p className="text-xs italic text-(--lg-text-muted)">Комментарий: {order.comment}</p>
               ) : null}
-            </div>
+            </Link>
           );
         })}
         {!isLoading && orders.length === 0 ? (

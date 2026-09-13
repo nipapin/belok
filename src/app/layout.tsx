@@ -3,6 +3,7 @@ import { Geologica } from "next/font/google";
 import Script from "next/script";
 import OrientationLock from "@/components/layout/OrientationLock";
 import QueryProvider from "@/lib/QueryProvider";
+import PushNavigateListener from "@/components/notifications/PushNavigateListener";
 import { brandMark } from "@/lib/brand";
 import "./globals.css";
 
@@ -71,6 +72,7 @@ export default function RootLayout({
         </Script>
         <QueryProvider>
           <OrientationLock />
+          <PushNavigateListener />
           {children}
         </QueryProvider>
       </body>

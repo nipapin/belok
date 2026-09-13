@@ -48,19 +48,57 @@ export function getPublicAppOrigin(): string {
   return DEFAULT_PUBLIC_ORIGIN;
 }
 
+/** Origin the client actually used (LAN IP, preview host, production). */
+export function originFromRequest(request: { headers: Headers; nextUrl: URL }): string {
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  if (forwardedHost) {
+    return `${forwardedProto || 'https'}://${forwardedHost}`;
+  }
+  const host = request.headers.get('host')?.split(',')[0]?.trim();
+  if (host) {
+    const proto = request.nextUrl.protocol.replace(/:$/, '') || 'https';
+    return `${proto}://${host}`;
+  }
+  return request.nextUrl.origin.replace(/\/$/, '');
+}
+
+export function toPushPath(url?: string): string {
+  if (!url) return '/';
+  try {
+    if (/^https?:\/\//i.test(url)) {
+      const parsed = new URL(url);
+      return `${parsed.pathname}${parsed.search}${parsed.hash}` || '/';
+    }
+  } catch {
+    return '/';
+  }
+  return url.startsWith('/') ? url : `/${url}`;
+}
+
+export function absolutePushUrl(
+  path: string,
+  request: { headers: Headers; nextUrl: URL }
+): string {
+  return `${originFromRequest(request)}${toPushPath(path)}`;
+}
+
 function resolvePushNavigateUrl(path?: string): string {
   if (path && /^https?:\/\//i.test(path)) return path;
   const origin = getPublicAppOrigin();
-  const pathname = !path || path === '' ? '/' : path.startsWith('/') ? path : `/${path}`;
-  return `${origin}${pathname}`;
+  return `${origin}${toPushPath(path)}`;
 }
 
 /**
  * Dual payload: Declarative Web Push (iOS 18.4+) plus the flat fields our
  * service worker already reads. If the SW fails to call showNotification in
  * time, WebKit still displays `notification` instead of dropping the push.
+ *
+ * `navigate` must be an absolute same-origin URL — a relative path is resolved
+ * against the wrong base on iOS and opens a Next.js 404.
  */
 function serializePushPayload(payload: PushPayload): string {
+  const path = toPushPath(payload.url);
   const navigate = resolvePushNavigateUrl(payload.url);
   return JSON.stringify({
     web_push: 8030,
@@ -75,7 +113,7 @@ function serializePushPayload(payload: PushPayload): string {
     },
     title: payload.title,
     body: payload.body,
-    url: payload.url || '/',
+    url: path,
     tag: payload.tag,
     icon: payload.icon,
   });
