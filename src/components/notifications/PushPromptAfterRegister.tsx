@@ -89,8 +89,9 @@ export default function PushPromptAfterRegister() {
   };
 
   const handleEnable = async () => {
-    haptic("medium");
-    await enable();
+    const ok = await enable();
+    if (!ok) return;
+    haptic("success");
     dismissSession();
     setOpen(false);
   };

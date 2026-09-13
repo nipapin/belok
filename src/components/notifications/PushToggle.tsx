@@ -14,9 +14,13 @@ export default function PushToggle() {
     status === "subscribed" || status === "not-subscribed" || status === "loading";
 
   const handleToggle = async (next: boolean) => {
+    if (next) {
+      const ok = await enable();
+      if (ok) haptic("success");
+      return;
+    }
     haptic("selection");
-    if (next) await enable();
-    else await disable();
+    await disable();
   };
 
   return (

@@ -10,23 +10,7 @@ import { query, queryOne } from './db';
 
 let vapidConfigured = false;
 
-function configureVapid(): void {
-  if (vapidConfigured) return;
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || 'mailto:admin@example.com';
-  if (!publicKey || !privateKey) {
-    throw new Error(
-      'VAPID keys are not configured. Run `npm run push:keys` and add NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY to .env.'
-    );
-  }
-  webpush.setVapidDetails(subject, publicKey, privateKey);
-  vapidConfigured = true;
-}
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+const DEFAULT_PUBLIC_ORIGIN = 'https://belok.pro';
 
 export type PushPayload = {
   /** Заголовок (1-я строка), напр. «Заказ готов!» */
@@ -40,6 +24,66 @@ export type PushPayload = {
   /** Иконка (по умолчанию /icons/icon-192x192.png — задаётся в SW) */
   icon?: string;
 };
+
+function configureVapid(): void {
+  if (vapidConfigured) return;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  const privateKey = process.env.VAPID_PRIVATE_KEY?.trim();
+  const subject = (process.env.VAPID_SUBJECT || 'mailto:admin@example.com').trim();
+  if (!publicKey || !privateKey) {
+    throw new Error(
+      'VAPID keys are not configured. Run `npm run push:keys` and add NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY to .env.'
+    );
+  }
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+  vapidConfigured = true;
+}
+
+/** Public HTTPS origin of the installed PWA. Needed for Declarative Web Push `navigate`. */
+export function getPublicAppOrigin(): string {
+  const raw = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '');
+  if (raw && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(raw)) {
+    return raw;
+  }
+  return DEFAULT_PUBLIC_ORIGIN;
+}
+
+function resolvePushNavigateUrl(path?: string): string {
+  if (path && /^https?:\/\//i.test(path)) return path;
+  const origin = getPublicAppOrigin();
+  const pathname = !path || path === '' ? '/' : path.startsWith('/') ? path : `/${path}`;
+  return `${origin}${pathname}`;
+}
+
+/**
+ * Dual payload: Declarative Web Push (iOS 18.4+) plus the flat fields our
+ * service worker already reads. If the SW fails to call showNotification in
+ * time, WebKit still displays `notification` instead of dropping the push.
+ */
+function serializePushPayload(payload: PushPayload): string {
+  const navigate = resolvePushNavigateUrl(payload.url);
+  return JSON.stringify({
+    web_push: 8030,
+    notification: {
+      title: payload.title,
+      body: payload.body,
+      lang: 'ru',
+      dir: 'ltr',
+      navigate,
+      tag: payload.tag || 'default',
+      silent: false,
+    },
+    title: payload.title,
+    body: payload.body,
+    url: payload.url || '/',
+    tag: payload.tag,
+    icon: payload.icon,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export type AudienceType = 'ALL' | 'LOYALTY_LEVEL' | 'USER';
 
@@ -96,8 +140,12 @@ async function sendToOneSubscription(
         endpoint: sub.endpoint,
         keys: { p256dh: sub.p256dh, auth: sub.auth },
       },
-      JSON.stringify(payload),
-      { TTL: 60 * 60 * 24 } // store on push service for up to 24h if device offline
+      serializePushPayload(payload),
+      {
+        TTL: 60 * 60 * 24,
+        urgency: 'high',
+        contentEncoding: 'aes128gcm',
+      }
     );
     console.info('[push] delivered', {
       userId: sub.userId,
@@ -282,7 +330,7 @@ export async function deleteSubscription(endpoint: string): Promise<void> {
 }
 
 export function getPublicVapidKey(): string {
-  const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
   if (!key) {
     throw new Error('NEXT_PUBLIC_VAPID_PUBLIC_KEY is not set');
   }

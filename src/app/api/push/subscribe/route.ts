@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { upsertSubscription } from '@/lib/push';
+import { tryNotifyUser, upsertSubscription } from '@/lib/push';
 
 interface SubscribeBody {
   endpoint?: string;
   keys?: { p256dh?: string; auth?: string };
+  welcome?: boolean;
 }
 
 /**
@@ -34,6 +35,15 @@ export async function POST(req: NextRequest) {
     auth,
     userAgent: req.headers.get('user-agent'),
   });
+
+  if (body?.welcome === true) {
+    void tryNotifyUser(user.id, {
+      title: 'Уведомления включены',
+      body: 'Так мы сообщим, когда заказ будет готов.',
+      url: '/',
+      tag: 'push-enabled',
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }
