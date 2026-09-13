@@ -8,6 +8,7 @@ import {
 import { toClientUser } from '@/lib/userClient';
 import { isValidEmail, normalizeEmail, verifyAndConsumeCode } from '@/lib/verificationCode';
 import { rateLimit, clientIpFromHeaders } from '@/lib/rateLimit';
+import { claimKioskOrdersForEmail } from '@/lib/kioskOrders';
 import type { UserRow } from '@/lib/types';
 
 function adminBypassEmails(): Set<string> {
@@ -96,6 +97,12 @@ export async function POST(request: NextRequest) {
 
     const userAgent = request.headers.get('user-agent') ?? null;
     const session = await createSession(user.id, { userAgent, ipAddress: ip });
+
+    try {
+      await claimKioskOrdersForEmail(user.id, email);
+    } catch (claimError) {
+      console.error('Claim kiosk orders error:', claimError);
+    }
 
     const fullUser = await getUserWithLoyaltyById(user.id);
     if (!fullUser) {

@@ -38,10 +38,10 @@ export default function CartPage() {
         {items.map((item) => (
           <li key={item.id}>
             <div className="glass-panel flex overflow-hidden p-0">
-              <div className="relative w-24 shrink-0 self-stretch bg-[color-mix(in_srgb,var(--lg-text)_10%,transparent)] sm:w-28">
+              <div className="relative w-24 shrink-0 self-stretch bg-white sm:w-28">
                 {item.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.image} alt="" className="absolute inset-0 size-full object-cover" />
+                  <img src={item.image} alt="" className="absolute inset-0 box-border size-full object-contain p-1.5" />
                 ) : (
                   <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-(--lg-text-muted)">
                     {item.name?.[0] ?? '?'}

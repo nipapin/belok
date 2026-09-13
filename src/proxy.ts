@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { SESSION_COOKIE, readSessionIdFromCookie } from '@/lib/sessionCookie';
 
-const protectedRoutes = ['/profile', '/orders', '/checkout'];
+/** Profile is client-gated (auth modal). Orders/checkout still need a session. */
+const protectedRoutes = ['/orders', '/checkout'];
 const adminRoutes = ['/admin'];
 
 export function proxy(request: NextRequest) {
@@ -17,9 +18,10 @@ export function proxy(request: NextRequest) {
   const rawSessionCookie = request.cookies.get(SESSION_COOKIE)?.value;
   const sessionId = readSessionIdFromCookie(rawSessionCookie);
   if (!sessionId) {
-    const loginUrl = new URL('/auth', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    const home = new URL('/', request.url);
+    home.searchParams.set('auth', '1');
+    home.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(home);
   }
 
   // Admin role validation needs the DB; route handlers/pages do it themselves
@@ -31,7 +33,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/profile/:path*',
     '/orders/:path*',
     '/checkout/:path*',
     '/admin/:path*',

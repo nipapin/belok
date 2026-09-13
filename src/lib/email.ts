@@ -81,6 +81,27 @@ export async function sendVerificationCode(to: string, code: string): Promise<vo
   await sendEmail({ to, subject, text, html });
 }
 
+export async function sendKioskInvite(to: string, registerUrl: string): Promise<void> {
+  const subject = 'Ваш заказ в Belok — создайте аккаунт';
+  const text =
+    `Здравствуйте!\n\n` +
+    `Вы оформили заказ в кафе Belok. Чтобы копить баллы и видеть заказы в истории, создайте аккаунт по ссылке:\n\n` +
+    `    ${registerUrl}\n\n` +
+    `Если вы не оставляли почту на кассе — просто проигнорируйте это письмо.\n`;
+  const html = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;color:#111">
+      <p>Здравствуйте!</p>
+      <p>Вы оформили заказ в кафе <b>Belok</b>. Чтобы копить баллы и видеть заказы в истории, создайте аккаунт:</p>
+      <p style="text-align:center;margin:28px 0">
+        <a href="${registerUrl}" style="display:inline-block;background:#18181b;color:#fff;text-decoration:none;padding:14px 22px;border-radius:999px;font-weight:600">Создать аккаунт</a>
+      </p>
+      <p style="color:#666;font-size:13px">Если кнопка не открывается, скопируйте ссылку:<br/>${registerUrl}</p>
+      <p style="color:#666;font-size:13px">Если вы не оставляли почту на кассе — проигнорируйте письмо.</p>
+    </div>
+  `;
+  await sendEmail({ to, subject, text, html });
+}
+
 export async function sendPasswordResetCode(to: string, code: string): Promise<void> {
   const subject = `Восстановление пароля в Belok: ${code}`;
   const text =

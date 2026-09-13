@@ -6,6 +6,7 @@ import { ArrowLeft, Minus, Plus, ShoppingCart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCartStore, type CartItemCustomization } from "@/store/cartStore";
 import { Product, ProductIngredient } from "@/types";
+import { isNewProduct } from "@/lib/productFlags";
 
 function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
   return (
@@ -124,12 +125,18 @@ export default function ProductDetailPage() {
   return (
     <div className="">
       <div className="relative -mx-4 -mt-(--client-header-stack-height)">
-        <div className="flex w-full items-center justify-center aspect-square">
+        <div className="relative aspect-square w-full bg-white">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.image} alt="" className="h-full w-full object-cover" />
+            <img
+              src={product.image}
+              alt=""
+              className="absolute inset-0 box-border size-full object-contain object-center p-4"
+            />
           ) : (
-            <span className="text-[6rem] font-bold leading-none text-[var(--lg-text-muted)]">{product.name[0]}</span>
+            <span className="flex size-full items-center justify-center text-[6rem] font-bold leading-none text-slate-400">
+              {product.name[0]}
+            </span>
           )}
         </div>
         <button
@@ -145,10 +152,22 @@ export default function ProductDetailPage() {
       <div className="mx-auto max-w-lg pt-4">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <span className="mb-2 inline-block rounded-full border border-[var(--lg-ring)] bg-[color-mix(in_srgb,var(--lg-fill)_90%,transparent)] px-3 py-1 text-xs font-semibold text-[var(--lg-text-muted)] backdrop-blur-md">
-              {product.category.name}
-            </span>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="inline-block rounded-full border border-[var(--lg-ring)] bg-[color-mix(in_srgb,var(--lg-fill)_90%,transparent)] px-3 py-1 text-xs font-semibold text-[var(--lg-text-muted)] backdrop-blur-md">
+                {product.category.name}
+              </span>
+              {isNewProduct(product.createdAt) ? (
+                <span className="inline-block rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
+                  Новинка
+                </span>
+              ) : null}
+            </div>
             <h1 className="heading-section text-balance">{product.name}</h1>
+            {product.weightGrams != null ? (
+              <p className="mt-1 text-sm font-medium tabular-nums text-[var(--lg-text-muted)]">
+                {product.weightGrams} г
+              </p>
+            ) : null}
           </div>
           <p className="shrink-0 text-xl font-bold tracking-tight tabular-nums text-[var(--lg-text)]">
             {product.price} ₽
@@ -159,17 +178,20 @@ export default function ProductDetailPage() {
           <p className="mb-4 text-sm leading-relaxed text-[var(--lg-text-muted)]">{product.description}</p>
         )}
 
-        {([product.calories, product.proteins, product.fats, product.carbs, product.fiber] as (number | null)[]).some(
+        {([product.weightGrams, product.calories, product.proteins, product.fats, product.carbs, product.fiber] as (number | null)[]).some(
           (v) => v != null,
         ) && (
           <div className="mb-6 grid grid-cols-6 gap-1">
             {[
-              { label: "Ккал", value: product.calories, span: 'col-span-2' },
-              { label: "Белки, г", value: product.proteins, span: 'col-span-2' },
-              { label: "Жиры, г", value: product.fats, span: 'col-span-2' },
-              { label: "Углеводы, г", value: product.carbs, span: 'col-span-3' },
-              { label: "Клетчатка, г", value: product.fiber, span: 'col-span-3' },
-            ].map((item) => (
+              { label: "Вес, г", value: product.weightGrams, span: "col-span-2" },
+              { label: "Ккал", value: product.calories, span: "col-span-2" },
+              { label: "Белки, г", value: product.proteins, span: "col-span-2" },
+              { label: "Жиры, г", value: product.fats, span: "col-span-2" },
+              { label: "Углеводы, г", value: product.carbs, span: "col-span-2" },
+              { label: "Клетчатка, г", value: product.fiber, span: "col-span-2" },
+            ]
+              .filter((item) => item.value != null)
+              .map((item) => (
               <div key={item.label} className={`glass-tight text-center flex items-baseline justify-center gap-1 ${item.span} p-2`}>
                 <p className="text-base font-bold text-[var(--lg-text)]">{item.value ?? "—"}</p>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--lg-text-muted)]">

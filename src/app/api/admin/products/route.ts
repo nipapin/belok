@@ -23,6 +23,7 @@ interface CreateProductBody {
   fats?: string | number | null;
   carbs?: string | number | null;
   fiber?: string | number | null;
+  weightGrams?: string | number | null;
   sortOrder?: number;
   ingredients?: IngredientLink[];
 }
@@ -52,11 +53,17 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
 
     await withTransaction(async (client) => {
+      const maxRow = await client.query<{ max: number | string | null }>(
+        `SELECT MAX("sortOrder") AS max FROM "products" WHERE "categoryId" = $1`,
+        [body.categoryId]
+      );
+      const nextSort = Number(maxRow.rows[0]?.max ?? -1) + 1;
+
       await client.query(
         `INSERT INTO "products"
           (id, name, description, price, image, "categoryId", "isAvailable",
-           calories, proteins, fats, carbs, fiber, "sortOrder")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+           calories, proteins, fats, carbs, fiber, "weightGrams", "sortOrder")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
         [
           id,
           body.name,
@@ -70,7 +77,8 @@ export async function POST(request: NextRequest) {
           toNum(body.fats),
           toNum(body.carbs),
           toNum(body.fiber),
-          body.sortOrder ?? 0,
+          toNum(body.weightGrams),
+          nextSort,
         ]
       );
 

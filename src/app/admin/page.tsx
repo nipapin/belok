@@ -1,7 +1,15 @@
 'use client';
 
+import Link from 'next/link';
 import { Banknote, Receipt, Users, UtensilsCrossed } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ORDER_STATUS_LABELS,
+  OrderItemsList,
+  type OrderItemView,
+} from '@/components/admin/OrderItemsList';
+
+import { orderCustomerLabel } from '@/lib/orderCustomer';
 
 interface StatCard {
   label: string;
@@ -9,10 +17,22 @@ interface StatCard {
   icon: typeof Receipt;
 }
 
+interface DashboardOrder {
+  id: string;
+  status: string;
+  total: number;
+  createdAt: string;
+  comment: string | null;
+  user: { phone: string | null; email: string | null; name: string | null } | null;
+  guestEmail?: string | null;
+  items: OrderItemView[];
+}
+
 export default function AdminDashboard() {
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: () => fetch('/api/admin/orders').then((r) => r.json()),
+    refetchInterval: 10_000,
   });
 
   const { data: usersData, isLoading: loadingUsers } = useQuery({
@@ -25,15 +45,13 @@ export default function AdminDashboard() {
     queryFn: () => fetch('/api/admin/products').then((r) => r.json()),
   });
 
-  const orders = ordersData?.orders ?? [];
+  const orders: DashboardOrder[] = ordersData?.orders ?? [];
   const users = usersData?.users ?? [];
   const products = productsData?.products ?? [];
 
   const today = new Date().toDateString();
-  const todayOrders = orders.filter(
-    (o: { createdAt: string }) => new Date(o.createdAt).toDateString() === today
-  );
-  const todayRevenue = todayOrders.reduce((s: number, o: { total: number }) => s + o.total, 0);
+  const todayOrders = orders.filter((o) => new Date(o.createdAt).toDateString() === today);
+  const todayRevenue = todayOrders.reduce((s, o) => s + o.total, 0);
 
   const isLoading = loadingOrders || loadingUsers || loadingProducts;
 
@@ -68,30 +86,42 @@ export default function AdminDashboard() {
       </div>
 
       <h2 className="mb-3 text-lg font-semibold text-(--lg-text)">Последние заказы</h2>
-      <div className="space-y-2">
-        {orders.slice(0, 5).map(
-          (order: {
-            id: string;
-            status: string;
-            total: number;
-            createdAt: string;
-            user: { phone: string | null; email: string | null; name: string | null };
-          }) => (
-            <div key={order.id} className="glass-panel flex flex-wrap items-center justify-between gap-2 p-4">
-              <div>
-                <p className="text-sm font-semibold text-(--lg-text)">№{order.id.slice(0, 8)}</p>
-                <p className="text-xs text-(--lg-text-muted)">
-                  {order.user?.name || order.user?.email || order.user?.phone || '—'} ·{' '}
-                  {new Date(order.createdAt).toLocaleString('ru-RU')}
-                </p>
+      <div className="space-y-3">
+        {orders.slice(0, 5).map((order) => {
+          const status = ORDER_STATUS_LABELS[order.status];
+          return (
+            <Link
+              key={order.id}
+              href={`/admin/orders/${order.id}`}
+              className="glass-panel block space-y-3 p-4 transition hover:border-(--lg-ring-strong) hover:bg-(--lg-fill-hover)"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-(--lg-text)">№{order.id.slice(0, 8)}</p>
+                  <p className="text-xs text-(--lg-text-muted)">
+                    {orderCustomerLabel(order)} ·{' '}
+                    {new Date(order.createdAt).toLocaleString('ru-RU')}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold tabular-nums text-(--lg-text)">{order.total} ₽</p>
+                  <span
+                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${status?.chip ?? 'admin-chip-neutral'}`}
+                  >
+                    {status?.label ?? order.status}
+                  </span>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-(--lg-text)">{order.total} ₽</p>
-                <p className="text-xs text-(--lg-text-muted)">{order.status}</p>
-              </div>
-            </div>
-          )
-        )}
+              <OrderItemsList items={order.items ?? []} />
+              {order.comment ? (
+                <p className="text-xs italic text-(--lg-text-muted)">Комментарий: {order.comment}</p>
+              ) : null}
+            </Link>
+          );
+        })}
+        {!isLoading && orders.length === 0 ? (
+          <p className="text-sm text-(--lg-text-muted)">Заказов пока нет</p>
+        ) : null}
       </div>
     </div>
   );

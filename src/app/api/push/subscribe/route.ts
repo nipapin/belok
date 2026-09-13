@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { upsertSubscription } from '@/lib/push';
+import { tryNotifyUser, upsertSubscription } from '@/lib/push';
+import { getNotificationSettings } from '@/lib/notificationSettings';
 
 interface SubscribeBody {
   endpoint?: string;
   keys?: { p256dh?: string; auth?: string };
+  welcome?: boolean;
 }
 
 /**
@@ -34,6 +36,18 @@ export async function POST(req: NextRequest) {
     auth,
     userAgent: req.headers.get('user-agent'),
   });
+
+  if (body?.welcome === true && (await getNotificationSettings()).autoPushWelcome) {
+    const isAdmin = user.role === 'ADMIN';
+    void tryNotifyUser(user.id, {
+      title: 'Уведомления включены',
+      body: isAdmin
+        ? 'Так придёт оповещение, когда кто-то оформит заказ.'
+        : 'Так мы сообщим, когда заказ будет готов.',
+      url: isAdmin ? '/admin/orders' : '/',
+      tag: 'push-enabled',
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

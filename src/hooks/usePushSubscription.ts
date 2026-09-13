@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { isIosDevice, isStandalonePwa } from "@/lib/clientPlatform";
 
 export type PushPermission = "default" | "granted" | "denied";
 
@@ -11,6 +12,8 @@ export type PushStatus =
   | "denied" // user denied (permanent until manually re-enabled in OS settings)
   | "subscribed" // we have a subscription saved on the server
   | "not-subscribed"; // permission ok but no active subscription
+
+const JSON_HEADERS = { "Content-Type": "application/json" };
 
 // TS 5.7+: Uint8Array is generic over its backing buffer; default widens to
 // ArrayBufferLike (= ArrayBuffer | SharedArrayBuffer). BufferSource — which
@@ -26,29 +29,6 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
-function isIOSSafari(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  const iPad =
-    /Macintosh/.test(ua) &&
-    typeof navigator.maxTouchPoints === "number" &&
-    navigator.maxTouchPoints > 1;
-  return /iPhone|iPod|iPad/.test(ua) || iPad;
-}
-
-function isStandalonePWA(): boolean {
-  if (typeof window === "undefined") return false;
-  // iOS-specific
-  if (
-    "standalone" in window.navigator &&
-    (window.navigator as Navigator & { standalone?: boolean }).standalone
-  ) {
-    return true;
-  }
-  // Standards-based
-  return window.matchMedia?.("(display-mode: standalone)").matches ?? false;
-}
-
 function isPushSupported(): boolean {
   if (typeof window === "undefined") return false;
   return (
@@ -56,6 +36,80 @@ function isPushSupported(): boolean {
     "PushManager" in window &&
     "Notification" in window
   );
+}
+
+function windowPushManager(): PushManager | null {
+  const extra = window as Window & { pushManager?: PushManager };
+  return extra.pushManager ?? null;
+}
+
+function readyWithTimeout(ms: number): Promise<ServiceWorkerRegistration> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error("sw-timeout"));
+    }, ms);
+    navigator.serviceWorker.ready.then(
+      (reg) => {
+        window.clearTimeout(timer);
+        resolve(reg);
+      },
+      (err) => {
+        window.clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
+async function activateWaitingWorker(reg: ServiceWorkerRegistration): Promise<void> {
+  if (!reg.waiting) return;
+  await new Promise<void>((resolve) => {
+    const done = () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onChange);
+      window.clearTimeout(timer);
+      resolve();
+    };
+    const onChange = () => done();
+    navigator.serviceWorker.addEventListener("controllerchange", onChange);
+    reg.waiting?.postMessage({ type: "SKIP_WAITING" });
+    const timer = window.setTimeout(done, 1500);
+  });
+}
+
+async function getPushManager(): Promise<PushManager> {
+  const windowPm = windowPushManager();
+  if (!("serviceWorker" in navigator)) {
+    if (windowPm) return windowPm;
+    throw new Error("no-push-manager");
+  }
+
+  const existing = await navigator.serviceWorker.getRegistration();
+  if (!existing) {
+    if (windowPm) return windowPm;
+    throw new Error("sw-timeout");
+  }
+
+  await activateWaitingWorker(existing);
+  try {
+    const reg = await readyWithTimeout(8000);
+    return reg.pushManager;
+  } catch {
+    if (windowPm) return windowPm;
+    throw new Error("sw-timeout");
+  }
+}
+
+async function persistSubscription(
+  sub: PushSubscription,
+  welcome: boolean
+): Promise<Response> {
+  return fetch("/api/push/subscribe", {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ ...sub.toJSON(), welcome }),
+  });
 }
 
 /**
@@ -77,10 +131,8 @@ export function usePushSubscription() {
 
   const refresh = useCallback(async () => {
     setError(null);
-    if (!isPushSupported()) {
-      // iOS Safari pre-16.4 has no PushManager. iOS 16.4+ has it but only
-      // exposes it in standalone PWA context.
-      if (isIOSSafari() && !isStandalonePWA()) {
+    if (!isPushSupported() && !windowPushManager()) {
+      if (isIosDevice() && !isStandalonePwa()) {
         setStatus("ios-needs-install");
       } else {
         setStatus("unsupported");
@@ -95,9 +147,18 @@ export function usePushSubscription() {
     }
 
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      setStatus(sub ? "subscribed" : "not-subscribed");
+      const pushManager = await getPushManager();
+      const sub = await pushManager.getSubscription();
+      if (!sub) {
+        setStatus("not-subscribed");
+        return;
+      }
+      setStatus("subscribed");
+      // Apple rotates endpoints; re-POST on every launch so the server stays in sync.
+      const saveRes = await persistSubscription(sub, false);
+      if (!saveRes.ok && saveRes.status !== 401) {
+        console.warn("[push] resync failed", saveRes.status);
+      }
     } catch {
       setStatus("not-subscribed");
     }
@@ -107,14 +168,25 @@ export function usePushSubscription() {
     void refresh();
   }, [refresh]);
 
-  const enable = useCallback(async () => {
-    if (busy) return;
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === "PUSH_SUBSCRIPTION_CHANGE") {
+        void refresh();
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, [refresh]);
+
+  const enable = useCallback(async (): Promise<boolean> => {
+    if (busy) return false;
     setBusy(true);
     setError(null);
 
     try {
-      if (!isPushSupported()) {
-        if (isIOSSafari() && !isStandalonePWA()) {
+      if (!isPushSupported() && !windowPushManager()) {
+        if (isIosDevice() && !isStandalonePwa()) {
           setError(
             "Чтобы получать уведомления на iPhone, добавьте приложение на домашний экран"
           );
@@ -123,10 +195,12 @@ export function usePushSubscription() {
           setError("Браузер не поддерживает push-уведомления");
           setStatus("unsupported");
         }
-        return;
+        return false;
       }
 
-      // Step 1 — ask OS for permission. Must be from a user gesture.
+      // Must run in the same turn as the tap. Do not await anything first —
+      // WebKit drops transient activation and then requestPermission() hangs
+      // or returns "default" without a prompt.
       const perm = await Notification.requestPermission();
       setPermission(perm as PushPermission);
       if (perm !== "granted") {
@@ -136,50 +210,61 @@ export function usePushSubscription() {
             "Уведомления отключены в системных настройках. Включите их вручную, чтобы продолжить."
           );
         }
-        return;
+        return false;
       }
 
-      // Step 2 — fetch the VAPID public key from server.
-      const vapidRes = await fetch("/api/push/vapid");
+      const vapidRes = await fetch("/api/push/vapid", {
+        credentials: "include",
+        cache: "no-store",
+      });
       if (!vapidRes.ok) {
         setError("Сервер не настроен для push-уведомлений");
-        return;
+        return false;
       }
       const { publicKey } = (await vapidRes.json()) as { publicKey: string };
 
-      // Step 3 — subscribe via the active service worker.
-      const reg = await navigator.serviceWorker.ready;
-
-      // If the user already had a subscription with a different VAPID key,
-      // we have to drop it first — otherwise Push API throws InvalidStateError.
-      const existing = await reg.pushManager.getSubscription();
-      if (existing) {
-        await existing.unsubscribe().catch(() => {});
+      const pushManager = await getPushManager();
+      let sub = await pushManager.getSubscription();
+      if (!sub) {
+        try {
+          sub = await pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey),
+          });
+        } catch {
+          const existing = await pushManager.getSubscription();
+          if (existing) await existing.unsubscribe().catch(() => {});
+          sub = await pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey),
+          });
+        }
       }
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      });
-
-      // Step 4 — register on server.
-      const saveRes = await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sub.toJSON()),
-      });
+      const saveRes = await persistSubscription(sub, true);
       if (!saveRes.ok) {
-        // Roll back the local subscription so we stay consistent.
-        await sub.unsubscribe().catch(() => {});
-        setError("Не удалось сохранить подписку на сервере");
+        if (saveRes.status === 401) {
+          setError("Войдите в аккаунт, чтобы включить уведомления");
+        } else {
+          setError("Не удалось сохранить подписку на сервере");
+        }
         setStatus("not-subscribed");
-        return;
+        return false;
       }
 
       setStatus("subscribed");
+      return true;
     } catch (e) {
       console.error("[push] enable failed", e);
-      setError("Не удалось включить уведомления");
+      const message = e instanceof Error ? e.message : "";
+      if (message === "sw-timeout") {
+        setError(
+          "Не удалось зарегистрировать сервис уведомлений. Откройте приложение с домашнего экрана по HTTPS и попробуйте снова."
+        );
+      } else {
+        setError("Не удалось включить уведомления");
+      }
+      return false;
     } finally {
       setBusy(false);
     }
@@ -190,12 +275,14 @@ export function usePushSubscription() {
     setBusy(true);
     setError(null);
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
+      const pushManager = await getPushManager();
+      const sub = await pushManager.getSubscription();
       if (sub) {
         await fetch("/api/push/unsubscribe", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          cache: "no-store",
+          headers: JSON_HEADERS,
           body: JSON.stringify({ endpoint: sub.endpoint }),
         }).catch(() => {});
         await sub.unsubscribe().catch(() => {});

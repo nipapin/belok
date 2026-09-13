@@ -25,6 +25,7 @@ interface UpdateProductBody {
   fats?: string | number | null;
   carbs?: string | number | null;
   fiber?: string | number | null;
+  weightGrams?: string | number | null;
   sortOrder?: number;
   ingredients?: IngredientLink[];
 }
@@ -87,7 +88,19 @@ export async function PUT(
     if (body.fats !== undefined) add('fats', toNum(body.fats));
     if (body.carbs !== undefined) add('carbs', toNum(body.carbs));
     if (body.fiber !== undefined) add('fiber', toNum(body.fiber));
-    if (body.sortOrder !== undefined) add('sortOrder', body.sortOrder);
+    if (body.weightGrams !== undefined) add('weightGrams', toNum(body.weightGrams));
+
+    const categoryChanged =
+      body.categoryId !== undefined && body.categoryId !== existing.categoryId;
+    if (categoryChanged) {
+      const maxRow = await queryOne<{ max: number | string | null }>(
+        `SELECT MAX("sortOrder") AS max FROM "products" WHERE "categoryId" = $1`,
+        [body.categoryId]
+      );
+      add('sortOrder', Number(maxRow?.max ?? -1) + 1);
+    } else if (body.sortOrder !== undefined) {
+      add('sortOrder', body.sortOrder);
+    }
 
     await withTransaction(async (client) => {
       if (sets.length > 0) {

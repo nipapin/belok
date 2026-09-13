@@ -8,7 +8,7 @@ function chipClass(active: boolean) {
   return `glass-fx rounded-full px-4 py-2 h-9 flex items-center justify-center text-sm whitespace-nowrap ${active ? "border" : ""}`;
 }
 
-const stripClass = "-mx-2 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide scroll-pl-3 scroll-pr-3 py-4";
+const stripClass = "-mx-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide px-4 py-4";
 
 type CategoryChipStripProps = {
   categories: CategoryStripItem[];

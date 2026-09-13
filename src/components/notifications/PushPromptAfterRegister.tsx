@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useAuthStore } from "@/store/authStore";
 import { useHaptic } from "@/hooks/useHaptic";
+import { setOverlayOpen } from "@/lib/clientOverlay";
 
 /** Set on successful login / email verification before redirect. */
 export const PUSH_PROMPT_AUTH_FLAG = "belok_show_push_prompt";
@@ -68,6 +69,11 @@ export default function PushPromptAfterRegister() {
     }
   }, [user, status]);
 
+  useEffect(() => {
+    setOverlayOpen("push-prompt", open);
+    return () => setOverlayOpen("push-prompt", false);
+  }, [open]);
+
   const dismissSession = () => {
     try {
       sessionStorage.setItem(SESSION_DISMISSED, "1");
@@ -83,8 +89,9 @@ export default function PushPromptAfterRegister() {
   };
 
   const handleEnable = async () => {
-    haptic("medium");
-    await enable();
+    const ok = await enable();
+    if (!ok) return;
+    haptic("success");
     dismissSession();
     setOpen(false);
   };

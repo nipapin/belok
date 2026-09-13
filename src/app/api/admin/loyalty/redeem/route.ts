@@ -4,6 +4,7 @@ import { withTransaction } from '@/lib/db';
 import { getUserWithLoyaltyById } from '@/lib/auth';
 import { requireAdmin } from '@/lib/adminAuth';
 import { tryNotifyUser } from '@/lib/push';
+import { getNotificationSettings } from '@/lib/notificationSettings';
 
 interface RedeemBody {
   userId?: string;
@@ -64,12 +65,14 @@ export async function POST(request: NextRequest) {
 
     const updated = await getUserWithLoyaltyById(userId);
 
-    void tryNotifyUser(userId, {
-      title: `−${amount} бонусов`,
-      body: `Бонусы списаны при оплате на кассе. Текущий баланс: ${Math.floor(updated?.bonusBalance ?? 0)}.`,
-      url: '/profile/bonuses',
-      tag: 'bonus',
-    });
+    if ((await getNotificationSettings()).autoPushLoyalty) {
+      void tryNotifyUser(userId, {
+        title: `−${amount} бонусов`,
+        body: `Бонусы списаны при оплате на кассе. Текущий баланс: ${Math.floor(updated?.bonusBalance ?? 0)}.`,
+        url: '/profile/bonuses',
+        tag: 'bonus',
+      });
+    }
 
     return NextResponse.json({
       bonusSpent: amount,

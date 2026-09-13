@@ -4,6 +4,96 @@ import { useState } from 'react';
 import { Save } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+function KioskPinSettings() {
+  const queryClient = useQueryClient();
+  const [pin, setPin] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const { data } = useQuery({
+    queryKey: ['admin-kiosk'],
+    queryFn: () => fetch('/api/admin/kiosk').then((r) => r.json()) as Promise<{ configured?: boolean }>,
+  });
+
+  const savePin = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/admin/kiosk', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const json = (await res.json()) as { error?: string; configured?: boolean };
+      if (!res.ok) throw new Error(json.error || 'Ошибка сохранения');
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-kiosk'] });
+      setPin('');
+    },
+  });
+
+  return (
+    <div className="glass-panel mt-8 space-y-4 p-5">
+      <div>
+        <h2 className="text-base font-semibold text-(--lg-text)">Терминал у кассы</h2>
+        <p className="mt-1 text-sm text-(--lg-text-muted)">
+          Откройте эту ссылку на планшете и введите PIN один раз. Гости увидят меню без
+          оболочки приложения.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="rounded-xl bg-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] px-3 py-2 text-sm text-(--lg-text)">
+          /kiosk
+        </code>
+        <button
+          type="button"
+          className="btn-ghost px-3 py-2 text-sm"
+          onClick={() => {
+            const url = `${window.location.origin}/kiosk`;
+            void navigator.clipboard.writeText(url).then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            });
+          }}
+        >
+          {copied ? 'Скопировано' : 'Копировать'}
+        </button>
+      </div>
+      <p className="text-sm text-(--lg-text-muted)">
+        {data?.configured ? 'PIN задан. Новый код заменит текущий и сбросит доступ на планшете.' : 'PIN ещё не задан — терминал не откроется.'}
+      </p>
+      <label className="block text-sm font-medium text-(--lg-text)">
+        PIN (4–6 цифр)
+        <input
+          className="input-pill mt-1 max-w-[200px] py-2 text-sm tabular-nums"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={6}
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder={data?.configured ? '••••' : '1234'}
+        />
+      </label>
+      {savePin.isError ? (
+        <p className="text-sm text-red-600">
+          {savePin.error instanceof Error ? savePin.error.message : 'Ошибка сохранения'}
+        </p>
+      ) : null}
+      {savePin.isSuccess ? (
+        <p className="text-sm text-emerald-700">PIN сохранён</p>
+      ) : null}
+      <button
+        type="button"
+        className="btn-primary gap-2 py-2.5 text-sm"
+        disabled={pin.length < 4 || savePin.isPending}
+        onClick={() => savePin.mutate()}
+      >
+        <Save className="size-4" />
+        Сохранить PIN
+      </button>
+    </div>
+  );
+}
+
 interface LoyaltyLevel {
   id: string;
   name: string;
@@ -174,12 +264,14 @@ export default function AdminSettingsPage() {
         Сохранить настройки
       </button>
 
+      <KioskPinSettings />
+
       <div className="glass-panel mt-8 p-5">
         <h2 className="mb-3 text-base font-semibold text-(--lg-text)">Правила программы</h2>
         <ul className="list-inside list-disc space-y-2 text-sm text-(--lg-text-muted)">
           <li>Бонусами можно оплатить до 100% стоимости заказа.</li>
           <li>1 бонус равен 1 ₽.</li>
-          <li>Кэшбэк начисляется после успешной оплаты.</li>
+          <li>Кэшбэк начисляется после выполнения заказа.</li>
           <li>Уровень лояльности повышается при достижении суммы покупок.</li>
         </ul>
       </div>

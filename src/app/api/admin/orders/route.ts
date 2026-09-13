@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import type {
+  IngredientRow,
   OrderItemCustomizationRow,
   OrderItemRow,
   OrderRow,
@@ -9,7 +10,7 @@ import type {
 } from '@/lib/types';
 
 interface OrderUserRow {
-  user_id: string;
+  user_id: string | null;
   user_email: string | null;
   user_phone: string | null;
   user_name: string | null;
@@ -27,7 +28,7 @@ export async function GET() {
          u."phone" AS "user_phone",
          u."name"  AS "user_name"
        FROM "orders" o
-       JOIN "users" u ON u."id" = o."userId"
+       LEFT JOIN "users" u ON u."id" = o."userId"
        ORDER BY o."createdAt" DESC`
     );
 
@@ -54,7 +55,16 @@ export async function GET() {
         : Promise.resolve([] as OrderItemCustomizationRow[]),
     ]);
 
+    const ingredientIds = Array.from(new Set(customizations.map((c) => c.ingredientId)));
+    const ingredients = ingredientIds.length
+      ? await query<IngredientRow>(
+          `SELECT * FROM "ingredients" WHERE id = ANY($1::text[])`,
+          [ingredientIds]
+        )
+      : [];
+
     const productMap = new Map(products.map((p) => [p.id, p]));
+    const ingredientMap = new Map(ingredients.map((i) => [i.id, i]));
 
     const result = orders.map((o) => ({
       id: o.id,
@@ -65,22 +75,35 @@ export async function GET() {
       bonusUsed: o.bonusUsed,
       bonusEarned: o.bonusEarned,
       paymentStatus: o.paymentStatus,
-      paymentId: o.paymentId,
       comment: o.comment,
+      guestEmail: o.guestEmail,
+      source: o.source,
       createdAt: o.createdAt,
       updatedAt: o.updatedAt,
-      user: {
-        id: o.user_id,
-        email: o.user_email,
-        phone: o.user_phone,
-        name: o.user_name,
-      },
+      user: o.user_id
+        ? {
+            id: o.user_id,
+            email: o.user_email,
+            phone: o.user_phone,
+            name: o.user_name,
+          }
+        : null,
       items: items
         .filter((it) => it.orderId === o.id)
         .map((it) => ({
           ...it,
           product: productMap.get(it.productId) ?? null,
-          customizations: customizations.filter((c) => c.orderItemId === it.id),
+          customizations: customizations
+            .filter((c) => c.orderItemId === it.id)
+            .map((c) => {
+              const ingredient = ingredientMap.get(c.ingredientId);
+              return {
+                ...c,
+                ingredient: ingredient
+                  ? { id: ingredient.id, name: ingredient.name, price: ingredient.price }
+                  : null,
+              };
+            }),
         })),
     }));
 

@@ -18,12 +18,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+import { useAuthModalStore } from "@/store/authModalStore";
 import { useHaptic } from "@/hooks/useHaptic";
+import { setOverlayOpen } from "@/lib/clientOverlay";
+import { WALKTHROUGH_SEEN_KEY } from "@/lib/pwaInstall";
 import type { WalkthroughConfig } from "@/lib/walkthrough";
-
-// Value is the seen config version; legacy installs stored "1", which parses
-// to version 1 — exactly what they saw.
-const STORAGE_KEY = "belok-walkthrough-v1";
 
 const ICONS: Record<string, LucideIcon> = {
   sparkles: Sparkles,
@@ -40,7 +39,7 @@ const ICONS: Record<string, LucideIcon> = {
 
 function getSeenVersion(): number {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(WALKTHROUGH_SEEN_KEY);
     const parsed = raw ? parseInt(raw, 10) : 0;
     return Number.isFinite(parsed) ? parsed : 0;
   } catch {
@@ -51,7 +50,7 @@ function getSeenVersion(): number {
 
 function markSeen(version: number) {
   try {
-    localStorage.setItem(STORAGE_KEY, String(version));
+    localStorage.setItem(WALKTHROUGH_SEEN_KEY, String(version));
   } catch {
     // Ignore — worst case the walkthrough shows again next visit.
   }
@@ -61,6 +60,7 @@ export default function WelcomeWalkthrough() {
   const { user, isLoading } = useAuthStore();
   const router = useRouter();
   const haptic = useHaptic();
+  const openAuth = useAuthModalStore((s) => s.openAuth);
 
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -90,6 +90,11 @@ export default function WelcomeWalkthrough() {
     requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
   }, [isLoading, user, config]);
 
+  useEffect(() => {
+    setOverlayOpen("walkthrough", open);
+    return () => setOverlayOpen("walkthrough", false);
+  }, [open]);
+
   if (!open || !config) return null;
 
   const slides = config.slides;
@@ -118,7 +123,7 @@ export default function WelcomeWalkthrough() {
   const onRegister = () => {
     haptic("medium");
     close();
-    router.push("/auth");
+    openAuth({ preferRegister: true });
   };
 
   const onMenu = () => {

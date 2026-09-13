@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import Image from 'next/image';
+import AdminNotificationSettings from '@/components/admin/AdminNotificationSettings';
 
 type AudienceType = 'ALL' | 'LOYALTY_LEVEL' | 'USER';
 
@@ -213,6 +214,8 @@ export default function AdminNotificationsPage() {
         </div>
       </header>
 
+      <AdminNotificationSettings />
+
       {/* Composer */}
       <div className="glass-panel-strong p-5 sm:p-6">
         <div className="space-y-4">
@@ -221,7 +224,7 @@ export default function AdminNotificationsPage() {
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-(--lg-text-muted)">
               Кому отправить
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {(
                 [
                   { id: 'ALL', label: 'Всем', icon: UsersIcon },
@@ -241,13 +244,13 @@ export default function AdminNotificationsPage() {
                       setSelectedUser(null);
                       setUserQuery('');
                     }}
-                    className={`flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-sm font-semibold transition ${
+                    className={`flex w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-2xl border px-1.5 py-2 text-xs font-semibold leading-none transition sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm ${
                       active
                         ? 'border-(--lg-ring-strong) bg-[#18181b] text-white shadow-(--lg-shadow)'
                         : 'border-(--lg-ring) text-(--lg-text) hover:border-(--lg-ring-strong) hover:bg-(--lg-fill-hover)'
                     }`}
                   >
-                    <Icon className="size-4" strokeWidth={active ? 2 : 1.75} />
+                    <Icon className="size-3.5 shrink-0 sm:size-4" strokeWidth={active ? 2 : 1.75} />
                     {opt.label}
                   </button>
                 );
@@ -299,7 +302,7 @@ export default function AdminNotificationsPage() {
                   setSearchOpen(true);
                 }}
                 placeholder="Имя или email"
-                className="input-pill w-full min-h-11"
+                className="input-pill w-full min-h-11 !rounded-[4px]"
               />
               {selectedUser && (
                 <button
@@ -384,7 +387,7 @@ export default function AdminNotificationsPage() {
               onChange={(e) => setTitle(e.target.value)}
               maxLength={100}
               placeholder="Например: Сегодня скидка 20%"
-              className="input-pill w-full min-h-11"
+              className="input-pill w-full min-h-11 !rounded-[4px]"
             />
           </div>
 
@@ -406,7 +409,7 @@ export default function AdminNotificationsPage() {
               maxLength={300}
               rows={3}
               placeholder="Что хотите сообщить?"
-              className="input-pill block w-full resize-none p-3"
+              className="input-pill block w-full resize-none !rounded-[4px] p-3"
             />
           </div>
 
@@ -423,7 +426,7 @@ export default function AdminNotificationsPage() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="/menu  или  https://..."
-              className="input-pill w-full min-h-11"
+              className="input-pill w-full min-h-11 !rounded-[4px]"
             />
           </div>
 

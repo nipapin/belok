@@ -2,26 +2,15 @@
 
 /**
  * Custom Service Worker code injected into the next-pwa generated SW.
- * Configured via `workboxOptions: { ... }` + `customWorkerSrc: 'src/worker'`
- * in `next.config.ts`.
+ * Configured via `customWorkerSrc: 'src/worker'` in `next.config.ts`.
  *
  * This file runs in the ServiceWorkerGlobalScope — NO `window`, NO React,
  * NO DOM access. Only `self`, `clients`, `caches`, fetch, IndexedDB, etc.
  *
- * Typing setup:
- *  - The triple-slash above pulls in lib.webworker.d.ts (ServiceWorkerGlobal-
- *    Scope, PushEvent, NotificationEvent, Clients, …) which is otherwise
- *    absent because tsconfig's `lib` is DOM-only.
- *  - `tsconfig.skipLibCheck: true` suppresses the duplicate-declaration
- *    conflict between lib.dom's `declare var self: Window` and lib.webworker's
- *    `declare var self: WorkerGlobalScope` (they collide at the global level).
- *  - `export {}` makes this file a module, so the local `declare const self`
- *    is module-scoped and unambiguously narrows `self` to the SW global here
- *    without leaking back to page code (which uses `window`, never bare `self`).
- *
  * What it does:
- *  - On `push` event: parse JSON payload, show a system notification.
+ *  - On `push`: parse JSON (flat or Declarative Web Push), show a system notification.
  *  - On `notificationclick`: focus an existing tab (if any) or open the URL.
+ *  - On `pushsubscriptionchange`: ask open clients to re-save the subscription.
  */
 
 export {};
@@ -35,59 +24,128 @@ interface PushPayload {
   tag?: string;
   icon?: string;
   badge?: string;
+  notification?: {
+    title?: string;
+    body?: string;
+    navigate?: string;
+    tag?: string;
+    icon?: string;
+    badge?: string;
+  };
 }
 
 const DEFAULT_ICON = '/icons/icon-192x192.png';
 const DEFAULT_BADGE = '/icons/icon-96x96.png';
 
-self.addEventListener('push', (event: PushEvent) => {
-  let payload: PushPayload = {};
+function toPushPath(raw: unknown): string {
+  if (typeof raw !== 'string' || !raw) return '/';
   try {
-    payload = event.data ? (event.data.json() as PushPayload) : {};
+    if (/^https?:\/\//i.test(raw)) {
+      const parsed = new URL(raw);
+      return `${parsed.pathname}${parsed.search}${parsed.hash}` || '/';
+    }
   } catch {
-    // Some push services may send plain text. Fall back to it as the body.
-    payload = { title: 'бело́к', body: event.data ? event.data.text() : '' };
+    return '/';
   }
+  return raw.startsWith('/') ? raw : `/${raw}`;
+}
 
-  const title = payload.title || 'бело́к';
-  const options: NotificationOptions & { renotify?: boolean } = {
-    body: payload.body || '',
-    icon: payload.icon || DEFAULT_ICON,
-    badge: payload.badge || DEFAULT_BADGE,
-    // tag groups notifications — same tag replaces previous on the screen
-    tag: payload.tag || 'default',
-    data: { url: payload.url || '/' },
-    // re-buzz the device even if a notification with the same tag already exists
-    renotify: true,
+function toSameOriginUrl(raw: unknown): string {
+  return new URL(toPushPath(raw), self.location.origin).href;
+}
+
+function parsePushPayload(event: PushEvent): PushPayload {
+  try {
+    if (!event.data) return {};
+    return event.data.json() as PushPayload;
+  } catch {
+    return { title: 'бело́к', body: event.data ? event.data.text() : '' };
+  }
+}
+
+async function showPushNotification(event: PushEvent): Promise<void> {
+  const payload = parsePushPayload(event);
+  const nested = payload.notification;
+  const title = nested?.title || payload.title || 'бело́к';
+  const body = nested?.body || payload.body || '';
+  const path = toPushPath(payload.url || nested?.navigate);
+  const url = toSameOriginUrl(path);
+  const tag = nested?.tag || payload.tag || 'default';
+
+  // WebKit honours title/body/tag/data and ignores the rest. Keep the extra
+  // fields for Android, but if showNotification rejects, retry with the
+  // minimal set so a failed option never becomes a silent push (iOS revokes
+  // the subscription after a few of those).
+  // `navigate` is the iOS tap target and must be same-origin with this SW,
+  // otherwise the PWA opens a Next.js 404.
+  const rich: NotificationOptions & { navigate?: string } = {
+    body,
+    icon: nested?.icon || payload.icon || DEFAULT_ICON,
+    badge: nested?.badge || payload.badge || DEFAULT_BADGE,
+    tag,
+    data: { url, path },
+    navigate: url,
+    lang: 'ru',
+    dir: 'ltr',
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  try {
+    await self.registration.showNotification(title, rich);
+  } catch {
+    await self.registration.showNotification(title, { body, tag, data: { url, path } });
+  }
+
+  const nav = self.navigator as Navigator & {
+    setAppBadge?: (n: number) => Promise<void>;
+  };
+  if (typeof nav.setAppBadge === 'function') {
+    await nav.setAppBadge(1).catch(() => {});
+  }
+}
+
+self.addEventListener('push', (event: PushEvent) => {
+  event.waitUntil(showPushNotification(event));
 });
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close();
 
-  const target = (event.notification.data && event.notification.data.url) || '/';
-  const targetUrl = new URL(target, self.location.origin).href;
+  const nav = self.navigator as Navigator & {
+    clearAppBadge?: () => Promise<void>;
+  };
+  if (typeof nav.clearAppBadge === 'function') {
+    void nav.clearAppBadge().catch(() => {});
+  }
+
+  const data = event.notification.data as { url?: string; path?: string } | undefined;
+  const path = toPushPath(data?.path || data?.url);
+  const targetUrl = toSameOriginUrl(path);
 
   event.waitUntil(
     (async () => {
       const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      // Prefer focusing an already-open tab on the target URL.
       for (const client of all) {
-        if (client.url === targetUrl && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // Otherwise reuse the first PWA window we find and navigate it.
-      for (const client of all) {
-        if ('navigate' in client && 'focus' in client) {
+        client.postMessage({ type: 'PUSH_NAVIGATE', url: path });
+        if ('navigate' in client) {
           await client.navigate(targetUrl).catch(() => {});
+        }
+        if ('focus' in client) {
           return client.focus();
         }
       }
-      // No window open at all → open a fresh one.
       return self.clients.openWindow(targetUrl);
+    })()
+  );
+});
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  const extendable = event as ExtendableEvent;
+  extendable.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of all) {
+        client.postMessage({ type: 'PUSH_SUBSCRIPTION_CHANGE' });
+      }
     })()
   );
 });

@@ -4,23 +4,46 @@ import { Bell, BellOff, Loader2, Smartphone } from "lucide-react";
 import Switch from "@/components/ui/Switch";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useHaptic } from "@/hooks/useHaptic";
+import { useAuthStore } from "@/store/authStore";
 
-export default function PushToggle() {
+type PushToggleProps = {
+  embedded?: boolean;
+  title?: string;
+  description?: string;
+  switchId?: string;
+};
+
+export default function PushToggle({
+  embedded = false,
+  title = 'Push-уведомления',
+  description,
+  switchId = 'push-toggle',
+}: PushToggleProps) {
   const { status, busy, error, enable, disable } = usePushSubscription();
   const haptic = useHaptic();
+  const isAdmin = useAuthStore((s) => s.user?.role === "ADMIN");
 
   const isOn = status === "subscribed";
   const showSwitch =
     status === "subscribed" || status === "not-subscribed" || status === "loading";
 
   const handleToggle = async (next: boolean) => {
+    if (next) {
+      const ok = await enable();
+      if (ok) haptic("success");
+      return;
+    }
     haptic("selection");
-    if (next) await enable();
-    else await disable();
+    await disable();
   };
 
+  const defaultOff =
+    'Включите, чтобы получать оповещения о заказах, бонусах и предложениях.';
+  const defaultOn = 'Будем оповещать о статусе заказа, бонусах и спецпредложениях.';
+  const hint = description ?? (isOn ? defaultOn : defaultOff);
+
   return (
-    <div className="glass-panel p-5 sm:p-6">
+    <div className={embedded ? '' : 'glass-panel p-5 sm:p-6'}>
       <div className="flex items-start gap-4">
         <span
           aria-hidden
@@ -41,12 +64,15 @@ export default function PushToggle() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="text-base font-semibold tracking-tight text-(--lg-text)">
-                Push-уведомления
+                {title}
               </h3>
               <p className="mt-1 text-sm leading-relaxed text-(--lg-text-muted)">
-                {isOn
-                  ? "Будем оповещать о статусе заказа, бонусах и спецпредложениях."
-                  : "Включите, чтобы получать оповещения о заказах, бонусах и предложениях."}
+                {description ??
+                  (isAdmin
+                    ? isOn
+                      ? 'Будем оповещать о новых заказах, даже если приложение свёрнуто.'
+                      : 'Включите, чтобы сразу узнавать о новых заказах.'
+                    : hint)}
               </p>
             </div>
 
@@ -58,7 +84,7 @@ export default function PushToggle() {
                   </div>
                 ) : (
                   <Switch
-                    id="push-toggle"
+                    id={switchId}
                     checked={isOn}
                     onChange={handleToggle}
                     aria-label={isOn ? "Выключить уведомления" : "Включить уведомления"}

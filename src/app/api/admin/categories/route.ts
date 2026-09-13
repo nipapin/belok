@@ -52,11 +52,18 @@ export async function POST(request: NextRequest) {
     await requireAdmin();
     const body = (await request.json()) as CreateCategoryBody;
     const id = uuidv4();
+    const maxRow = await queryOne<{ max: number | string | null }>(
+      `SELECT MAX("sortOrder") AS max FROM "categories"`
+    );
+    const nextSort =
+      body.sortOrder !== undefined && Number.isFinite(body.sortOrder)
+        ? Math.round(body.sortOrder)
+        : Number(maxRow?.max ?? -1) + 1;
     const category = await queryOne<CategoryRow>(
       `INSERT INTO "categories"(id, name, image, "sortOrder", "isActive")
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, name, image, "sortOrder", "isActive", "createdAt", "updatedAt"`,
-      [id, body.name, body.image ?? null, body.sortOrder ?? 0, body.isActive ?? true]
+      [id, body.name, body.image ?? null, nextSort, body.isActive ?? true]
     );
     return NextResponse.json({ category }, { status: 201 });
   } catch (e) {

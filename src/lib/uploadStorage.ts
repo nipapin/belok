@@ -75,7 +75,7 @@ function s3ObjectKeyFromPublicUrl(url: string): string | null {
  */
 export async function savePublicImage(
   file: File,
-  folder: 'avatars' | 'products'
+  folder: 'avatars' | 'products' | 'content'
 ): Promise<string> {
   if (!ALLOWED_TYPES.includes(file.type)) {
     throw new Error('TYPE');

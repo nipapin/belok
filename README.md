@@ -8,7 +8,7 @@
 ## Возможности
 
 - Каталог блюд с категориями и кастомизацией ингредиентов
-- Заказы со статусами и оплатой ([ЮKassa](https://yookassa.ru))
+- Заказы со статусами (оплата на кассе)
 - Авторизация по **email + паролю + 6-значному коду** на почту
 - Сессии **сохраняются до явного выхода** (cookie живёт ~10 лет, на сервере — запись `sessions`)
 - Программа лояльности: бонусы, уровни, кешбэк
@@ -137,8 +137,7 @@ SMTP_FROM="Belok <no-reply@belok.cafe>"
 | `JWT_SECRET` | Используется только если `SESSION_SECRET` не задан (legacy) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Параметры SMTP для отправки кодов |
 | `ADMIN_BYPASS_EMAILS` | Email-адреса (через запятую), которые получают роль `ADMIN` при первом входе |
-| `NEXT_PUBLIC_APP_URL` | Публичный URL приложения (редиректы после оплаты и т.п.) |
-| `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY` | ЮKassa (оплата) |
+| `NEXT_PUBLIC_APP_URL` | Публичный URL приложения |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Хранилище изображений |
 | `S3_REGION`, `S3_PUBLIC_BASE_URL`, `S3_FORCE_PATH_STYLE` | Доп. параметры S3 |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob — используется только если S3 не настроен |

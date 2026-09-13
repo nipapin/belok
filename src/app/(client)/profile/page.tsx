@@ -6,15 +6,18 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Gift, LayoutDashboard, Loader2, LogOut, Receipt, ScanLine, UserCircle2, X } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+import { useAuthModalStore } from "@/store/authModalStore";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useQuery } from "@tanstack/react-query";
 import LoyaltyCard from "@/components/loyalty/LoyaltyCard";
 import PushToggle from "@/components/notifications/PushToggle";
+import PwaInstallCard from "@/components/pwa/PwaInstallCard";
 
 export default function ProfilePage() {
   const router = useRouter();
   const hydrated = useHydrated();
   const { user, isLoading, setUser, logout } = useAuthStore();
+  const openAuth = useAuthModalStore((s) => s.openAuth);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -37,12 +40,6 @@ export default function ProfilePage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [avatarModalOpen]);
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      window.location.href = "/auth?redirect=/profile";
-    }
-  }, [isLoading, user]);
 
   const { data: bonusData } = useQuery({
     queryKey: ["bonuses"],
@@ -124,10 +121,34 @@ export default function ProfilePage() {
   const avatarTriggerClass =
     "relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-(--lg-ring) bg-(--lg-fill) backdrop-blur-sm transition";
 
-  if (!hydrated || isLoading || !user) {
+  if (!hydrated || isLoading) {
     return (
       <div className="mx-auto flex max-w-md justify-center px-2 py-24">
         <Loader2 className="size-8 animate-spin text-(--lg-text-muted)" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-2 py-16 text-center">
+        <UserCircle2 className="size-14 text-(--lg-text-muted)" strokeWidth={1.5} />
+        <div>
+          <h1 className="heading-section mb-2">Профиль</h1>
+          <p className="text-sm text-(--lg-text) opacity-90">
+            Войдите, чтобы видеть бонусы, заказы и настройки.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn-primary min-h-12 w-full max-w-xs"
+          onClick={() => openAuth({ redirect: "/profile" })}
+        >
+          Войти или зарегистрироваться
+        </button>
+        <div className="mt-6 w-full max-w-xs">
+          <PwaInstallCard />
+        </div>
       </div>
     );
   }
@@ -279,6 +300,8 @@ export default function ProfilePage() {
             <span className="font-medium text-(--lg-text)">{item.label}</span>
           </button>
         ))}
+
+        <PwaInstallCard />
 
         <div className="mt-4">
           <PushToggle />

@@ -11,10 +11,14 @@
     "db:seed": "tsx scripts/seed.ts",
     "icons:generate": "tsx scripts/generate-icons.ts",
     "push:keys": "tsx scripts/generate-vapid-keys.ts",
-    "deploy": "git pull && npm ci --no-fund --no-audit && npm run build && pm2 reload all"
+    "deploy": "git pull && npm ci --no-fund --no-audit && npm run build && pm2 reload all",
+    "test:smoke": "node scripts/smoke-puppeteer.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1104.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.99.0",
@@ -52,6 +56,7 @@
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "^16.3.0",
+    "puppeteer": "^25.10.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.9",
     "typescript": "^5"
@@ -63,6 +68,7 @@
   "allowScripts": {
     "esbuild": true,
     "sharp": true,
-    "unrs-resolver": true
+    "unrs-resolver": true,
+    "puppeteer@25.10.0": true
   }
 }

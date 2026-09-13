@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import SortableList from '@/components/admin/SortableList';
 
 interface Category {
   id: string;
@@ -19,7 +20,7 @@ export default function AdminCategoriesPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
-  const [form, setForm] = useState({ name: '', sortOrder: 0, isActive: true });
+  const [form, setForm] = useState({ name: '', isActive: true });
   const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
   const [blockedDelete, setBlockedDelete] = useState<Category | null>(null);
 
@@ -54,6 +55,33 @@ export default function AdminCategoriesPage() {
     },
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: async (next: Category[]) => {
+      const res = await fetch('/api/admin/categories/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: next.map((cat, index) => ({ id: cat.id, sortOrder: index })),
+        }),
+      });
+      if (!res.ok) throw new Error();
+    },
+    onMutate: async (next) => {
+      await queryClient.cancelQueries({ queryKey: ['admin-categories'] });
+      const prev = queryClient.getQueryData<{ categories: Category[] }>(['admin-categories']);
+      queryClient.setQueryData(['admin-categories'], {
+        categories: next.map((cat, index) => ({ ...cat, sortOrder: index })),
+      });
+      return { prev };
+    },
+    onError: (_err, _next, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(['admin-categories'], ctx.prev);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+    },
+  });
+
   const handleDeleteClick = (cat: Category) => {
     if (cat._count.products > 0) {
       setBlockedDelete(cat);
@@ -65,10 +93,10 @@ export default function AdminCategoriesPage() {
   const handleOpen = (cat?: Category) => {
     if (cat) {
       setEditing(cat);
-      setForm({ name: cat.name, sortOrder: cat.sortOrder, isActive: cat.isActive });
+      setForm({ name: cat.name, isActive: cat.isActive });
     } else {
       setEditing(null);
-      setForm({ name: '', sortOrder: 0, isActive: true });
+      setForm({ name: '', isActive: true });
     }
     setOpen(true);
   };
@@ -81,113 +109,58 @@ export default function AdminCategoriesPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="heading-section m-0">Категории</h1>
+        <div>
+          <h1 className="heading-section m-0">Категории</h1>
+          <p className="mt-1 text-sm text-(--lg-text-muted)">
+            Перетащите, чтобы изменить порядок разделов в меню.
+          </p>
+        </div>
         <button type="button" className="btn-primary gap-2 py-2.5 text-sm" onClick={() => handleOpen()}>
           <Plus className="size-4" />
           Добавить
         </button>
       </div>
 
-      <div className="hidden min-[900px]:block">
-        <div className="admin-table-wrap overflow-x-auto">
-          <table className="admin-table min-w-[640px]">
-            <thead>
-              <tr>
-                <th>Название</th>
-                <th>Товаров</th>
-                <th>Порядок</th>
-                <th>Статус</th>
-                <th className="text-right">Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((cat) => (
-                <tr key={cat.id}>
-                  <td>{cat.name}</td>
-                  <td>{cat._count.products}</td>
-                  <td>{cat.sortOrder}</td>
-                  <td>
-                    <span
-                      className={
-                        cat.isActive
-                          ? 'rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
-                          : 'admin-chip-neutral'
-                      }
-                    >
-                      {cat.isActive ? 'Активна' : 'Скрыта'}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <button
-                      type="button"
-                      className="btn-icon mr-1 inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
-                      onClick={() => handleOpen(cat)}
-                      aria-label="Изменить"
-                    >
-                      <Pencil className="size-4" />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                      onClick={() => handleDeleteClick(cat)}
-                      aria-label="Удалить"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="space-y-3 min-[900px]:hidden">
-        {categories.map((cat) => (
-          <div key={cat.id} className="glass-panel p-4">
-            <div className="flex items-start justify-between gap-3">
+      <SortableList
+        items={categories}
+        onReorder={(next) => reorderMutation.mutate(next)}
+        renderItem={(cat) => (
+          <div className="glass-panel flex items-center gap-3 p-3 sm:p-4">
+            <div className="min-w-0 flex-1">
               <p className="font-semibold text-(--lg-text)">{cat.name}</p>
-              <span
-                className={
-                  cat.isActive
-                    ? 'shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
-                    : 'admin-chip-neutral shrink-0'
-                }
-              >
-                {cat.isActive ? 'Активна' : 'Скрыта'}
-              </span>
+              <p className="mt-0.5 text-xs text-(--lg-text-muted)">
+                {cat._count.products}{' '}
+                {cat._count.products === 1 ? 'блюдо' : 'блюд'}
+              </p>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="text-(--lg-text-muted)">Товаров</span>
-                <span className="ml-2 font-medium tabular-nums text-(--lg-text)">{cat._count.products}</span>
-              </div>
-              <div>
-                <span className="text-(--lg-text-muted)">Порядок</span>
-                <span className="ml-2 font-medium tabular-nums text-(--lg-text)">{cat.sortOrder}</span>
-              </div>
-            </div>
-            <div className="mt-3 flex justify-end gap-1 border-t border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] pt-3">
-              <button
-                type="button"
-                className="btn-icon inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
-                onClick={() => handleOpen(cat)}
-                aria-label="Изменить"
-              >
-                <Pencil className="size-4" />
-              </button>
-              <button
-                type="button"
-                className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                onClick={() => handleDeleteClick(cat)}
-                aria-label="Удалить"
-              >
-                <Trash2 className="size-4" />
-              </button>
-            </div>
+            <span
+              className={
+                cat.isActive
+                  ? 'shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800'
+                  : 'admin-chip-neutral shrink-0'
+              }
+            >
+              {cat.isActive ? 'Активна' : 'Скрыта'}
+            </span>
+            <button
+              type="button"
+              className="btn-icon inline-flex size-9 border-0 bg-transparent shadow-none hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
+              onClick={() => handleOpen(cat)}
+              aria-label="Изменить"
+            >
+              <Pencil className="size-4" />
+            </button>
+            <button
+              type="button"
+              className="btn-icon inline-flex size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
+              onClick={() => handleDeleteClick(cat)}
+              aria-label="Удалить"
+            >
+              <Trash2 className="size-4" />
+            </button>
           </div>
-        ))}
-      </div>
+        )}
+      />
 
       <ConfirmDialog
         open={!!pendingDelete}
@@ -254,15 +227,6 @@ export default function AdminCategoriesPage() {
               className="input-pill mt-1"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-          </label>
-          <label className="text-sm font-medium text-(--lg-text)">
-            Порядок сортировки
-            <input
-              className="input-pill mt-1"
-              type="number"
-              value={form.sortOrder}
-              onChange={(e) => setForm({ ...form, sortOrder: parseInt(e.target.value, 10) || 0 })}
             />
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-(--lg-text)">

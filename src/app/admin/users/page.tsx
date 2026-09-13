@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '@/components/ui/Modal';
@@ -23,12 +23,33 @@ export default function AdminUsersPage() {
   const [editUser, setEditUser] = useState<User | null>(null);
   const [bonusAdjustment, setBonusAdjustment] = useState('');
   const [bonusReason, setBonusReason] = useState('');
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'USER' | 'ADMIN'>('ALL');
+  const [levelFilter, setLevelFilter] = useState('ALL');
 
   const { data } = useQuery({
     queryKey: ['admin-users'],
     queryFn: () => fetch('/api/admin/users').then((r) => r.json()),
   });
-  const users: User[] = data?.users ?? [];
+
+  const { data: settingsData } = useQuery({
+    queryKey: ['admin-settings'],
+    queryFn: () => fetch('/api/admin/settings').then((r) => r.json()),
+  });
+  const levels: { id: string; name: string }[] = settingsData?.levels ?? [];
+
+  const filteredUsers = useMemo(() => {
+    const list: User[] = data?.users ?? [];
+    const q = search.trim().toLowerCase();
+    return list.filter((user) => {
+      if (roleFilter !== 'ALL' && user.role !== roleFilter) return false;
+      if (levelFilter !== 'ALL' && user.loyaltyLevel?.id !== levelFilter) return false;
+      if (!q) return true;
+      const name = (user.name ?? '').toLowerCase();
+      const email = (user.email ?? '').toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+  }, [data, search, roleFilter, levelFilter]);
 
   const updateMutation = useMutation({
     mutationFn: async (body: Record<string, unknown>) => {
@@ -50,6 +71,43 @@ export default function AdminUsersPage() {
     <div>
       <h1 className="heading-section mb-6">Пользователи</h1>
 
+      <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+        <input
+          className="input-pill w-full py-2.5 text-sm"
+          type="search"
+          placeholder="Поиск по имени или email"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select
+          className="select-pill py-2.5 text-sm"
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as 'ALL' | 'USER' | 'ADMIN')}
+          aria-label="Роль"
+        >
+          <option value="ALL">Все роли</option>
+          <option value="USER">Клиенты</option>
+          <option value="ADMIN">Админы</option>
+        </select>
+        <select
+          className="select-pill py-2.5 text-sm"
+          value={levelFilter}
+          onChange={(e) => setLevelFilter(e.target.value)}
+          aria-label="Уровень лояльности"
+        >
+          <option value="ALL">Все уровни</option>
+          {levels.map((level) => (
+            <option key={level.id} value={level.id}>
+              {level.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {filteredUsers.length === 0 ? (
+        <p className="mb-4 text-sm text-(--lg-text-muted)">Никого не нашли по этим фильтрам</p>
+      ) : null}
+
       <div className="hidden min-[900px]:block">
         <div className="admin-table-wrap overflow-x-auto">
           <table className="admin-table min-w-[960px]">
@@ -66,7 +124,7 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id}>
                   <td>{user.email || user.phone || '—'}</td>
                   <td>{user.name || '—'}</td>
@@ -107,7 +165,7 @@ export default function AdminUsersPage() {
       </div>
 
       <div className="space-y-3 min-[900px]:hidden">
-        {users.map((user) => (
+        {filteredUsers.map((user) => (
           <div key={user.id} className="glass-panel p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">

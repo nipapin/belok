@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreditCard, Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useHaptic } from '@/hooks/useHaptic';
+import EffortSlider from '@/components/ui/EffortSlider';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -60,12 +61,7 @@ export default function CheckoutPage() {
 
       haptic('success');
       clearCart();
-
-      if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-      } else {
-        router.push(`/orders/${data.order.id}`);
-      }
+      router.push(`/orders/${data.order.id}`);
     } catch {
       haptic('error');
       setError('Ошибка соединения');
@@ -83,64 +79,64 @@ export default function CheckoutPage() {
       <h1 className="heading-section mb-6">Оформление заказа</h1>
 
       <div className="glass-panel mb-4 p-4">
-        <h2 className="mb-3 text-base font-semibold text-zinc-900">Ваш заказ</h2>
+        <h2 className="mb-3 text-base font-semibold text-(--lg-text)">Ваш заказ</h2>
         {items.map((item) => (
           <div key={item.id} className="flex justify-between gap-2 py-1.5 text-sm">
-            <span className="text-zinc-700">
+            <span className="text-(--lg-text)">
               {item.name} ×{item.quantity}
             </span>
-            <span className="shrink-0 font-semibold text-zinc-900">{getItemPrice(item)} ₽</span>
+            <span className="shrink-0 font-semibold tabular-nums text-(--lg-text)">{getItemPrice(item)} ₽</span>
           </div>
         ))}
-        <hr className="my-3 border-zinc-900/10" />
+        <hr className="my-3 border-[color-mix(in_srgb,var(--lg-text)_12%,transparent)]" />
         <div className="flex justify-between text-sm">
-          <span className="text-zinc-600">Подытог</span>
-          <span>{subtotal} ₽</span>
+          <span className="text-(--lg-text-muted)">Подытог</span>
+          <span className="tabular-nums text-(--lg-text)">{subtotal} ₽</span>
         </div>
         {discountAmount > 0 && (
-          <div className="mt-1 flex justify-between text-sm text-emerald-700">
+          <div className="mt-1 flex justify-between text-sm text-emerald-400">
             <span>
               Скидка {discountPercent}% ({user?.loyaltyLevel?.name})
             </span>
-            <span>−{discountAmount} ₽</span>
+            <span className="tabular-nums">−{discountAmount} ₽</span>
           </div>
         )}
         {bonusUsed > 0 && (
-          <div className="mt-1 flex justify-between text-sm text-amber-800">
+          <div className="mt-1 flex justify-between text-sm text-amber-300">
             <span>Бонусы</span>
-            <span>−{bonusUsed} ₽</span>
+            <span className="tabular-nums">−{bonusUsed} ₽</span>
           </div>
         )}
-        <hr className="my-3 border-zinc-900/10" />
-        <div className="flex justify-between text-base font-semibold">
+        <hr className="my-3 border-[color-mix(in_srgb,var(--lg-text)_12%,transparent)]" />
+        <div className="flex justify-between text-base font-semibold text-(--lg-text)">
           <span>Итого</span>
-          <span>{total} ₽</span>
+          <span className="tabular-nums">{total} ₽</span>
         </div>
       </div>
 
       {user && maxBonus > 0 && (
         <div className="glass-panel mb-4 p-4">
-          <h2 className="mb-1 text-base font-semibold text-zinc-900">Списать бонусы</h2>
-          <p className="mb-3 text-sm text-zinc-500">
+          <h2 className="mb-1 text-base font-semibold text-(--lg-text)">Списать бонусы</h2>
+          <p className="mb-4 text-sm text-(--lg-text-muted)">
             Доступно: {user.bonusBalance} (можно оплатить до 100% суммы)
           </p>
-          <input
-            type="range"
+          <EffortSlider
             min={0}
             max={maxBonus}
-            step={1}
             value={bonusUsed}
-            onChange={(e) => setBonusUsed(Number(e.target.value))}
-            className="mb-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-200 accent-zinc-900"
+            onChange={setBonusUsed}
+            ariaLabel="Списать бонусы"
           />
-          <p className="text-center text-sm text-zinc-600">Списать: {bonusUsed}</p>
+          <p className="mt-3 text-center text-sm tabular-nums text-(--lg-text)">
+            Списать: {bonusUsed}
+          </p>
         </div>
       )}
 
       <label className="mb-4 block">
-        <span className="mb-1.5 block text-sm font-medium text-zinc-700">Комментарий к заказу</span>
+        <span className="mb-1.5 block text-sm font-medium text-(--lg-text)">Комментарий к заказу</span>
         <textarea
-          className="min-h-[88px] w-full resize-none rounded-2xl border border-surface-edge bg-white/70 px-2 py-3 text-sm text-zinc-900 shadow-inner backdrop-blur-md outline-none placeholder:text-zinc-500 focus:border-surface-edge-strong focus:ring-2 focus:ring-zinc-900/10"
+          className="min-h-[88px] w-full resize-none rounded-2xl border border-(--lg-ring) bg-(--lg-fill) px-4 py-3 text-sm text-(--lg-text) outline-none placeholder:text-(--lg-text-muted) focus:border-(--lg-ring-strong) focus:ring-2 focus:ring-[color-mix(in_srgb,var(--lg-text)_8%,transparent)]"
           rows={2}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
@@ -149,14 +145,14 @@ export default function CheckoutPage() {
       </label>
 
       {error && (
-        <div className="mb-4 rounded-2xl border border-rose-200/80 bg-rose-50/90 px-2 py-3 text-sm text-rose-800 backdrop-blur-sm">
+        <div className="mb-4 rounded-2xl border border-rose-400/35 bg-rose-500/18 px-3 py-3 text-sm text-(--lg-text)">
           {error}
         </div>
       )}
 
       {user?.loyaltyLevel && (
-        <div className="mb-4 rounded-2xl border border-sky-200/80 bg-sky-50/90 px-2 py-3 text-sm text-sky-950 backdrop-blur-sm">
-          После оплаты начислим кэшбэк {user.loyaltyLevel.cashbackPercent}% (≈
+        <div className="glass-panel mb-4 px-4 py-3 text-sm text-(--lg-text)">
+          После выполнения заказа начислим кэшбэк {user.loyaltyLevel.cashbackPercent}% (≈
           {Math.round(total * (user.loyaltyLevel.cashbackPercent / 100))} бонусов)
         </div>
       )}
@@ -170,9 +166,9 @@ export default function CheckoutPage() {
         {loading ? (
           <Loader2 className="size-5 animate-spin" />
         ) : (
-          <CreditCard className="size-5" strokeWidth={1.75} />
+          <Check className="size-5" strokeWidth={1.75} />
         )}
-        {loading ? 'Оформляем…' : `Оплатить ${total} ₽`}
+        {loading ? 'Оформляем…' : `Оформить заказ · ${total} ₽`}
       </button>
     </div>
   );
