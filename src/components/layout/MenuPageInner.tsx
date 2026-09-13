@@ -13,6 +13,8 @@ const productSlideClass =
 
 export function MenuPageInner() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const selectedCategoryRef = useRef<string | null>(null);
+  selectedCategoryRef.current = selectedCategory;
   // While a click-triggered smooth scroll is in flight, the IntersectionObserver
   // must not overwrite the selected chip with intermediate categories.
   const suppressObserverRef = useRef(false);
@@ -97,7 +99,7 @@ export function MenuPageInner() {
           }
         }
 
-        if (nextId && nextId !== selectedCategory) {
+        if (nextId && nextId !== selectedCategoryRef.current) {
           setSelectedCategory(nextId);
         }
       },
@@ -112,7 +114,7 @@ export function MenuPageInner() {
     for (const { el } of sectionElements) observer.observe(el);
 
     return () => observer.disconnect();
-  }, [categoriesWithProducts, loadingProducts, selectedCategory]);
+  }, [categoriesWithProducts, loadingProducts]);
 
   return (
     <div>

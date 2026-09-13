@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cartStore";
 import { useHaptic } from "@/hooks/useHaptic";
@@ -13,7 +13,24 @@ type ProductCardProps = {
   eager?: boolean;
 };
 
-export function ProductCard({ product, eager = false }: ProductCardProps) {
+function sameProductCard(prev: ProductCardProps, next: ProductCardProps) {
+  const a = prev.product;
+  const b = next.product;
+  return (
+    prev.eager === next.eager &&
+    a.id === b.id &&
+    a.image === b.image &&
+    a.name === b.name &&
+    a.price === b.price &&
+    a.calories === b.calories &&
+    a.proteins === b.proteins &&
+    a.weightGrams === b.weightGrams &&
+    a.categoryName === b.categoryName &&
+    a.createdAt === b.createdAt
+  );
+}
+
+export const ProductCard = memo(function ProductCard({ product, eager = false }: ProductCardProps) {
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
@@ -77,4 +94,4 @@ export function ProductCard({ product, eager = false }: ProductCardProps) {
       onDecrement={handleDecrement}
     />
   );
-}
+}, sameProductCard);

@@ -103,16 +103,18 @@ export function FoodCard({
         >
           <div ref={mediaRef} className="food-card__media">
             {showImage ? (
-              // Direct S3 URL — Next optimizer times out on twcstorage and
-              // leaves a blank media well that looks like a skeleton on scroll.
+              // Direct S3 URL — Next optimizer times out on twcstorage.
+              // Never loading="lazy": Chrome Android unloads lazy images during
+              // fling, so the media well flashes as a skeleton on scroll-back.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={product.image!}
                 alt={product.name}
                 className="food-card__img"
-                loading={eager ? "eager" : "lazy"}
+                loading="eager"
                 fetchPriority={eager ? "high" : "auto"}
                 decoding="async"
+                draggable={false}
                 onError={() => setImgFailed(true)}
               />
             ) : (

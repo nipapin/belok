@@ -1,5 +1,4 @@
 .food-card {
-  container-type: inline-size;
   position: relative;
   display: flex;
   height: 100%;
@@ -22,10 +21,8 @@
   border-radius: inherit;
   border: 1px solid var(--lg-ring);
   background-color: var(--food-card-bg);
-  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat))
-    brightness(var(--lg-backdrop-bright));
-  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat))
-    brightness(var(--lg-backdrop-bright));
+  /* No backdrop-filter here: Chrome Android drops those compositor layers
+     during fling, so the card paints as an empty glass well (skeleton). */
   transition: border-color 200ms ease;
 }
 
@@ -60,7 +57,6 @@
   object-fit: cover;
   transform-origin: center center;
   transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
 }
 
 .food-card__fallback {
@@ -69,7 +65,7 @@
   height: 100%;
   align-items: center;
   justify-content: center;
-  font-size: clamp(1.75rem, 14cqi, 2.5rem);
+  font-size: 2rem;
   font-weight: 700;
   color: var(--food-card-muted);
 }
@@ -92,8 +88,6 @@
   line-height: 1.2;
   letter-spacing: 0.02em;
   color: var(--food-ink);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-  backdrop-filter: blur(12px) saturate(140%);
 }
 
 .food-card__badge--new {
@@ -118,7 +112,7 @@
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  font-size: clamp(1.0625rem, 8.4cqi, 1.25rem);
+  font-size: 1.125rem;
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.02em;
@@ -175,7 +169,7 @@
 .food-price {
   min-width: 0;
   flex: 1;
-  font-size: clamp(1.125rem, 11cqi, 1.5rem);
+  font-size: 1.25rem;
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.03em;
@@ -293,6 +287,13 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .food-card__clip {
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat))
+      brightness(var(--lg-backdrop-bright));
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat))
+      brightness(var(--lg-backdrop-bright));
+  }
+
   .food-card:hover {
     box-shadow: var(--food-shadow-hover);
     transform: translateY(-4px) scale(1.015);
