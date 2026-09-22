@@ -157,6 +157,7 @@ export default function PullToRefresh({ onRefresh, className, children }: Props)
         </div>
       </div>
       <div
+        className="pb-[var(--client-nav-clearance)]"
         style={{
           transform: visible ? `translate3d(0, ${pull}px, 0)` : undefined,
           transition: transitionContent,

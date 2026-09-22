@@ -11,6 +11,8 @@ export type BonusType = 'EARNED' | 'SPENT' | 'EXPIRED' | 'MANUAL';
 export type IngredientAction = 'ADD' | 'REMOVE';
 export type VerificationPurpose = 'REGISTER' | 'LOGIN' | 'PASSWORD_RESET';
 export type OrderSource = 'APP' | 'KIOSK';
+export type OrderFulfillment = 'DELIVERY' | 'PICKUP';
+export type OrderPaymentMethod = 'CARD' | 'CASH' | 'SBP' | 'BONUS';
 
 export interface LoyaltyLevelRow {
   id: string;
@@ -117,9 +119,16 @@ export interface OrderRow {
   bonusUsed: number;
   bonusEarned: number;
   paymentStatus: PaymentStatus;
+  tbankPaymentId: string | null;
+  fulfillment: OrderFulfillment;
+  deliveryAddress: string | null;
+  deliveryTime: string | null;
+  contactPhone: string | null;
+  paymentMethod: OrderPaymentMethod | null;
   comment: string | null;
   guestEmail: string | null;
   source: OrderSource;
+  dailyNumber: number | null;
   createdAt: Date;
   updatedAt: Date;
 }

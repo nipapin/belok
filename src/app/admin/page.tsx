@@ -9,7 +9,7 @@ import {
   type OrderItemView,
 } from '@/components/admin/OrderItemsList';
 
-import { orderCustomerLabel } from '@/lib/orderCustomer';
+import { orderCustomerLabel, orderTicket } from '@/lib/orderCustomer';
 
 interface StatCard {
   label: string;
@@ -25,6 +25,7 @@ interface DashboardOrder {
   comment: string | null;
   user: { phone: string | null; email: string | null; name: string | null } | null;
   guestEmail?: string | null;
+  dailyNumber?: number | null;
   items: OrderItemView[];
 }
 
@@ -51,7 +52,9 @@ export default function AdminDashboard() {
 
   const today = new Date().toDateString();
   const todayOrders = orders.filter((o) => new Date(o.createdAt).toDateString() === today);
-  const todayRevenue = todayOrders.reduce((s, o) => s + o.total, 0);
+  const todayRevenue = todayOrders
+    .filter((o) => o.status !== 'CANCELLED')
+    .reduce((s, o) => s + Number(o.total), 0);
 
   const isLoading = loadingOrders || loadingUsers || loadingProducts;
 
@@ -97,7 +100,7 @@ export default function AdminDashboard() {
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-(--lg-text)">№{order.id.slice(0, 8)}</p>
+                  <p className="text-sm font-semibold tabular-nums text-(--lg-text)">{orderTicket(order)}</p>
                   <p className="text-xs text-(--lg-text-muted)">
                     {orderCustomerLabel(order)} ·{' '}
                     {new Date(order.createdAt).toLocaleString('ru-RU')}

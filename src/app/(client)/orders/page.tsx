@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Receipt } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { orderTicket } from '@/lib/orderCustomer';
 
 const statusMap: Record<string, { label: string; className: string }> = {
   PENDING: {
@@ -35,6 +36,7 @@ const statusMap: Record<string, { label: string; className: string }> = {
 
 interface Order {
   id: string;
+  dailyNumber?: number | null;
   status: string;
   total: number;
   bonusEarned: number;
@@ -92,7 +94,7 @@ export default function OrdersPage() {
             >
               <div className="mb-2 flex items-start justify-between gap-2">
                 <span className="text-sm font-semibold text-(--lg-text)">
-                  Заказ №{order.id.slice(0, 8)}
+                  Заказ {orderTicket(order)}
                 </span>
                 <span
                   className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${s.className}`}

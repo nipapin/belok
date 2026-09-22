@@ -11,7 +11,7 @@ import {
   OrderItemsList,
   type OrderItemView,
 } from '@/components/admin/OrderItemsList';
-import { isKioskSource, orderCustomerLabel } from '@/lib/orderCustomer';
+import { fulfillmentLabel, isKioskSource, orderCustomerLabel, orderTicket } from '@/lib/orderCustomer';
 
 interface Order {
   id: string;
@@ -20,9 +20,12 @@ interface Order {
   bonusUsed: number;
   discountAmount: number;
   paymentStatus: string;
+  fulfillment?: string | null;
+  deliveryAddress?: string | null;
   comment: string | null;
   guestEmail: string | null;
   source: string;
+  dailyNumber?: number | null;
   createdAt: string;
   user: { phone: string | null; email: string | null; name: string | null } | null;
   items: OrderItemView[];
@@ -142,7 +145,7 @@ export default function AdminOrdersPage() {
           <table className="admin-table min-w-[960px]">
             <thead>
               <tr>
-                <th>ID</th>
+                <th>№</th>
                 <th>Клиент</th>
                 <th>Состав</th>
                 <th>Сумма</th>
@@ -164,12 +167,18 @@ export default function AdminOrdersPage() {
                       className="font-mono text-xs underline-offset-2 hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {order.id.slice(0, 8)}
+                      {orderTicket(order)}
                     </Link>
                   </td>
                   <td>
                     {customerLabel(order)}
                     <SourceBadge source={order.source} />
+                    {fulfillmentLabel(order.fulfillment) ? (
+                      <span className="mt-0.5 block text-xs text-(--lg-text-muted)">
+                        {fulfillmentLabel(order.fulfillment)}
+                        {order.deliveryAddress ? ` · ${order.deliveryAddress}` : ''}
+                      </span>
+                    ) : null}
                   </td>
                   <td className="max-w-[280px]">
                     <OrderItemsList items={order.items} />
@@ -233,7 +242,7 @@ export default function AdminOrdersPage() {
           <div key={order.id} className="glass-panel p-4">
             <Link href={`/admin/orders/${order.id}`} className="block space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="font-mono text-xs text-(--lg-text-muted)">#{order.id.slice(0, 8)}</p>
+                <p className="text-sm font-semibold tabular-nums text-(--lg-text)">{orderTicket(order)}</p>
                 <p className="text-xs text-(--lg-text-muted)">
                   {new Date(order.createdAt).toLocaleString('ru-RU')}
                 </p>
@@ -242,6 +251,12 @@ export default function AdminOrdersPage() {
                 {customerLabel(order)}
                 <SourceBadge source={order.source} />
               </p>
+              {fulfillmentLabel(order.fulfillment) ? (
+                <p className="text-xs text-(--lg-text-muted)">
+                  {fulfillmentLabel(order.fulfillment)}
+                  {order.deliveryAddress ? ` · ${order.deliveryAddress}` : ''}
+                </p>
+              ) : null}
               <OrderItemsList items={order.items} />
               {order.comment ? (
                 <p className="text-xs italic text-(--lg-text-muted)">Комментарий: {order.comment}</p>

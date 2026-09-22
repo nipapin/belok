@@ -3,6 +3,8 @@
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import SbpPayPanel from '@/components/order/SbpPayPanel';
+import { formatDeliveryTime, fulfillmentLabel, orderTicket, paymentMethodLabel } from '@/lib/orderCustomer';
 
 const statusSteps = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'COMPLETED'];
 const statusLabels: Record<string, string> = {
@@ -31,12 +33,19 @@ interface OrderItem {
 
 interface Order {
   id: string;
+  dailyNumber?: number | null;
   status: string;
   total: number;
   discountAmount: number;
   bonusUsed: number;
   bonusEarned: number;
   paymentStatus: string;
+  tbankPaymentId: string | null;
+  fulfillment?: string | null;
+  deliveryAddress?: string | null;
+  deliveryTime?: string | null;
+  contactPhone?: string | null;
+  paymentMethod?: string | null;
   comment: string | null;
   createdAt: string;
   items: OrderItem[];
@@ -87,7 +96,7 @@ export default function OrderDetailPage() {
       </button>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="heading-section m-0">Заказ №{order.id.slice(0, 8)}</h1>
+        <h1 className="heading-section m-0">Заказ {orderTicket(order)}</h1>
         <span
           className={`rounded-full border px-3 py-1 text-xs font-semibold ${
             order.status === 'CANCELLED'
@@ -100,6 +109,24 @@ export default function OrderDetailPage() {
           {statusLabels[order.status]}
         </span>
       </div>
+
+      {order.paymentStatus === 'PENDING' &&
+        order.tbankPaymentId &&
+        order.status !== 'CANCELLED' &&
+        order.paymentMethod === 'SBP' && <SbpPayPanel orderId={order.id} />}
+      {order.paymentStatus === 'PENDING' &&
+        order.tbankPaymentId &&
+        order.status !== 'CANCELLED' &&
+        order.paymentMethod === 'CARD' && (
+          <div className="glass-panel mb-4 p-4 text-sm text-(--lg-text)">
+            Оплата картой не завершена. Если страница банка закрылась, оформите заказ ещё раз.
+          </div>
+        )}
+      {order.paymentStatus === 'CANCELLED' && order.tbankPaymentId && (
+        <div className="glass-panel mb-4 border border-rose-400/35 bg-rose-500/18 p-4 text-sm text-(--lg-text)">
+          Оплата не прошла или время QR истекло. Заказ отменён, бонусы возвращены.
+        </div>
+      )}
 
       {order.status !== 'CANCELLED' && (
         <div className="glass-panel mb-4 overflow-x-auto p-4">
@@ -120,6 +147,22 @@ export default function OrderDetailPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {(fulfillmentLabel(order.fulfillment) || order.deliveryAddress || order.contactPhone) && (
+        <div className="glass-panel mb-4 p-4">
+          <h2 className="mb-2 text-base font-semibold text-(--lg-text)">Получение</h2>
+          <p className="text-sm text-(--lg-text)">{fulfillmentLabel(order.fulfillment) ?? 'Самовывоз'}</p>
+          {order.deliveryAddress ? (
+            <p className="mt-1 text-sm text-(--lg-text-muted)">{order.deliveryAddress}</p>
+          ) : null}
+          {formatDeliveryTime(order.deliveryTime) ? (
+            <p className="mt-1 text-sm text-(--lg-text-muted)">{formatDeliveryTime(order.deliveryTime)}</p>
+          ) : null}
+          {order.contactPhone ? (
+            <p className="mt-1 text-sm text-(--lg-text-muted)">{order.contactPhone}</p>
+          ) : null}
         </div>
       )}
 
@@ -175,7 +218,10 @@ export default function OrderDetailPage() {
       )}
 
       <p className="text-center text-xs text-(--lg-text-muted)">
-        Оплата: {paymentLabel(order.paymentStatus)} · {new Date(order.createdAt).toLocaleString('ru-RU')}
+        Оплата: {paymentLabel(order.paymentStatus)}
+        {paymentMethodLabel(order.paymentMethod) ? ` · ${paymentMethodLabel(order.paymentMethod)}` : ''}
+        {' · '}
+        {new Date(order.createdAt).toLocaleString('ru-RU')}
       </p>
     </div>
   );

@@ -2,12 +2,17 @@ import { after, NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, withTransaction } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { tryNotifyAdmins, absolutePushUrl } from '@/lib/push';
-import { getNotificationSettings } from '@/lib/notificationSettings';
+import { notifyKitchenNewOrder } from '@/lib/orderNotify';
+import { settleOrderLoyalty } from '@/lib/orderLoyalty';
+import { isTbankConfigured, SBP_MIN_RUBLES, TbankError } from '@/lib/tbank';
+import { startTbankPayment } from '@/lib/tbankPayments';
+import { allocateOrderNumber } from '@/lib/orderNumber';
 import type {
   IngredientAction,
+  OrderFulfillment,
   OrderItemCustomizationRow,
   OrderItemRow,
+  OrderPaymentMethod,
   OrderRow,
   ProductRow,
 } from '@/lib/types';
@@ -118,23 +123,6 @@ interface IncomingItem {
   customizations?: { ingredientId: string; action: IngredientAction; priceDelta?: number }[];
 }
 
-function truncatePushText(text: string, max = 180): string {
-  const trimmed = text.replace(/\s+/g, ' ').trim();
-  if (trimmed.length <= max) return trimmed;
-  return `${trimmed.slice(0, max - 1)}…`;
-}
-
-function buildNewOrderPushBody(args: {
-  customer: string;
-  items: { name: string; quantity: number }[];
-  total: number;
-}): string {
-  const summary = args.items
-    .map((item) => (item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name))
-    .join(', ');
-  return truncatePushText(`${args.customer} · ${summary} · ${args.total} ₽`);
-}
-
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -143,11 +131,24 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json().catch(() => null)) as
-      | { items?: IncomingItem[]; bonusUsed?: number; comment?: string }
+      | {
+          items?: IncomingItem[];
+          bonusUsed?: number;
+          comment?: string;
+          fulfillment?: string;
+          deliveryAddress?: string;
+          deliveryTime?: string;
+          contactPhone?: string;
+          paymentMethod?: string;
+        }
       | null;
     const items = body?.items ?? [];
     const bonusUsed = body?.bonusUsed ?? 0;
     const comment = body?.comment ?? null;
+    const fulfillment = body?.fulfillment === 'DELIVERY' ? 'DELIVERY' : body?.fulfillment === 'PICKUP' ? 'PICKUP' : null;
+    const deliveryAddress = typeof body?.deliveryAddress === 'string' ? body.deliveryAddress.trim() : '';
+    const deliveryTime = typeof body?.deliveryTime === 'string' ? body.deliveryTime.trim() : '';
+    const contactPhone = typeof body?.contactPhone === 'string' ? body.contactPhone.trim() : '';
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'Корзина пуста' }, { status: 400 });
@@ -182,14 +183,74 @@ export async function POST(request: NextRequest) {
     );
     const total = afterDiscount - actualBonusUsed;
 
+    if (!fulfillment) {
+      return NextResponse.json({ error: 'Выберите доставку или самовывоз' }, { status: 400 });
+    }
+
+    if (fulfillment === 'DELIVERY') {
+      if (deliveryAddress.length < 5) {
+        return NextResponse.json({ error: 'Укажите адрес доставки' }, { status: 400 });
+      }
+      if (!deliveryTime) {
+        return NextResponse.json({ error: 'Укажите время доставки' }, { status: 400 });
+      }
+      if (contactPhone.replace(/\D/g, '').length < 10) {
+        return NextResponse.json({ error: 'Укажите телефон для связи' }, { status: 400 });
+      }
+    }
+
+    const requestedMethod = body?.paymentMethod;
+    const paymentMethod: OrderPaymentMethod =
+      total === 0
+        ? 'BONUS'
+        : requestedMethod === 'CASH' || requestedMethod === 'CARD' || requestedMethod === 'SBP'
+          ? requestedMethod
+          : 'SBP';
+    if (
+      total > 0 &&
+      requestedMethod !== 'CASH' &&
+      requestedMethod !== 'CARD' &&
+      requestedMethod !== 'SBP'
+    ) {
+      return NextResponse.json({ error: 'Выберите способ оплаты' }, { status: 400 });
+    }
+
+    const needsBank = paymentMethod === 'CARD' || paymentMethod === 'SBP';
+    if (needsBank && total > 0 && total < SBP_MIN_RUBLES) {
+      return NextResponse.json(
+        { error: `Онлайн-оплата принимает платежи от ${SBP_MIN_RUBLES} ₽. Спишите бонусы или добавьте товары.` },
+        { status: 400 }
+      );
+    }
+    if (needsBank && !isTbankConfigured()) {
+      return NextResponse.json({ error: 'Онлайн-оплата не настроена' }, { status: 503 });
+    }
+
+    const fulfillmentValue: OrderFulfillment = fulfillment;
+
     const orderId = uuidv4();
 
-    await withTransaction(async (client) => {
+    const dailyNumber = await withTransaction(async (client) => {
+      const ticket = await allocateOrderNumber(client);
       await client.query(
         `INSERT INTO "orders"
-          (id, "userId", total, "discountAmount", "bonusUsed", comment)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [orderId, user.id, total, discountAmount, actualBonusUsed, comment]
+          (id, "userId", total, "discountAmount", "bonusUsed", comment, "dailyNumber",
+           fulfillment, "deliveryAddress", "deliveryTime", "contactPhone", "paymentMethod")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [
+          orderId,
+          user.id,
+          total,
+          discountAmount,
+          actualBonusUsed,
+          comment,
+          ticket,
+          fulfillmentValue,
+          fulfillmentValue === 'DELIVERY' ? deliveryAddress : null,
+          fulfillmentValue === 'DELIVERY' ? deliveryTime : null,
+          fulfillmentValue === 'DELIVERY' ? contactPhone : null,
+          paymentMethod,
+        ]
       );
 
       for (const item of computedItems) {
@@ -221,28 +282,44 @@ export async function POST(request: NextRequest) {
           [uuidv4(), user.id, -actualBonusUsed, orderId, 'Списание бонусов за заказ']
         );
       }
+      return ticket;
     });
+
+    let paymentUrl: string | null = null;
+    let paymentPayload: string | null = null;
+    if (needsBank) {
+      try {
+        const payment = await startTbankPayment({
+          id: orderId,
+          total,
+          dailyNumber,
+          method: paymentMethod === 'CARD' ? 'card' : 'sbp',
+        });
+        paymentUrl = payment.paymentUrl;
+        paymentPayload = payment.payload;
+        if (!paymentUrl && !paymentPayload) {
+          throw new Error('Т-Банк не вернул ссылку на оплату');
+        }
+      } catch (error) {
+        console.error('Create T-Bank payment error:', error);
+        await query(`UPDATE "orders" SET status = 'CANCELLED' WHERE id = $1`, [orderId]);
+        await settleOrderLoyalty(orderId, 'CANCELLED');
+        const message =
+          error instanceof TbankError ? error.message : 'Не удалось создать платёж';
+        return NextResponse.json({ error: message }, { status: 502 });
+      }
+    }
 
     const order = await fetchOrderWithItems(orderId);
 
-    const customer = user.name || user.phone || user.email || 'Клиент';
-    const itemLines = computedItems.map((item) => ({
-      name: productMap.get(item.productId)?.name ?? 'Товар',
-      quantity: item.quantity,
-    }));
-    const adminOrderUrl = absolutePushUrl(`/admin/orders/${orderId}`, request);
-    after(async () => {
-      const settings = await getNotificationSettings();
-      if (!settings.adminNewOrdersPush) return;
-      await tryNotifyAdmins({
-        title: 'Новый заказ',
-        body: buildNewOrderPushBody({ customer, items: itemLines, total }),
-        url: adminOrderUrl,
-        tag: `order-new-${orderId}`,
-      });
-    });
+    if (!needsBank) {
+      after(() => notifyKitchenNewOrder(orderId, request));
+    }
 
-    return NextResponse.json({ order });
+    return NextResponse.json({
+      order,
+      payment: needsBank ? { paymentUrl, payload: paymentPayload } : null,
+    });
   } catch (error) {
     console.error('Create order error:', error);
     return NextResponse.json({ error: 'Ошибка создания заказа' }, { status: 500 });

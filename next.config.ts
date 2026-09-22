@@ -56,6 +56,11 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  env: {
+    // Public Mapbox token (pk.). Stored as MAPBOX_API_KEY so the same value
+    // stays server-side for geocoding and is inlined for the map tiles.
+    NEXT_PUBLIC_MAPBOX_API_KEY: process.env.MAPBOX_API_KEY ?? "",
+  },
   turbopack: {},
   allowedDevOrigins: ["192.168.1.35"],
   images: {

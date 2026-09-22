@@ -5,6 +5,7 @@ import { getUserWithLoyaltyById } from '@/lib/auth';
 import { sendKioskInvite } from '@/lib/email';
 import { KioskUnauthorizedError, requireKioskUnlocked } from '@/lib/kioskAuth';
 import { formatGuestOrderNumber } from '@/lib/orderCustomer';
+import { allocateOrderNumber } from '@/lib/orderNumber';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 import { absolutePushUrl, getPublicAppOrigin, tryNotifyAdmins } from '@/lib/push';
 import { clientIpFromHeaders, rateLimit } from '@/lib/rateLimit';
@@ -162,12 +163,13 @@ export async function POST(request: NextRequest) {
     const total = subtotal - discountAmount;
     const orderId = uuidv4();
 
-    await withTransaction(async (client) => {
+    const dailyNumber = await withTransaction(async (client) => {
+      const ticket = await allocateOrderNumber(client);
       await client.query(
         `INSERT INTO "orders"
-          (id, "userId", total, "discountAmount", "bonusUsed", comment, "guestEmail", source)
-         VALUES ($1, $2, $3, $4, 0, $5, $6, 'KIOSK')`,
-        [orderId, userId, total, discountAmount, comment, userId ? null : guestEmail]
+          (id, "userId", total, "discountAmount", "bonusUsed", comment, "guestEmail", source, "dailyNumber")
+         VALUES ($1, $2, $3, $4, 0, $5, $6, 'KIOSK', $7)`,
+        [orderId, userId, total, discountAmount, comment, userId ? null : guestEmail, ticket]
       );
 
       for (const item of computedItems) {
@@ -186,6 +188,7 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+      return ticket;
     });
 
     let inviteSent = false;
@@ -202,7 +205,7 @@ export async function POST(request: NextRequest) {
     const customer =
       customerName ||
       guestEmail ||
-      formatGuestOrderNumber(orderId);
+      formatGuestOrderNumber({ id: orderId, dailyNumber });
 
     const itemLines = computedItems.map((item) => ({
       name: productMap.get(item.productId)?.name ?? 'Товар',
@@ -213,7 +216,7 @@ export async function POST(request: NextRequest) {
       const settings = await getNotificationSettings();
       if (!settings.adminNewOrdersPush) return;
       await tryNotifyAdmins({
-        title: 'Новый заказ',
+        title: `Заказ #${dailyNumber}`,
         body: buildNewOrderPushBody({ customer, items: itemLines, total }),
         url: adminOrderUrl,
         tag: `order-new-${orderId}`,
@@ -224,7 +227,7 @@ export async function POST(request: NextRequest) {
       order,
       inviteSent,
       guest: !userId,
-      displayNumber: orderId.slice(0, 8),
+      displayNumber: String(dailyNumber),
     });
   } catch (error) {
     if (error instanceof KioskUnauthorizedError) {

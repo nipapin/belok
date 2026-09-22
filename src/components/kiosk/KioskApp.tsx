@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { brandMark } from '@/lib/brand';
-import { formatGuestOrderNumber } from '@/lib/orderCustomer';
 import { FoodCardSkeleton } from '@/components/product/FoodCard';
 import { KioskProductCard } from '@/components/kiosk/KioskProductCard';
 import KioskPinPad from '@/components/kiosk/KioskPinPad';
@@ -20,8 +19,19 @@ export default function KioskApp() {
   const [session, setSession] = useState<{ configured: boolean; unlocked: boolean } | null>(null);
   const [step, setStep] = useState<Step>('menu');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [tailPad, setTailPad] = useState(0);
+  const selectedCategoryRef = useRef<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const categoryHeaderRef = useRef<HTMLDivElement>(null);
+  const suppressScrollSyncRef = useRef(false);
+  const scrollGenRef = useRef(0);
+  const suppressTimerRef = useRef<number | undefined>(undefined);
+  const scrollRafRef = useRef<number | undefined>(undefined);
+  selectedCategoryRef.current = selectedCategory;
   const [openProductId, setOpenProductId] = useState<string | null>(null);
   const [email, setEmail] = useState('');
+  const [skipEmail, setSkipEmail] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [success, setSuccess] = useState<{
@@ -100,6 +110,105 @@ export default function KioskApp() {
     setSelectedCategory(categoriesWithProducts[0].id);
   }, [categoriesWithProducts, selectedCategory]);
 
+  useEffect(
+    () => () => {
+      window.clearTimeout(suppressTimerRef.current);
+      if (scrollRafRef.current != null) cancelAnimationFrame(scrollRafRef.current);
+    },
+    []
+  );
+
+  const syncCategoryFromScroll = useCallback(() => {
+    const root = menuRef.current;
+    if (!root || suppressScrollSyncRef.current || categoriesWithProducts.length === 0) return;
+    const line =
+      (categoryHeaderRef.current?.getBoundingClientRect().bottom ?? root.getBoundingClientRect().top) + 1;
+    let nextId = categoriesWithProducts[0].id;
+    for (const category of categoriesWithProducts) {
+      const section = root.querySelector<HTMLElement>(
+        `[data-category-section="${CSS.escape(category.id)}"]`
+      );
+      if (!section) continue;
+      if (section.getBoundingClientRect().top <= line) nextId = category.id;
+    }
+    if (nextId !== selectedCategoryRef.current) setSelectedCategory(nextId);
+  }, [categoriesWithProducts]);
+
+  const handleMenuScroll = useCallback(() => {
+    if (suppressScrollSyncRef.current || scrollRafRef.current != null) return;
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = undefined;
+      syncCategoryFromScroll();
+    });
+  }, [syncCategoryFromScroll]);
+
+  const scrollToCategory = useCallback((id: string) => {
+    setSelectedCategory(id);
+    const root = menuRef.current;
+    const section = root?.querySelector<HTMLElement>(`[data-category-section="${CSS.escape(id)}"]`);
+    if (!root || !section) return;
+
+    const headerH = categoryHeaderRef.current?.offsetHeight ?? 0;
+    const top = Math.max(
+      0,
+      root.scrollTop + section.getBoundingClientRect().top - root.getBoundingClientRect().top - headerH
+    );
+    if (Math.abs(root.scrollTop - top) < 2) return;
+
+    const gen = ++scrollGenRef.current;
+    suppressScrollSyncRef.current = true;
+    window.clearTimeout(suppressTimerRef.current);
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    root.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
+
+    const release = () => {
+      if (scrollGenRef.current !== gen) return;
+      scrollGenRef.current += 1;
+      suppressScrollSyncRef.current = false;
+      root.removeEventListener('scrollend', release);
+      window.clearTimeout(suppressTimerRef.current);
+      syncCategoryFromScroll();
+    };
+    root.addEventListener('scrollend', release);
+    suppressTimerRef.current = window.setTimeout(release, 1500);
+  }, [syncCategoryFromScroll]);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav || !selectedCategory) return;
+    const button = nav.querySelector<HTMLElement>(`[data-category-id="${CSS.escape(selectedCategory)}"]`);
+    if (!button) return;
+    const navRect = nav.getBoundingClientRect();
+    const btnRect = button.getBoundingClientRect();
+    if (btnRect.top >= navRect.top + 4 && btnRect.bottom <= navRect.bottom - 4) return;
+    const top = nav.scrollTop + btnRect.top - navRect.top - (nav.clientHeight - btnRect.height) / 2;
+    nav.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }, [selectedCategory]);
+
+  useLayoutEffect(() => {
+    const root = menuRef.current;
+    if (step !== 'menu' || !root || loadingCats || loadingProducts || categoriesWithProducts.length === 0) return;
+
+    const measure = () => {
+      const headerH = categoryHeaderRef.current?.offsetHeight ?? 0;
+      const last = categoriesWithProducts[categoriesWithProducts.length - 1];
+      const lastEl = root.querySelector<HTMLElement>(`[data-category-section="${CSS.escape(last.id)}"]`);
+      const view = Math.max(0, root.clientHeight - headerH);
+      const lastH = lastEl?.getBoundingClientRect().height ?? 0;
+      const next = Math.max(0, Math.ceil(view - lastH));
+      setTailPad((prev) => (prev === next ? prev : next));
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    const last = categoriesWithProducts[categoriesWithProducts.length - 1];
+    const lastEl = root.querySelector<HTMLElement>(`[data-category-section="${CSS.escape(last.id)}"]`);
+    if (lastEl) observer.observe(lastEl);
+    return () => observer.disconnect();
+  }, [categoriesWithProducts, loadingCats, loadingProducts, step]);
+
   useEffect(() => {
     if (step !== 'success') return;
     const t = window.setTimeout(() => {
@@ -116,14 +225,16 @@ export default function KioskApp() {
   function resetGuest() {
     clearCart();
     setEmail('');
+    setSkipEmail(false);
     setSubmitError('');
     setSuccess(null);
     setOpenProductId(null);
     setStep('menu');
     if (categoriesWithProducts[0]) setSelectedCategory(categoriesWithProducts[0].id);
+    menuRef.current?.scrollTo({ top: 0 });
   }
 
-  async function placeOrder(skipEmail: boolean) {
+  async function placeOrder() {
     if (items.length === 0 || submitting) return;
     const trimmed = email.trim();
     if (!skipEmail && !trimmed) {
@@ -194,16 +305,14 @@ export default function KioskApp() {
     );
   }
 
-  const visibleProducts = selectedCategory
-    ? (productsByCategory.get(selectedCategory) ?? [])
-    : allProducts;
+  const activeCategory =
+    categoriesWithProducts.find((category) => category.id === selectedCategory) ??
+    categoriesWithProducts[0] ??
+    null;
   const loadingMenu = loadingCats || loadingProducts;
 
   if (step === 'success' && success) {
-    const title =
-      success.guest && !success.email
-        ? formatGuestOrderNumber(success.displayNumber)
-        : `Заказ №${success.displayNumber}`;
+    const title = `#${success.displayNumber}`;
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-8 text-center">
         <p className="text-sm font-medium uppercase tracking-wide text-(--lg-text-muted)">Заказ принят</p>
@@ -298,11 +407,33 @@ export default function KioskApp() {
               spellCheck={false}
               placeholder="email@example.com"
               value={email}
+              disabled={skipEmail}
               onChange={(e) => {
                 setEmail(e.target.value);
+                setSkipEmail(false);
                 setSubmitError('');
               }}
             />
+            <button
+              type="button"
+              aria-pressed={skipEmail}
+              className={`min-h-14 w-full text-base ${
+                skipEmail
+                  ? 'inline-flex items-center justify-center rounded-full bg-(--lg-fill-active) px-4 font-semibold text-(--lg-text)'
+                  : 'btn-ghost text-(--lg-text)'
+              }`}
+              disabled={submitting || items.length === 0}
+              onClick={() => {
+                setSkipEmail((value) => !value);
+                setEmail('');
+                setSubmitError('');
+              }}
+            >
+              Продолжить без почты
+            </button>
+            {skipEmail ? (
+              <p className="text-sm text-(--lg-text-muted)">Почта не нужна. Заказ отправится кнопкой внизу.</p>
+            ) : null}
             {submitError ? <p className="text-sm font-medium text-red-200">{submitError}</p> : null}
           </div>
         </div>
@@ -312,17 +443,9 @@ export default function KioskApp() {
             type="button"
             className="btn-primary min-h-14 w-full text-lg"
             disabled={submitting || items.length === 0}
-            onClick={() => void placeOrder(false)}
+            onClick={() => void placeOrder()}
           >
             {submitting ? <Loader2 className="size-5 animate-spin" /> : 'Отправить заказ'}
-          </button>
-          <button
-            type="button"
-            className="btn-ghost min-h-12 w-full text-base"
-            disabled={submitting || items.length === 0}
-            onClick={() => void placeOrder(true)}
-          >
-            Продолжить без почты
           </button>
         </div>
       </div>
@@ -339,19 +462,24 @@ export default function KioskApp() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <nav className="w-[7.5rem] shrink-0 overflow-y-auto border-r border-(--lg-ring) px-2 pb-4">
+        <nav
+          ref={navRef}
+          className="w-[7.5rem] shrink-0 overflow-y-auto border-r border-(--lg-ring) px-2 pb-4"
+        >
           {categoriesWithProducts.map((category) => {
-            const active = category.id === selectedCategory;
+            const active = category.id === activeCategory?.id;
             return (
               <button
                 key={category.id}
                 type="button"
+                data-category-id={category.id}
+                aria-current={active ? 'true' : undefined}
                 className={`mb-2 w-full rounded-2xl px-2 py-3 text-left text-sm font-semibold leading-tight touch-manipulation ${
                   active
                     ? 'bg-(--lg-fill-active) text-(--lg-text)'
                     : 'text-(--lg-text-muted)'
                 }`}
-                onClick={() => setSelectedCategory(category.id)}
+                onClick={() => scrollToCategory(category.id)}
               >
                 {category.name}
               </button>
@@ -359,7 +487,14 @@ export default function KioskApp() {
           })}
         </nav>
 
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-3 pb-28">
+        <div
+          ref={menuRef}
+          className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pb-28"
+          onScroll={handleMenuScroll}
+          onPointerDown={() => {
+            suppressScrollSyncRef.current = false;
+          }}
+        >
           {loadingMenu ? (
             <div className="grid grid-cols-2 gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -367,28 +502,51 @@ export default function KioskApp() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {visibleProducts.map((product, index) => (
-                <KioskProductCard
-                  key={product.id}
-                  eager={index < 4}
-                  product={{
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    image: product.image,
-                    categoryName: product.category?.name,
-                    createdAt: product.createdAt,
-                    calories: product.calories,
-                    proteins: product.proteins,
-                    fats: product.fats,
-                    carbs: product.carbs,
-                    weightGrams: product.weightGrams,
-                  }}
-                  onOpen={() => setOpenProductId(product.id)}
-                />
-              ))}
-            </div>
+            <>
+              {activeCategory ? (
+                <div
+                  ref={categoryHeaderRef}
+                  className="sticky top-0 z-10 -mx-3 px-3 pt-1 pb-3 text-sm font-semibold text-[#18181b]"
+                  style={{ backgroundColor: 'var(--pwa-chrome-top)' }}
+                >
+                  <p className="truncate">{activeCategory.name}</p>
+                </div>
+              ) : null}
+              {categoriesWithProducts.map((category, categoryIndex) => {
+                const categoryProducts = productsByCategory.get(category.id) ?? [];
+                return (
+                  <section
+                    key={category.id}
+                    data-category-section={category.id}
+                    className="mb-3"
+                  >
+                    <div className="grid grid-cols-2 gap-3">
+                      {categoryProducts.map((product, index) => (
+                        <KioskProductCard
+                          key={product.id}
+                          eager={categoryIndex === 0 && index < 4}
+                          product={{
+                            id: product.id,
+                            name: product.name,
+                            price: product.price,
+                            image: product.image,
+                            categoryName: category.name,
+                            createdAt: product.createdAt,
+                            calories: product.calories,
+                            proteins: product.proteins,
+                            fats: product.fats,
+                            carbs: product.carbs,
+                            weightGrams: product.weightGrams,
+                          }}
+                          onOpen={() => setOpenProductId(product.id)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+              {tailPad > 0 ? <div aria-hidden style={{ height: tailPad }} /> : null}
+            </>
           )}
         </div>
       </div>
