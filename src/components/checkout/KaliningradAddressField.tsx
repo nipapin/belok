@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, MapPin, X } from 'lucide-react';
+import { MapPin, Search, X } from 'lucide-react';
 import type { Map as MapboxMap } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { isInKaliningrad, KALININGRAD_LNG_LAT, KALININGRAD_MAX_BOUNDS } from '@/lib/kaliningrad';
@@ -12,6 +12,7 @@ const inputClass =
 
 type SuggestItem = { label: string; lat: number; lon: number };
 type PickedPoint = { label: string; lat: number; lon: number };
+type SavedAddress = PickedPoint & { id: string; name: string };
 
 const MAP_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_API_KEY?.trim() || 'pk.placeholder';
 
@@ -101,13 +102,17 @@ function SuggestList({
 function AddressMapPicker({
   initialAddress,
   initialPoint,
+  saved,
   onConfirm,
   onClose,
+  onSaved,
 }: {
   initialAddress: string;
   initialPoint: PickedPoint | null;
+  saved: SavedAddress[];
   onConfirm: (point: PickedPoint) => void;
   onClose: () => void;
+  onSaved: (item: SavedAddress) => void;
 }) {
   const mapNode = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -116,6 +121,9 @@ function AddressMapPicker({
   const [draft, setDraft] = useState(initialAddress);
   const [searchOpen, setSearchOpen] = useState(false);
   const [moving, setMoving] = useState(false);
+  const [placeName, setPlaceName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveNote, setSaveNote] = useState('');
   const items = useAddressSuggest(draft, searchOpen);
 
   useEffect(() => {
@@ -235,6 +243,38 @@ function AddressMapPicker({
     );
   };
 
+  const saveAddress = async () => {
+    const label = draft.trim();
+    const name = placeName.trim();
+    const point = pointRef.current;
+    if (label.length < 2 || !name || !point) {
+      setSaveNote(point ? 'Укажите имя адреса' : 'Сдвиньте карту, чтобы выбрать точку');
+      return;
+    }
+    setSaving(true);
+    setSaveNote('');
+    try {
+      const res = await fetch('/api/addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, label, lat: point.lat, lon: point.lon }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { item?: SavedAddress; error?: string };
+      if (!res.ok || !data.item) {
+        setSaveNote(data.error || 'Не удалось сохранить адрес');
+        return;
+      }
+      onSaved(data.item);
+      setSaveNote('Адрес сохранён');
+    } catch {
+      setSaveNote('Ошибка соединения');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addressReady = draft.trim().length >= 2;
+
   return (
     <div className="fixed inset-0 z-[1400] bg-black">
       <div
@@ -251,41 +291,66 @@ function AddressMapPicker({
       </div>
 
       <div className="absolute inset-x-0 top-0 z-20 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="glass-panel-strong flex items-center gap-1 px-2 py-1.5">
+        <div className="flex items-start gap-2">
+          <div className="glass-panel-strong flex min-w-0 flex-1 items-center gap-2 !rounded-full py-1 pr-1.5 pl-3">
+            <Search className="size-4 shrink-0 text-(--lg-text-muted)" strokeWidth={1.75} />
+            <input
+              className="min-w-0 flex-1 bg-transparent py-2 text-sm text-(--lg-text) outline-none placeholder:text-(--lg-text-muted)"
+              value={draft}
+              autoComplete="off"
+              placeholder="Улица, дом"
+              onChange={(e) => {
+                setDraft(e.target.value);
+                setSearchOpen(true);
+                setSaveNote('');
+              }}
+              onFocus={() => setSearchOpen(true)}
+            />
+            {draft.length > 0 && (
+              <button
+                type="button"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full text-(--lg-text-muted)"
+                aria-label="Стереть"
+                onClick={() => {
+                  setDraft('');
+                  setSearchOpen(true);
+                  setSaveNote('');
+                }}
+              >
+                <X className="size-4" strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
           <button
             type="button"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-(--lg-text)"
-            aria-label="Закрыть карту"
-            onClick={onClose}
-          >
-            <ArrowLeft className="size-5" strokeWidth={1.75} />
-          </button>
-          <input
-            className="min-w-0 flex-1 bg-transparent py-2 text-sm text-(--lg-text) outline-none placeholder:text-(--lg-text-muted)"
-            value={draft}
-            autoComplete="off"
-            placeholder="Улица, дом"
-            onChange={(e) => {
-              setDraft(e.target.value);
-              setSearchOpen(true);
-            }}
-            onFocus={() => setSearchOpen(true)}
-          />
-          <button
-            type="button"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-(--lg-text)"
+            className="glass-panel-strong flex size-12 shrink-0 items-center justify-center !rounded-full text-(--lg-text)"
             aria-label="Закрыть карту"
             onClick={onClose}
           >
             <X className="size-5" strokeWidth={1.75} />
           </button>
         </div>
-        {searchOpen && (
-          <SuggestList
-            items={items}
-            onPick={flyTo}
-          />
+        {searchOpen && draft.trim().length < 2 && saved.length > 0 && (
+          <ul className="glass-panel-strong mt-2 max-h-64 overflow-y-auto py-1 shadow-(--lg-shadow-strong)">
+            {saved.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className="flex w-full flex-col items-start px-3 py-2.5 text-left hover:bg-[color-mix(in_srgb,var(--lg-text)_8%,transparent)]"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setPlaceName(item.name);
+                    flyTo(item);
+                  }}
+                >
+                  <span className="text-sm font-medium text-(--lg-text)">{item.name}</span>
+                  <span className="text-xs text-(--lg-text-muted)">{item.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
+        {searchOpen && <SuggestList items={items} onPick={flyTo} />}
       </div>
 
       <div className="absolute inset-x-0 bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -293,6 +358,32 @@ function AddressMapPicker({
           <p className="mb-3 truncate px-1 text-sm text-(--lg-text)">
             {draft.trim() || 'Найдите улицу или сдвиньте карту'}
           </p>
+          {addressReady && (
+            <div className="mb-3">
+              <label className="mb-2 block">
+                <span className="mb-1.5 block text-sm font-medium text-(--lg-text)">Имя адреса</span>
+                <input
+                  className="w-full rounded-2xl border border-(--lg-ring) bg-(--lg-fill) px-4 py-3 text-sm text-(--lg-text) outline-none placeholder:text-(--lg-text-muted)"
+                  value={placeName}
+                  autoComplete="off"
+                  placeholder="Дом, работа"
+                  onChange={(e) => {
+                    setPlaceName(e.target.value);
+                    setSaveNote('');
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn-outline w-full py-3"
+                disabled={saving}
+                onClick={() => void saveAddress()}
+              >
+                {saving ? 'Сохраняем…' : 'Сохранить адрес'}
+              </button>
+              {saveNote && <p className="mt-2 px-1 text-center text-sm text-(--lg-text-muted)">{saveNote}</p>}
+            </div>
+          )}
           <button
             type="button"
             className="btn-primary w-full py-3.5"
@@ -318,6 +409,7 @@ export default function KaliningradAddressField({
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [saved, setSaved] = useState<SavedAddress[]>([]);
   const pickedRef = useRef<PickedPoint | null>(null);
   const items = useAddressSuggest(query, suggestOpen);
 
@@ -326,6 +418,21 @@ export default function KaliningradAddressField({
   useEffect(() => {
     setQuery(value);
   }, [value]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/addresses')
+      .then((res) => (res.ok ? res.json() : { items: [] }))
+      .then((data: { items?: SavedAddress[] }) => {
+        if (!cancelled) setSaved(data.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setSaved([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const apply = (label: string, point?: PickedPoint | null) => {
     setQuery(label);
@@ -373,12 +480,33 @@ export default function KaliningradAddressField({
           <MapPin className="size-5" strokeWidth={1.75} />
         </button>
       </div>
+      {saved.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {saved.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="btn-outline px-3 py-1.5 text-sm"
+              onClick={() => apply(item.label, item)}
+            >
+              {item.name}
+            </button>
+          ))}
+        </div>
+      )}
       {mounted && mapOpen
         ? createPortal(
             <AddressMapPicker
               initialAddress={query}
               initialPoint={pickedRef.current}
+              saved={saved}
               onClose={() => setMapOpen(false)}
+              onSaved={(item) =>
+                setSaved((prev) => {
+                  const rest = prev.filter((entry) => entry.id !== item.id && entry.name !== item.name);
+                  return [...rest, item].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+                })
+              }
               onConfirm={(point) => {
                 apply(point.label, point);
                 setMapOpen(false);
