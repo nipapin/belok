@@ -13,7 +13,16 @@ const inputClass =
 type SuggestItem = { label: string; lat: number; lon: number };
 type PickedPoint = { label: string; lat: number; lon: number };
 
-const MAP_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_API_KEY?.trim() ?? '';
+const MAP_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_API_KEY?.trim() || 'pk.placeholder';
+
+function installMapboxWorker(mapboxgl: { workerClass: typeof Worker | null }) {
+  const workerUrl = new URL('mapbox-gl/dist/mapbox-gl-csp-worker.js', import.meta.url);
+  mapboxgl.workerClass = class MapboxWorker extends Worker {
+    constructor() {
+      super(workerUrl);
+    }
+  };
+}
 
 function proxyMapboxRequest(url: string): { url: string } {
   try {
@@ -118,7 +127,7 @@ function AddressMapPicker({
   }, [onClose]);
 
   useEffect(() => {
-    if (!MAP_TOKEN || !mapNode.current) return;
+    if (!mapNode.current) return;
     let cancelled = false;
     let map: MapboxMap | null = null;
     let settling = true;
@@ -142,6 +151,7 @@ function AddressMapPicker({
     void (async () => {
       const mapboxgl = (await import('mapbox-gl')).default;
       if (cancelled || !mapNode.current) return;
+      installMapboxWorker(mapboxgl);
       mapboxgl.accessToken = MAP_TOKEN;
       const known = initialPoint && initialPoint.label === initialAddress.trim() ? initialPoint : null;
       map = new mapboxgl.Map({
