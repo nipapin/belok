@@ -141,23 +141,23 @@ export function FoodCard({
             ) : null}
           </div>
         </button>
+      </div>
 
-        <div
-          className="food-card__footer"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <PriceCTA
-            price={product.price}
-            quantity={quantity}
-            busy={busy}
-            addLabel={`Добавить ${product.name} в корзину`}
-            incrementLabel={`Добавить ещё ${product.name}`}
-            decrementLabel={`Убрать ${product.name} из корзины`}
-            onAdd={onAdd}
-            onIncrement={onIncrement}
-            onDecrement={onDecrement}
-          />
-        </div>
+      <div
+        className="food-card__footer"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <PriceCTA
+          price={product.price}
+          quantity={quantity}
+          busy={busy}
+          addLabel={`Добавить ${product.name} в корзину`}
+          incrementLabel={`Добавить ещё ${product.name}`}
+          decrementLabel={`Убрать ${product.name} из корзины`}
+          onAdd={onAdd}
+          onIncrement={onIncrement}
+          onDecrement={onDecrement}
+        />
       </div>
     </article>
   );

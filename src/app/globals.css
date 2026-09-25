@@ -12,6 +12,7 @@
 
 /* Flat glass tokens — gradient only on body (--lg-bg-image). Surfaces = solid fill + blur. */
 html {
+  color-scheme: dark;
   --lg-blur: 8px;
   /* < 1 = dim the layer behind glass so stacks don’t bloom together */
   --lg-backdrop-bright: 0.66;
@@ -25,6 +26,8 @@ html {
   --lg-shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.16);
   --lg-text: rgba(255, 255, 255, 0.94);
   --lg-text-muted: rgba(255, 255, 255, 0.8);
+  /* Opaque stand-in for Chrome/Edge autofill, which otherwise paints a light field. */
+  --lg-autofill: #3a4256;
   --lg-chip-label: rgba(255, 255, 255, 0.92);
   --lg-chip-label-active: #ffffff;
   --lg-bg-image: linear-gradient(to top, #646669 0%, #bacef0 100%);
@@ -33,6 +36,10 @@ html {
   --client-header-stack-height: 70px;
   --client-nav-bar-height: 70px;
   --client-nav-edge-gap: 12px;
+  /* Pill + gap above it + bottom inset. Content and fixed actions sit above this. */
+  --client-nav-clearance: calc(
+    var(--client-nav-bar-height) + var(--client-nav-edge-gap) + max(0.75rem, env(safe-area-inset-bottom, 0px))
+  );
   --pwa-chrome-top: #bacef0;
   background-color: var(--pwa-chrome-top);
 
@@ -65,6 +72,7 @@ html {
 }
 
 html[data-theme="light"] {
+  color-scheme: light;
   --lg-blur: 28px;
   --lg-backdrop-bright: 0.9;
   --lg-backdrop-sat: 140%;
@@ -78,6 +86,7 @@ html[data-theme="light"] {
   --lg-shadow-strong: 0 14px 40px rgba(15, 23, 42, 0.1);
   --lg-text: #18181b;
   --lg-text-muted: #52525b;
+  --lg-autofill: #f3f6fb;
   --lg-chip-label: #27272a;
   --lg-chip-label-active: #0a0a0a;
   --lg-bg-image: linear-gradient(to bottom, #e8eef7 0%, #f6f8fc 100%);
@@ -131,8 +140,10 @@ html[data-theme="light"] {
 
   /* Admin shell: same gradient + glass tokens as html[data-theme="light"] client app */
   .admin-surface {
+    color-scheme: light;
     --lg-text: #18181b;
     --lg-text-muted: #52525b;
+    --lg-autofill: #f3f6fb;
     --lg-ring: rgba(15, 23, 42, 0.12);
     --lg-ring-strong: rgba(15, 23, 42, 0.2);
     --lg-fill: rgba(255, 255, 255, 0.88);
@@ -241,13 +252,41 @@ html[data-theme="light"] {
   }
 
   .glass-fx {
-    /* backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat)) brightness(var(--lg-backdrop-bright)); */
-    backdrop-filter: blur(10px) brightness(0.8);
-    /* Hairline drawn as inset shadow, not border: avoids subpixel seam between
-       backdrop-filter composited layer and a real 1px border on dpr != 1. */
-    box-shadow:
-      inset 0 0 0 1px #ffffff40,
-      inset 0 0 10px 0 #ffffff20;
+    color: var(--lg-text);
+    border: 0;
+    background-color: rgba(255, 255, 255, 0.16);
+    box-shadow: none;
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+  }
+
+  html[data-theme="light"] .glass-fx {
+    background-color: rgba(255, 255, 255, 0.46);
+    box-shadow: none;
+  }
+
+  /* Category chips use the logo bar's tint. Opaque so white photos behind them don't bleach the pill. */
+  .category-chip {
+    color: var(--lg-text);
+    border: 1px solid var(--lg-ring);
+    background-color: color-mix(in srgb, var(--pwa-chrome-top) 58%, #242830);
+    box-shadow: var(--lg-shadow);
+  }
+
+  .category-chip-active {
+    background-color: color-mix(in srgb, var(--pwa-chrome-top) 72%, #242830);
+    box-shadow: var(--lg-shadow);
+  }
+
+  html[data-theme="light"] .category-chip,
+  html[data-theme="light"] .category-chip-active {
+    color: var(--lg-text);
+    background-color: color-mix(in srgb, var(--pwa-chrome-top) 74%, #94a3b8);
+    box-shadow: var(--lg-shadow);
+  }
+
+  html[data-theme="light"] .category-chip-active {
+    background-color: color-mix(in srgb, var(--pwa-chrome-top) 55%, #64748b);
   }
 
   /* Shared flat glass: uniform fill, no inset highlights */
@@ -528,6 +567,34 @@ html[data-theme="light"] {
   .input-pill:focus {
     border-color: var(--lg-ring-strong);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--lg-text) 8%, transparent);
+  }
+
+  /* Browser autofill ignores theme tokens and paints a light field, so white icons vanish. */
+  .input-pill:-webkit-autofill,
+  .input-pill:-webkit-autofill:hover,
+  .input-pill:-webkit-autofill:focus,
+  .input-pill:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--lg-text);
+    caret-color: var(--lg-text);
+    transition: background-color 99999s ease-out 0s;
+    -webkit-box-shadow: 0 0 0 1000px var(--lg-autofill) inset;
+    box-shadow: 0 0 0 1000px var(--lg-autofill) inset;
+  }
+
+  .input-pill:-webkit-autofill:focus {
+    border-color: var(--lg-ring-strong);
+    -webkit-box-shadow:
+      0 0 0 1000px var(--lg-autofill) inset,
+      0 0 0 3px color-mix(in srgb, var(--lg-text) 8%, transparent);
+    box-shadow:
+      0 0 0 1000px var(--lg-autofill) inset,
+      0 0 0 3px color-mix(in srgb, var(--lg-text) 8%, transparent);
+  }
+
+  .input-pill:autofill {
+    -webkit-text-fill-color: var(--lg-text);
+    caret-color: var(--lg-text);
+    background-color: var(--lg-autofill);
   }
 
   /* Native <select>: replace OS chevron for consistent vertical alignment */
@@ -1130,6 +1197,66 @@ html[data-theme="light"] .animated-bg__blob--c {
   }
 }
 
+/* Kiosk payment: panels and buttons rise in from below. */
+.kiosk-rise {
+  animation: kiosk-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes kiosk-rise {
+  from {
+    opacity: 0;
+    transform: translateY(2.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* One digit window of the rolling total. */
+.kiosk-odometer-digit {
+  display: inline-block;
+  height: 1em;
+  width: 0.68em;
+  overflow: hidden;
+  line-height: 1;
+  text-align: center;
+}
+
+.kiosk-odometer-strip {
+  display: flex;
+  flex-direction: column;
+  animation: kiosk-odometer 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.kiosk-odometer-glyph {
+  display: block;
+  height: 1em;
+  line-height: 1;
+}
+
+@keyframes kiosk-odometer {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(var(--roll));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-rise {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .kiosk-odometer-strip {
+    animation: none;
+    transform: translateY(var(--roll));
+  }
+}
+
 ::-webkit-scrollbar {
   width: 4px;
 }
@@ -1144,4 +1271,19 @@ html[data-theme="light"] .animated-bg__blob--c {
 
 html[data-theme="dark"] ::-webkit-scrollbar-thumb {
   @apply bg-zinc-500;
+}
+
+/* Mapbox GL + Tailwind preflight: images keep their own sizing. */
+.address-picker-map.mapboxgl-map {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+.address-picker-map img {
+  max-width: none;
+}
+.address-picker-map .mapboxgl-ctrl-bottom-left,
+.address-picker-map .mapboxgl-ctrl-bottom-right {
+  bottom: 8.5rem;
 }

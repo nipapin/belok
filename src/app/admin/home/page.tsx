@@ -11,6 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Switch from '@/components/ui/Switch';
 import {
   HOME_LAYOUT_MAX_BLOCKS,
   HOME_LAYOUT_MAX_IMAGES,
@@ -53,6 +54,7 @@ export default function AdminHomePage() {
     queryFn: () => fetch('/api/admin/home-layout').then((r) => r.json()),
   });
   const serverConfig = data?.config as HomeLayoutConfig | undefined;
+  const published = data?.published === true;
 
   const { data: productsData } = useQuery({
     queryKey: ['admin-products-lite'],
@@ -90,6 +92,28 @@ export default function AdminHomePage() {
     if (blocks.length >= HOME_LAYOUT_MAX_BLOCKS) return;
     setBlocks([...blocks, createEmptyBlock(addType)]);
   };
+
+  const publishMutation = useMutation({
+    mutationFn: async (next: boolean) => {
+      const res = await fetch('/api/admin/home-published', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ published: next }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof json.error === 'string' ? json.error : 'Ошибка сохранения');
+      return json as { published: boolean };
+    },
+    onSuccess: (payload) => {
+      queryClient.setQueryData(['admin-home-layout'], (current: { config?: HomeLayoutConfig } | undefined) => ({
+        ...current,
+        published: payload.published,
+      }));
+      queryClient.invalidateQueries({ queryKey: ['home-published'] });
+      setError('');
+    },
+    onError: (e: Error) => setError(e.message),
+  });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -153,6 +177,24 @@ export default function AdminHomePage() {
         Конструктор блоков на стартовой странице: «О нас», товары, категории, контакты. Порядок
         блоков — сверху вниз на сайте.
       </p>
+
+      <div className="glass-panel mb-6 flex items-start justify-between gap-4 p-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-(--lg-text)">Показывать главную</p>
+          <p className="mt-1 text-xs leading-relaxed text-(--lg-text-muted)">
+            {published
+              ? 'Страница открыта: belok.pro показывает главную.'
+              : 'Страница скрыта: belok.pro сразу открывает меню. Включите, когда контент будет готов.'}
+          </p>
+        </div>
+        <Switch
+          id="home-published"
+          checked={published}
+          onChange={(next) => publishMutation.mutate(next)}
+          disabled={publishMutation.isPending}
+          aria-label="Показывать главную"
+        />
+      </div>
 
       {saved && (
         <div className="mb-4 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-2 py-3 text-sm text-emerald-900">

@@ -373,8 +373,8 @@ function finishSuccess(user: Parameters<typeof setUser>[0]) {
                 <span className="sr-only">Имя</span>
                 <div className="relative">
                   <UserIcon
-                    className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-(--lg-text-muted) opacity-80"
-                    strokeWidth={1.75}
+                    className="pointer-events-none absolute left-4 top-1/2 z-10 size-[18px] -translate-y-1/2 text-(--lg-text)"
+                    strokeWidth={2}
                   />
                   <input
                     className="input-pill min-h-12 pl-11 text-[1.0625rem]"
@@ -391,8 +391,8 @@ function finishSuccess(user: Parameters<typeof setUser>[0]) {
               <span className="sr-only">Электронная почта</span>
               <div className="relative">
                 <Mail
-                  className="pointer-events-none absolute left-4 top-1/2 z-10 size-[18px] -translate-y-1/2 text-(--lg-text-muted) opacity-80"
-                  strokeWidth={1.75}
+                  className="pointer-events-none absolute left-4 top-1/2 z-10 size-[18px] -translate-y-1/2 text-(--lg-text)"
+                  strokeWidth={2}
                 />
                 <EmailAutocompleteInput
                   className="input-pill min-h-12 pl-11 text-[1.0625rem]"

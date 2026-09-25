@@ -5,7 +5,8 @@ import { tryNotifyUser, absolutePushUrl } from '@/lib/push';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import { fetchAdminOrderById } from '@/lib/queries/adminOrders';
-import type { OrderStatus } from '@/lib/types';
+import { isTbankAlreadyVoided, tbankCancel, TbankError } from '@/lib/tbank';
+import type { OrderStatus, PaymentStatus } from '@/lib/types';
 
 // Texts shown to the customer when their order changes status.
 // Map only the events that are interesting to the user — PENDING is the
@@ -82,10 +83,33 @@ export async function PUT(
 
     // Read the previous status so we don't push if the admin re-saves the
     // same status (or for some flow that just refreshes the row).
-    const before = await queryOne<{ status: OrderStatus; userId: string | null }>(
-      `SELECT status, "userId" FROM "orders" WHERE id = $1`,
-      [id]
-    );
+    const before = await queryOne<{
+      status: OrderStatus;
+      userId: string | null;
+      tbankPaymentId: string | null;
+      paymentStatus: PaymentStatus;
+    }>(`SELECT status, "userId", "tbankPaymentId", "paymentStatus" FROM "orders" WHERE id = $1`, [id]);
+
+    if (
+      status === 'CANCELLED' &&
+      before?.tbankPaymentId &&
+      before.paymentStatus === 'SUCCEEDED'
+    ) {
+      try {
+        const refund = await tbankCancel(before.tbankPaymentId);
+        if (!refund.Success && !isTbankAlreadyVoided(refund)) {
+          return NextResponse.json(
+            { error: refund.Message || 'Не удалось вернуть оплату в Т-Банке' },
+            { status: 400 }
+          );
+        }
+      } catch (error) {
+        console.error('T-Bank Cancel failed:', error);
+        const message =
+          error instanceof TbankError ? error.message : 'Не удалось вернуть оплату в Т-Банке';
+        return NextResponse.json({ error: message }, { status: 400 });
+      }
+    }
 
     await query(`UPDATE "orders" SET status = $1 WHERE id = $2`, [status, id]);
 

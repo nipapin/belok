@@ -10,8 +10,10 @@ import { useAuthModalStore } from "@/store/authModalStore";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useQuery } from "@tanstack/react-query";
 import LoyaltyCard from "@/components/loyalty/LoyaltyCard";
+import PhoneField from "@/components/checkout/PhoneField";
 import PushToggle from "@/components/notifications/PushToggle";
 import PwaInstallCard from "@/components/pwa/PwaInstallCard";
+import { formatRuPhoneMask, normalizeRuPhone } from "@/lib/phone";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -21,7 +23,9 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
+  const [phone, setPhone] = useState(user?.phone ? formatRuPhoneMask(user.phone) : "");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
@@ -53,18 +57,26 @@ export default function ProfilePage() {
   const currentLevel = bonusData?.currentLevel ?? user?.loyaltyLevel ?? null;
 
   const handleSave = async () => {
+    const parsedPhone = normalizeRuPhone(phone);
+    if (!parsedPhone.ok) {
+      setSaveError("Укажите номер телефона полностью");
+      return;
+    }
+    setSaveError("");
     const res = await fetch("/api/auth/update-profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email }),
+      body: JSON.stringify({ name, email, phone: parsedPhone.phone ?? "" }),
     });
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      const data = await res.json();
       setUser(data.user);
       setEditing(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+      return;
     }
+    setSaveError(typeof data.error === "string" ? data.error : "Не удалось сохранить");
   };
 
   const handleLogout = async () => {
@@ -200,7 +212,10 @@ export default function ProfilePage() {
             </div>
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-(--lg-text)">{user.name || "Гость"}</h2>
-              <p className="text-sm text-(--lg-text-muted)">{user.email || user.phone || "—"}</p>
+              <p className="text-sm text-(--lg-text-muted)">{user.email || "—"}</p>
+              {user.phone ? (
+                <p className="text-sm text-(--lg-text-muted)">{formatRuPhoneMask(user.phone)}</p>
+              ) : null}
             </div>
           </div>
 
@@ -214,11 +229,25 @@ export default function ProfilePage() {
                 Электронная почта
                 <input className="input-pill mt-1.5 min-h-11" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </label>
+              <PhoneField
+                label="Телефон"
+                value={phone}
+                onChange={setPhone}
+                className="input-pill mt-1.5 min-h-11"
+              />
+              {saveError ? <div className="auth-alert-error">{saveError}</div> : null}
               <div className="flex flex-wrap gap-2 pt-1">
                 <button type="button" className="btn-primary px-5 py-2.5 text-sm" onClick={handleSave}>
                   Сохранить
                 </button>
-                <button type="button" className="btn-ghost text-sm" onClick={() => setEditing(false)}>
+                <button
+                  type="button"
+                  className="btn-ghost text-sm"
+                  onClick={() => {
+                    setEditing(false);
+                    setSaveError("");
+                  }}
+                >
                   Отмена
                 </button>
               </div>
@@ -230,6 +259,8 @@ export default function ProfilePage() {
               onClick={() => {
                 setName(user.name || "");
                 setEmail(user.email || "");
+                setPhone(user.phone ? formatRuPhoneMask(user.phone) : "");
+                setSaveError("");
                 setEditing(true);
               }}
             >

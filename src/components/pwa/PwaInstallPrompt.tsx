@@ -134,7 +134,7 @@ export default function PwaInstallPrompt() {
           className="pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4"
           style={{
             bottom:
-              "calc(var(--client-nav-bar-height) + var(--client-nav-edge-gap) + 0.75rem)",
+              "calc(var(--client-nav-clearance) + var(--client-bottom-action, 0px))",
           }}
         >
           <div className="pointer-events-auto glass-panel-strong flex w-full max-w-md items-start gap-3 rounded-2xl p-3 shadow-(--lg-shadow-strong)">

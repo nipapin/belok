@@ -9,6 +9,7 @@ import UserQrModal from "../loyalty/UserQrModal";
 import { useAuthStore } from "@/store/authStore";
 import { useAuthModalStore } from "@/store/authModalStore";
 import { useHaptic } from "@/hooks/useHaptic";
+import { useHomePublished } from "@/hooks/useHomePublished";
 
 type NavItemConfig = {
   id: string;
@@ -33,12 +34,15 @@ export default function BottomNav() {
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [lozenge, setLozenge] = useState({ x: 0, y: 0, width: 0, height: 0, visible: false });
   const [qrOpen, setQrOpen] = useState(false);
+  const { published: homePublished } = useHomePublished();
 
   const profilePathAlias = pathname.startsWith("/auth") ? "/profile" : pathname;
 
   const navItems = useMemo<NavItemConfig[]>(() => {
     const base: NavItemConfig[] = [
-      { id: "home", label: MenuLabel.HOME, icon: Home, path: "/" },
+      ...(homePublished
+        ? [{ id: "home", label: MenuLabel.HOME, icon: Home, path: "/" }]
+        : []),
       { id: "menu", label: MenuLabel.MENU, icon: UtensilsCrossed, path: "/menu" },
       { id: "cart", label: MenuLabel.CART, icon: ShoppingCart, path: "/cart" },
     ];
@@ -69,7 +73,7 @@ export default function BottomNav() {
         avatarUrl: user.avatarUrl,
       },
     ];
-  }, [user]);
+  }, [user, homePublished]);
 
   const currentValue = useMemo(() => {
     if (qrOpen) {

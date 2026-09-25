@@ -4,7 +4,7 @@ import { useId, useMemo, useRef } from 'react';
 import { useHaptic } from '@/hooks/useHaptic';
 
 const DOTS = 13;
-const THUMB_REM = 2.25;
+const THUMB_REM = 2.75;
 
 type EffortSliderProps = {
   min?: number;
@@ -76,7 +76,7 @@ export default function EffortSlider({
           ))}
         </div>
         <div
-          className="absolute top-1/2 z-[1] h-11 w-9 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
+          className="absolute top-1/2 z-[1] size-11 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
           style={{
             transform: 'translateY(-50%)',
             left: `clamp(6px, calc(${pct} * (100% - ${THUMB_REM}rem - 12px) + 6px), calc(100% - ${THUMB_REM}rem - 6px))`,

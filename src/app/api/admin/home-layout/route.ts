@@ -8,6 +8,7 @@ import {
   sanitizeHomeLayout,
   type HomeLayoutConfig,
 } from '@/lib/homeLayout';
+import { isHomePublished } from '@/lib/homeVisibility';
 
 async function readConfig(): Promise<HomeLayoutConfig> {
   const row = await queryOne<{ value: unknown }>(
@@ -20,7 +21,8 @@ async function readConfig(): Promise<HomeLayoutConfig> {
 export async function GET() {
   try {
     await requireAdmin();
-    return NextResponse.json({ config: await readConfig() });
+    const [config, published] = await Promise.all([readConfig(), isHomePublished()]);
+    return NextResponse.json({ config, published });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
       return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });

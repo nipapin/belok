@@ -9,7 +9,14 @@ import {
   type OrderItemView,
 } from '@/components/admin/OrderItemsList';
 
-import { isKioskSource, orderCustomerLabel } from '@/lib/orderCustomer';
+import {
+  formatDeliveryTime,
+  fulfillmentLabel,
+  isKioskSource,
+  orderCustomerLabel,
+  orderTicket,
+  paymentMethodLabel,
+} from '@/lib/orderCustomer';
 
 interface AdminOrder {
   id: string;
@@ -19,9 +26,15 @@ interface AdminOrder {
   bonusUsed: number;
   bonusEarned: number;
   paymentStatus: string;
+  fulfillment?: string | null;
+  deliveryAddress?: string | null;
+  deliveryTime?: string | null;
+  contactPhone?: string | null;
+  paymentMethod?: string | null;
   comment: string | null;
   guestEmail: string | null;
   source: string;
+  dailyNumber?: number | null;
   createdAt: string;
   updatedAt: string;
   user: {
@@ -107,7 +120,7 @@ export default function AdminOrderDetailPage() {
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="heading-section">Заказ №{order.id.slice(0, 8)}</h1>
+          <h1 className="heading-section">Заказ {orderTicket(order)}</h1>
           <p className="mt-1 text-sm text-(--lg-text-muted)">
             {new Date(order.createdAt).toLocaleString('ru-RU')}
           </p>
@@ -129,14 +142,27 @@ export default function AdminOrderDetailPage() {
             </span>
           ) : null}
         </p>
-        {order.user?.phone ? (
-          <p className="text-sm text-(--lg-text-muted)">{order.user.phone}</p>
+        {order.contactPhone || order.user?.phone ? (
+          <p className="text-sm text-(--lg-text-muted)">{order.contactPhone || order.user?.phone}</p>
         ) : null}
         {order.user?.email || order.guestEmail ? (
           <p className="text-sm text-(--lg-text-muted)">{order.user?.email || order.guestEmail}</p>
         ) : null}
         {!order.user && order.guestEmail ? (
           <p className="text-xs text-(--lg-text-muted)">Приглашение отправлено — аккаунт ещё не создан</p>
+        ) : null}
+      </section>
+
+      <section className="glass-panel space-y-2 p-4">
+        <h2 className="text-sm font-semibold text-(--lg-text)">Получение</h2>
+        <p className="text-sm font-medium text-(--lg-text)">
+          {fulfillmentLabel(order.fulfillment) ?? (kiosk ? 'Касса' : 'Самовывоз')}
+        </p>
+        {order.deliveryAddress ? (
+          <p className="text-sm text-(--lg-text-muted)">{order.deliveryAddress}</p>
+        ) : null}
+        {formatDeliveryTime(order.deliveryTime) ? (
+          <p className="text-sm text-(--lg-text-muted)">{formatDeliveryTime(order.deliveryTime)}</p>
         ) : null}
       </section>
 
@@ -162,6 +188,7 @@ export default function AdminOrderDetailPage() {
             }
           >
             {paymentLabel(order.paymentStatus)}
+            {paymentMethodLabel(order.paymentMethod) ? ` · ${paymentMethodLabel(order.paymentMethod)}` : ''}
           </span>
         </div>
         {order.discountAmount > 0 ? (

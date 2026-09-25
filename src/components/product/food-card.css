@@ -4,26 +4,35 @@
   height: 100%;
   flex-direction: column;
   width: 100%;
+  overflow: visible;
   border-radius: var(--food-radius);
+  border: none;
+  background-color: transparent;
   box-shadow: var(--food-shadow);
   transition:
     transform var(--food-spring),
     box-shadow var(--food-spring);
 }
 
+.food-card__body,
+.food-card__footer {
+  background-color: color-mix(in srgb, #1c1e22 92%, transparent);
+}
+
+html[data-theme="light"] .food-card__body,
+html[data-theme="light"] .food-card__footer {
+  background-color: color-mix(in srgb, #f8fafc 94%, transparent);
+}
+
+/* Clip only the media/title stack. The footer stays outside so the add-button
+   shadow is not sliced by overflow + border-radius. */
 .food-card__clip {
   display: flex;
   min-height: 0;
-  height: 100%;
   flex: 1;
   flex-direction: column;
   overflow: hidden;
-  border-radius: inherit;
-  border: 1px solid var(--lg-ring);
-  background-color: var(--food-card-bg);
-  /* No backdrop-filter here: Chrome Android drops those compositor layers
-     during fling, so the card paints as an empty glass well (skeleton). */
-  transition: border-color 200ms ease;
+  border-radius: var(--food-radius) var(--food-radius) 0 0;
 }
 
 .food-card__main {
@@ -156,6 +165,7 @@
   gap: calc(var(--food-space) * 2);
   padding: calc(var(--food-space) * 2) calc(var(--food-space) * 3) calc(var(--food-space) * 3);
   margin-top: auto;
+  border-radius: 0 0 var(--food-radius) var(--food-radius);
 }
 
 .food-price-cta {
@@ -283,26 +293,14 @@
   height: 100%;
   min-height: 16.5rem;
   border-radius: var(--food-radius);
-  border: 1px solid var(--lg-ring);
-  background: color-mix(in srgb, var(--lg-fill) 80%, transparent);
+  background: color-mix(in srgb, #1c1e22 84%, transparent);
   box-shadow: var(--food-shadow);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .food-card__clip {
-    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat))
-      brightness(var(--lg-backdrop-bright));
-    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-backdrop-sat))
-      brightness(var(--lg-backdrop-bright));
-  }
-
   .food-card:hover {
     box-shadow: var(--food-shadow-hover);
     transform: translateY(-4px) scale(1.015);
-  }
-
-  .food-card:hover .food-card__clip {
-    border-color: var(--lg-ring-strong);
   }
 
   .food-card:hover .food-card__img {
@@ -364,7 +362,8 @@
   gap: 0.75rem;
   margin-inline: -1rem;
   padding-inline-start: 1rem;
-  padding-block: 0.5rem 0.75rem;
+  /* overflow-x: auto also clips the block axis, so this padding is the shadow gutter. */
+  padding-block: 0.5rem 1.75rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
