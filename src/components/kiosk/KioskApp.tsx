@@ -617,13 +617,13 @@ export default function KioskApp() {
             ) : null}
           </div>
           <div
-            className="kiosk-rise mt-3 h-36 shrink-0 overflow-y-auto overscroll-y-contain px-4"
+            className="kiosk-rise mt-3 min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4"
             style={{ animationDelay: '80ms' }}
           >
             {orderList}
           </div>
           {totalPrice > 0 ? (
-            <div className="mt-3 grid min-h-0 flex-1 grid-cols-2 items-end gap-3 px-3">
+            <div className="mt-3 grid shrink-0 grid-cols-2 gap-3 px-3">
               <button
                 type="button"
                 className={`kiosk-rise ${paymentMethod === 'CASH' ? 'btn-primary' : 'btn-outline'} aspect-square w-full flex-col gap-4 !rounded-3xl text-3xl`}
