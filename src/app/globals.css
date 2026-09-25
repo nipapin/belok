@@ -265,14 +265,28 @@ html[data-theme="light"] {
     box-shadow: none;
   }
 
+  /* Category chips use the logo bar's tint. Opaque so white photos behind them don't bleach the pill. */
+  .category-chip {
+    color: var(--lg-text);
+    border: 1px solid var(--lg-ring);
+    background-color: color-mix(in srgb, var(--pwa-chrome-top) 58%, #242830);
+    box-shadow: var(--lg-shadow);
+  }
+
   .category-chip-active {
-    background-color: rgba(255, 255, 255, 0.28);
-    box-shadow: none;
+    background-color: color-mix(in srgb, var(--pwa-chrome-top) 72%, #242830);
+    box-shadow: var(--lg-shadow);
+  }
+
+  html[data-theme="light"] .category-chip,
+  html[data-theme="light"] .category-chip-active {
+    color: var(--lg-text);
+    background-color: color-mix(in srgb, var(--pwa-chrome-top) 74%, #94a3b8);
+    box-shadow: var(--lg-shadow);
   }
 
   html[data-theme="light"] .category-chip-active {
-    background-color: rgba(255, 255, 255, 0.72);
-    box-shadow: none;
+    background-color: color-mix(in srgb, var(--pwa-chrome-top) 55%, #64748b);
   }
 
   /* Shared flat glass: uniform fill, no inset highlights */

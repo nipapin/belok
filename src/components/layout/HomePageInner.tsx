@@ -171,13 +171,13 @@ function CategoriesBlockView({
       <div className="-mx-4 flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide px-4 py-1">
         {loading
           ? Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-9 w-24 shrink-0 animate-pulse rounded-full glass-fx" />
+              <div key={i} className="category-chip h-9 w-24 shrink-0 animate-pulse rounded-full" />
             ))
           : categories.map((category) => (
               <button
                 key={category.id}
                 type="button"
-                className="glass-fx shrink-0 rounded-full px-4 py-2 text-sm whitespace-nowrap"
+                className="category-chip shrink-0 rounded-full px-4 py-2 text-sm whitespace-nowrap"
                 onClick={() => router.push(`/menu?category=${category.id}`)}
               >
                 {category.name}
