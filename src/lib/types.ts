@@ -11,7 +11,7 @@ export type BonusType = 'EARNED' | 'SPENT' | 'EXPIRED' | 'MANUAL';
 export type IngredientAction = 'ADD' | 'REMOVE';
 export type VerificationPurpose = 'REGISTER' | 'LOGIN' | 'PASSWORD_RESET';
 export type OrderSource = 'APP' | 'KIOSK';
-export type OrderFulfillment = 'DELIVERY' | 'PICKUP';
+export type OrderFulfillment = 'DELIVERY' | 'PICKUP' | 'DINE_IN';
 export type OrderPaymentMethod = 'CARD' | 'CASH' | 'SBP' | 'BONUS';
 
 export interface LoyaltyLevelRow {

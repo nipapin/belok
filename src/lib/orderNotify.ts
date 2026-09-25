@@ -29,12 +29,14 @@ export async function notifyKitchenNewOrder(
   const order = await queryOne<{
     total: number;
     dailyNumber: number | null;
+    guestEmail: string | null;
     userName: string | null;
     userPhone: string | null;
     userEmail: string | null;
   }>(
     `SELECT o.total,
             o."dailyNumber" AS "dailyNumber",
+            o."guestEmail" AS "guestEmail",
             u.name  AS "userName",
             u.phone AS "userPhone",
             u.email AS "userEmail"
@@ -54,7 +56,9 @@ export async function notifyKitchenNewOrder(
     [orderId]
   );
 
-  const customer = order.userName || order.userPhone || order.userEmail || 'Клиент';
+  const guestTicket = order.dailyNumber != null ? `Гость #${order.dailyNumber}` : 'Гость';
+  const customer =
+    order.userName || order.userPhone || order.userEmail || order.guestEmail || guestTicket;
   const url = request
     ? absolutePushUrl(`/admin/orders/${orderId}`, request)
     : `${getPublicAppOrigin()}/admin/orders/${orderId}`;

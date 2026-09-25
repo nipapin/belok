@@ -36,6 +36,7 @@ export function isKioskSource(source: OrderSource | string | null | undefined): 
 export function fulfillmentLabel(value?: string | null): string | null {
   if (value === 'DELIVERY') return 'Доставка';
   if (value === 'PICKUP') return 'Самовывоз';
+  if (value === 'DINE_IN') return 'В зале';
   return null;
 }
 

@@ -1183,6 +1183,66 @@ html[data-theme="light"] .animated-bg__blob--c {
   }
 }
 
+/* Kiosk payment: panels and buttons rise in from below. */
+.kiosk-rise {
+  animation: kiosk-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes kiosk-rise {
+  from {
+    opacity: 0;
+    transform: translateY(2.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* One digit window of the rolling total. */
+.kiosk-odometer-digit {
+  display: inline-block;
+  height: 1em;
+  width: 0.68em;
+  overflow: hidden;
+  line-height: 1;
+  text-align: center;
+}
+
+.kiosk-odometer-strip {
+  display: flex;
+  flex-direction: column;
+  animation: kiosk-odometer 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.kiosk-odometer-glyph {
+  display: block;
+  height: 1em;
+  line-height: 1;
+}
+
+@keyframes kiosk-odometer {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(var(--roll));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-rise {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .kiosk-odometer-strip {
+    animation: none;
+    transform: translateY(var(--roll));
+  }
+}
+
 ::-webkit-scrollbar {
   width: 4px;
 }

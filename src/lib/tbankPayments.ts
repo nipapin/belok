@@ -26,7 +26,7 @@ export async function startTbankPayment(order: {
   total: number;
   dailyNumber?: number | null;
   method: 'card' | 'sbp';
-}): Promise<{ paymentId: string; paymentUrl: string | null; payload: string | null }> {
+}): Promise<{ paymentId: string; paymentUrl: string | null; payload: string | null; image: string | null }> {
   const amountKopecks = Math.round(order.total * 100);
   const ticket =
     order.dailyNumber != null && order.dailyNumber > 0 ? `#${order.dailyNumber}` : order.id.slice(0, 8);
@@ -45,17 +45,32 @@ export async function startTbankPayment(order: {
   await query(`UPDATE "orders" SET "tbankPaymentId" = $1 WHERE id = $2`, [paymentId, order.id]);
 
   let payload: string | null = null;
+  let image: string | null = null;
   if (order.method === 'sbp') {
     try {
-      const qr = await tbankGetQr(paymentId);
-      if (qr.Success && qr.Data) payload = qr.Data;
+      const qr = await loadSbpQr(paymentId);
+      payload = qr.payload;
+      image = qr.image;
     } catch (error) {
       console.error('T-Bank GetQr failed:', error);
     }
   }
 
   const paymentUrl = typeof init.PaymentURL === 'string' && init.PaymentURL ? init.PaymentURL : null;
-  return { paymentId, paymentUrl, payload };
+  return { paymentId, paymentUrl, payload, image };
+}
+
+async function loadSbpQr(paymentId: string): Promise<{ payload: string | null; image: string | null }> {
+  const [payloadQr, imageQr] = await Promise.all([
+    tbankGetQr(paymentId, 'PAYLOAD'),
+    tbankGetQr(paymentId, 'IMAGE'),
+  ]);
+  const payloadData = typeof payloadQr.Data === 'string' ? payloadQr.Data.trim() : '';
+  const imageData = typeof imageQr.Data === 'string' ? imageQr.Data.trim() : '';
+  return {
+    payload: payloadQr.Success && payloadData.startsWith('http') ? payloadData : null,
+    image: imageQr.Success && imageData.startsWith('<svg') ? imageData : null,
+  };
 }
 
 export async function applyTbankPaymentStatus(
@@ -107,9 +122,10 @@ export async function syncSbpPayment(order: OrderRow): Promise<{
   paymentStatus: PaymentStatus;
   bankStatus: string | null;
   payload: string | null;
+  image: string | null;
 }> {
   if (order.paymentStatus !== 'PENDING' || !order.tbankPaymentId) {
-    return { paymentStatus: order.paymentStatus, bankStatus: null, payload: null };
+    return { paymentStatus: order.paymentStatus, bankStatus: null, payload: null, image: null };
   }
 
   let bankStatus: string | null = null;
@@ -126,16 +142,18 @@ export async function syncSbpPayment(order: OrderRow): Promise<{
   const latest = await queryOne<OrderRow>(`SELECT * FROM "orders" WHERE id = $1`, [order.id]);
   const paymentStatus = latest?.paymentStatus ?? order.paymentStatus;
   if (paymentStatus !== 'PENDING') {
-    return { paymentStatus, bankStatus, payload: null };
+    return { paymentStatus, bankStatus, payload: null, image: null };
   }
 
   let payload: string | null = null;
+  let image: string | null = null;
   try {
-    const qr = await tbankGetQr(order.tbankPaymentId);
-    if (qr.Success && qr.Data) payload = qr.Data;
+    const qr = await loadSbpQr(order.tbankPaymentId);
+    payload = qr.payload;
+    image = qr.image;
   } catch (error) {
     console.error('T-Bank GetQr failed:', error);
   }
 
-  return { paymentStatus, bankStatus, payload };
+  return { paymentStatus, bankStatus, payload, image };
 }

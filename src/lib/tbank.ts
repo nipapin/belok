@@ -153,10 +153,13 @@ export type TbankQrResult = {
   Data?: string;
 };
 
-export async function tbankGetQr(paymentId: string): Promise<TbankQrResult> {
+export async function tbankGetQr(
+  paymentId: string,
+  dataType: 'PAYLOAD' | 'IMAGE' = 'PAYLOAD'
+): Promise<TbankQrResult> {
   return tbankRequest<TbankQrResult>('GetQr', {
     PaymentId: paymentId,
-    DataType: 'PAYLOAD',
+    DataType: dataType,
   });
 }
 
