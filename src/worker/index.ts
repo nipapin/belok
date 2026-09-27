@@ -18,6 +18,7 @@ export {};
 declare const self: ServiceWorkerGlobalScope;
 
 interface PushPayload {
+  web_push?: number;
   title?: string;
   body?: string;
   url?: string;
@@ -54,6 +55,18 @@ function toSameOriginUrl(raw: unknown): string {
   return new URL(toPushPath(raw), self.location.origin).href;
 }
 
+/**
+ * iOS 18.4+ draws a valid Declarative Web Push on its own. If the service
+ * worker also calls showNotification, WebKit drops the system banner.
+ */
+function systemShowsDeclarativePush(): boolean {
+  const match = self.navigator.userAgent.match(/(?:iPhone OS|CPU OS) (\d+)_(\d+)/);
+  if (!match) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return major > 18 || (major === 18 && minor >= 4);
+}
+
 function parsePushPayload(event: PushEvent): PushPayload {
   try {
     if (!event.data) return {};
@@ -66,31 +79,36 @@ function parsePushPayload(event: PushEvent): PushPayload {
 async function showPushNotification(event: PushEvent): Promise<void> {
   const payload = parsePushPayload(event);
   const nested = payload.notification;
+  const declarative =
+    payload.web_push === 8030 &&
+    typeof nested?.title === 'string' &&
+    nested.title.length > 0 &&
+    typeof nested.navigate === 'string' &&
+    nested.navigate.startsWith('https://');
+
+  if (declarative && systemShowsDeclarativePush()) {
+    return;
+  }
+
   const title = nested?.title || payload.title || 'бело́к';
   const body = nested?.body || payload.body || '';
   const path = toPushPath(payload.url || nested?.navigate);
   const url = toSameOriginUrl(path);
   const tag = nested?.tag || payload.tag || 'default';
+  const icon = toPushPath(nested?.icon || payload.icon || DEFAULT_ICON);
 
-  // WebKit honours title/body/tag/data and ignores the rest. Keep the extra
-  // fields for Android, but if showNotification rejects, retry with the
-  // minimal set so a failed option never becomes a silent push (iOS revokes
-  // the subscription after a few of those).
-  // `navigate` is the iOS tap target and must be same-origin with this SW,
-  // otherwise the PWA opens a Next.js 404.
-  const rich: NotificationOptions & { navigate?: string } = {
+  const options: NotificationOptions & { renotify?: boolean } = {
     body,
-    icon: nested?.icon || payload.icon || DEFAULT_ICON,
-    badge: nested?.badge || payload.badge || DEFAULT_BADGE,
+    icon,
+    badge: DEFAULT_BADGE,
     tag,
+    renotify: true,
     data: { url, path },
-    navigate: url,
     lang: 'ru',
-    dir: 'ltr',
   };
 
   try {
-    await self.registration.showNotification(title, rich);
+    await self.registration.showNotification(title, options);
   } catch {
     await self.registration.showNotification(title, { body, tag, data: { url, path } });
   }
@@ -99,7 +117,11 @@ async function showPushNotification(event: PushEvent): Promise<void> {
     setAppBadge?: (n: number) => Promise<void>;
   };
   if (typeof nav.setAppBadge === 'function') {
-    await nav.setAppBadge(1).catch(() => {});
+    try {
+      await nav.setAppBadge(1);
+    } catch {
+      // Badge is optional. A throw here must not fail the push event.
+    }
   }
 }
 

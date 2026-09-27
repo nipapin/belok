@@ -1,4 +1,4 @@
-import { after, NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, withTransaction } from '@/lib/db';
 import { getUserWithLoyaltyById } from '@/lib/auth';
@@ -230,7 +230,9 @@ export async function POST(request: NextRequest) {
     const order = await fetchOrderWithItems(orderId);
 
     if (!needsBank) {
-      after(() => notifyKitchenNewOrder(orderId, request));
+      await notifyKitchenNewOrder(orderId).catch((error) => {
+        console.error('Kitchen notify failed:', error);
+      });
     }
 
     return NextResponse.json({

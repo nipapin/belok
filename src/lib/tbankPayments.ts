@@ -94,7 +94,7 @@ export async function applyTbankPaymentStatus(
       shouldNotify = true;
     });
     if (shouldNotify) {
-      void notifyKitchenNewOrder(orderId).catch((err) => {
+      await notifyKitchenNewOrder(orderId).catch((err) => {
         console.error('Kitchen notify after SBP payment failed:', err);
       });
     }

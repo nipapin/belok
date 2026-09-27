@@ -1,6 +1,6 @@
 import { query, queryOne } from '@/lib/db';
 import { getNotificationSettings } from '@/lib/notificationSettings';
-import { absolutePushUrl, getPublicAppOrigin, tryNotifyAdmins } from '@/lib/push';
+import { getPublicAppOrigin, tryNotifyAdmins } from '@/lib/push';
 
 export function truncatePushText(text: string, max = 180): string {
   const trimmed = text.replace(/\s+/g, ' ').trim();
@@ -19,10 +19,7 @@ export function buildNewOrderPushBody(args: {
   return truncatePushText(`${args.customer} · ${summary} · ${args.total} ₽`);
 }
 
-export async function notifyKitchenNewOrder(
-  orderId: string,
-  request?: { headers: Headers; nextUrl: URL }
-): Promise<void> {
+export async function notifyKitchenNewOrder(orderId: string): Promise<void> {
   const settings = await getNotificationSettings();
   if (!settings.adminNewOrdersPush) return;
 
@@ -59,9 +56,7 @@ export async function notifyKitchenNewOrder(
   const guestTicket = order.dailyNumber != null ? `Гость #${order.dailyNumber}` : 'Гость';
   const customer =
     order.userName || order.userPhone || order.userEmail || order.guestEmail || guestTicket;
-  const url = request
-    ? absolutePushUrl(`/admin/orders/${orderId}`, request)
-    : `${getPublicAppOrigin()}/admin/orders/${orderId}`;
+  const url = `${getPublicAppOrigin()}/admin/orders/${orderId}`;
 
   const ticket = order.dailyNumber != null ? `#${order.dailyNumber}` : null;
   await tryNotifyAdmins({
