@@ -1,5 +1,6 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
+import { getPublicAppOrigin } from '@/lib/push';
 
 const API_URL = 'https://securepay.tinkoff.ru/v2';
 const SBP_QR_TTL_MINUTES = 20;
@@ -31,7 +32,7 @@ function credentials(): { terminalKey: string; password: string } {
 }
 
 export function tbankAppOrigin(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+  return getPublicAppOrigin();
 }
 
 export function tbankToken(params: Record<string, unknown>, password: string): string {

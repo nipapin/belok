@@ -84,22 +84,22 @@ export function absolutePushUrl(
 }
 
 function resolvePushNavigateUrl(path?: string): string {
-  if (path && /^https?:\/\//i.test(path)) return path;
-  const origin = getPublicAppOrigin();
-  return `${origin}${toPushPath(path)}`;
+  // Always rebase onto the public HTTPS origin. A request host of localhost
+  // or a raw IP is not the installed PWA origin, and iOS drops the push
+  // instead of showing it when `navigate` is off-origin.
+  return `${getPublicAppOrigin()}${toPushPath(path)}`;
 }
 
 /**
- * Dual payload: Declarative Web Push (iOS 18.4+) plus the flat fields our
- * service worker already reads. If the SW fails to call showNotification in
- * time, WebKit still displays `notification` instead of dropping the push.
+ * Declarative Web Push only. Extra top-level fields make WebKit treat the
+ * message as invalid and drop it. The service worker reads `notification`.
  *
- * `navigate` must be an absolute same-origin URL — a relative path is resolved
- * against the wrong base on iOS and opens a Next.js 404.
+ * `navigate` must be an absolute https URL on the PWA origin.
  */
 function serializePushPayload(payload: PushPayload): string {
-  const path = toPushPath(payload.url);
+  const origin = getPublicAppOrigin();
   const navigate = resolvePushNavigateUrl(payload.url);
+  const icon = `${origin}${toPushPath(payload.icon || '/icons/icon-192x192.png')}`;
   return JSON.stringify({
     web_push: 8030,
     notification: {
@@ -109,13 +109,10 @@ function serializePushPayload(payload: PushPayload): string {
       dir: 'ltr',
       navigate,
       tag: payload.tag || 'default',
+      icon,
       silent: false,
+      app_badge: '1',
     },
-    title: payload.title,
-    body: payload.body,
-    url: path,
-    tag: payload.tag,
-    icon: payload.icon,
   });
 }
 
