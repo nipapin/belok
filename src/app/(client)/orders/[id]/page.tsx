@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import SbpPayPanel from '@/components/order/SbpPayPanel';
 import { formatDeliveryTime, fulfillmentLabel, orderTicket, paymentMethodLabel } from '@/lib/orderCustomer';
+import { formatVariantTitle } from '@/lib/productTitle';
 
 const statusSteps = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'COMPLETED'];
 const statusLabels: Record<string, string> = {
@@ -27,6 +28,7 @@ interface OrderItem {
   id: string;
   quantity: number;
   unitPrice: number;
+  variantName?: string | null;
   product: { name: string; image: string | null };
   customizations: { ingredientId: string; action: string; priceDelta: number }[];
 }
@@ -175,7 +177,7 @@ export default function OrderDetailPage() {
           >
             <div>
               <p className="text-sm text-(--lg-text)">
-                {item.product.name} ×{item.quantity}
+                {formatVariantTitle(item.product.name, item.variantName)} ×{item.quantity}
               </p>
               {item.customizations.length > 0 && (
                 <p className="mt-0.5 text-xs text-(--lg-text-muted)">

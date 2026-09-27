@@ -1,22 +1,16 @@
 'use client';
 
 import { create } from 'zustand';
-import type { CartItem, CartItemCustomization } from '@/store/cartStore';
+import { isSameCartLine, type CartItem, type CartItemCustomization } from '@/store/cartStore';
 
 export type { CartItem, CartItemCustomization };
 
-function customizationKey(customizations: CartItemCustomization[]): string {
-  return customizations
-    .map((c) => `${c.action}:${c.ingredientId}:${c.priceDelta}`)
-    .sort()
-    .join('|');
-}
-
-function isSameLine(
-  a: Pick<CartItem, 'productId' | 'customizations'>,
-  b: Pick<CartItem, 'productId' | 'customizations'>
-): boolean {
-  return a.productId === b.productId && customizationKey(a.customizations) === customizationKey(b.customizations);
+function isPlainLine(item: CartItem, productId: string, variantId?: string | null): boolean {
+  return (
+    item.productId === productId &&
+    (item.variantId ?? null) === (variantId ?? null) &&
+    item.customizations.length === 0
+  );
 }
 
 interface KioskCartState {
@@ -28,8 +22,8 @@ interface KioskCartState {
   getTotalItems: () => number;
   getTotalPrice: () => number;
   getItemPrice: (item: CartItem) => number;
-  getPlainLineQuantity: (productId: string) => number;
-  getPlainLineId: (productId: string) => string | null;
+  getPlainLineQuantity: (productId: string, variantId?: string | null) => number;
+  getPlainLineId: (productId: string, variantId?: string | null) => string | null;
 }
 
 export const useKioskCartStore = create<KioskCartState>()((set, get) => ({
@@ -37,7 +31,7 @@ export const useKioskCartStore = create<KioskCartState>()((set, get) => ({
 
   addItem: (item) => {
     set((state) => {
-      const existing = state.items.find((i) => isSameLine(i, item));
+      const existing = state.items.find((i) => isSameCartLine(i, item));
       if (existing) {
         return {
           items: state.items.map((i) =>
@@ -77,14 +71,14 @@ export const useKioskCartStore = create<KioskCartState>()((set, get) => ({
     return items.reduce((sum, item) => sum + getItemPrice(item), 0);
   },
 
-  getPlainLineQuantity: (productId) => {
+  getPlainLineQuantity: (productId, variantId) => {
     return get()
-      .items.filter((i) => i.productId === productId && i.customizations.length === 0)
-      .reduce((sum, i) => sum + i.quantity, 0);
+      .items.filter((item) => isPlainLine(item, productId, variantId))
+      .reduce((sum, item) => sum + item.quantity, 0);
   },
 
-  getPlainLineId: (productId) => {
-    const line = get().items.find((i) => i.productId === productId && i.customizations.length === 0);
+  getPlainLineId: (productId, variantId) => {
+    const line = get().items.find((item) => isPlainLine(item, productId, variantId));
     return line?.id ?? null;
   },
 }));

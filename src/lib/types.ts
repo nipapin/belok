@@ -92,6 +92,14 @@ export interface ProductRow {
   updatedAt: Date;
 }
 
+export interface ProductVariantRow {
+  id: string;
+  productId: string;
+  name: string;
+  image: string | null;
+  sortOrder: number;
+}
+
 export interface ProductIngredientRow {
   id: string;
   productId: string;
@@ -108,6 +116,7 @@ export interface ProductIngredientWithIngredient extends ProductIngredientRow {
 export interface ProductWithRelations extends ProductRow {
   category: CategoryRow;
   ingredients: ProductIngredientWithIngredient[];
+  variants: ProductVariantRow[];
 }
 
 export interface OrderRow {
@@ -137,6 +146,8 @@ export interface OrderItemRow {
   id: string;
   orderId: string;
   productId: string;
+  variantId: string | null;
+  variantName: string | null;
   quantity: number;
   unitPrice: number;
 }

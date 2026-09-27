@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { withTransaction } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import { fetchProductById, fetchProductsWithRelations } from '@/lib/queries/products';
+import { replaceProductVariants, type VariantWrite } from '@/lib/productVariants';
 
 interface IngredientLink {
   ingredientId: string;
@@ -26,6 +27,7 @@ interface CreateProductBody {
   weightGrams?: string | number | null;
   sortOrder?: number;
   ingredients?: IngredientLink[];
+  variants?: VariantWrite[];
 }
 
 function toNum(v: unknown): number | null {
@@ -99,6 +101,10 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+
+      if (body.variants?.length) {
+        await replaceProductVariants(client, id, body.variants);
+      }
     });
 
     const product = await fetchProductById(id);
@@ -106,6 +112,9 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
       return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });
+    if ((e as Error).message === 'VARIANT_NAME') {
+      return NextResponse.json({ error: 'Укажите название каждого варианта' }, { status: 400 });
+    }
     console.error('Create product error:', e);
     return NextResponse.json({ error: 'Ошибка создания товара' }, { status: 500 });
   }

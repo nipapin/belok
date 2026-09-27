@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { ArrowLeft, Banknote, Loader2, Minus, Plus, QrCode, Trash2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { brandMark } from '@/lib/brand';
+import { formatVariantTitle } from '@/lib/productTitle';
 import { FoodCardSkeleton } from '@/components/product/FoodCard';
 import { KioskProductCard } from '@/components/kiosk/KioskProductCard';
 import KioskPinPad from '@/components/kiosk/KioskPinPad';
@@ -11,6 +12,47 @@ import KioskProductModal from '@/components/kiosk/KioskProductModal';
 import SbpPayPanel from '@/components/order/SbpPayPanel';
 import { useKioskCartStore } from '@/store/kioskCartStore';
 import type { Category, Product } from '@/types';
+
+type KioskTile = {
+  key: string;
+  id: string;
+  variantId: string | null;
+  name: string;
+  price: number;
+  image: string | null;
+  categoryName: string;
+  createdAt?: string;
+  calories: number | null;
+  proteins: number | null;
+  fats: number | null;
+  carbs: number | null;
+  weightGrams: number | null;
+};
+
+function kioskTiles(product: Product, categoryName: string): KioskTile[] {
+  const shared = {
+    id: product.id,
+    price: product.price,
+    categoryName,
+    createdAt: product.createdAt,
+    calories: product.calories,
+    proteins: product.proteins,
+    fats: product.fats,
+    carbs: product.carbs,
+    weightGrams: product.weightGrams,
+  };
+  const variants = product.variants ?? [];
+  if (variants.length === 0) {
+    return [{ ...shared, key: product.id, variantId: null, name: product.name, image: product.image }];
+  }
+  return variants.map((variant) => ({
+    ...shared,
+    key: variant.id,
+    variantId: variant.id,
+    name: formatVariantTitle(product.name, variant.name),
+    image: variant.image || product.image,
+  }));
+}
 
 type Step = 'menu' | 'checkout' | 'pay' | 'success';
 
@@ -96,7 +138,7 @@ export default function KioskApp() {
   const suppressTimerRef = useRef<number | undefined>(undefined);
   const scrollRafRef = useRef<number | undefined>(undefined);
   selectedCategoryRef.current = selectedCategory;
-  const [openProductId, setOpenProductId] = useState<string | null>(null);
+  const [openProduct, setOpenProduct] = useState<{ productId: string; variantId: string | null } | null>(null);
   const [email, setEmail] = useState('');
   const [bonusBalance, setBonusBalance] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<KioskPayMethod>('SBP');
@@ -137,14 +179,17 @@ export default function KioskApp() {
   );
 
   const productsByCategory = useMemo(() => {
-    const grouped = new Map<string, Product[]>();
+    const grouped = new Map<string, KioskTile[]>();
     for (const product of allProducts) {
+      const categoryName =
+        categories.find((category) => category.id === product.categoryId)?.name ?? '';
+      const tiles = kioskTiles(product, categoryName);
       const bucket = grouped.get(product.categoryId);
-      if (bucket) bucket.push(product);
-      else grouped.set(product.categoryId, [product]);
+      if (bucket) bucket.push(...tiles);
+      else grouped.set(product.categoryId, tiles);
     }
     return grouped;
-  }, [allProducts]);
+  }, [allProducts, categories]);
 
   const categoriesWithProducts = useMemo(
     () => categories.filter((category) => (productsByCategory.get(category.id)?.length ?? 0) > 0),
@@ -286,7 +331,7 @@ export default function KioskApp() {
       setPayOrder(null);
       setPayFailed(false);
       setSuccess(null);
-      setOpenProductId(null);
+      setOpenProduct(null);
       setStep('menu');
     }, SUCCESS_RESET_MS);
     return () => window.clearTimeout(t);
@@ -323,7 +368,7 @@ export default function KioskApp() {
     setPayOrder(null);
     setPayFailed(false);
     setSuccess(null);
-    setOpenProductId(null);
+    setOpenProduct(null);
     setStep('menu');
     if (categoriesWithProducts[0]) setSelectedCategory(categoriesWithProducts[0].id);
     menuRef.current?.scrollTo({ top: 0 });
@@ -372,6 +417,7 @@ export default function KioskApp() {
           paymentMethod: totalPrice > 0 ? paymentMethod : 'BONUS',
           items: items.map((item) => ({
             productId: item.productId,
+            variantId: item.variantId ?? null,
             quantity: item.quantity,
             customizations: item.customizations.map((c) => ({
               ingredientId: c.ingredientId,
@@ -738,14 +784,15 @@ export default function KioskApp() {
                     <div className="grid grid-cols-2 gap-3">
                       {categoryProducts.map((product, index) => (
                         <KioskProductCard
-                          key={product.id}
+                          key={product.key}
                           eager={categoryIndex === 0 && index < 4}
                           product={{
                             id: product.id,
+                            variantId: product.variantId,
                             name: product.name,
                             price: product.price,
                             image: product.image,
-                            categoryName: category.name,
+                            categoryName: product.categoryName,
                             createdAt: product.createdAt,
                             calories: product.calories,
                             proteins: product.proteins,
@@ -753,7 +800,9 @@ export default function KioskApp() {
                             carbs: product.carbs,
                             weightGrams: product.weightGrams,
                           }}
-                          onOpen={() => setOpenProductId(product.id)}
+                          onOpen={() =>
+                            setOpenProduct({ productId: product.id, variantId: product.variantId })
+                          }
                         />
                       ))}
                     </div>
@@ -781,8 +830,12 @@ export default function KioskApp() {
         </button>
       </div>
 
-      {openProductId ? (
-        <KioskProductModal productId={openProductId} onClose={() => setOpenProductId(null)} />
+      {openProduct ? (
+        <KioskProductModal
+          productId={openProduct.productId}
+          variantId={openProduct.variantId}
+          onClose={() => setOpenProduct(null)}
+        />
       ) : null}
     </div>
   );

@@ -1,4 +1,5 @@
 import { query, queryOne } from '@/lib/db';
+import { formatVariantTitle } from '@/lib/productTitle';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 import { getPublicAppOrigin, tryNotifyAdmins } from '@/lib/push';
 
@@ -44,14 +45,18 @@ export async function notifyKitchenNewOrder(orderId: string): Promise<void> {
   );
   if (!order) return;
 
-  const items = await query<{ name: string; quantity: number }>(
-    `SELECT p.name, oi.quantity
+  const rows = await query<{ productName: string; variantName: string | null; quantity: number }>(
+    `SELECT p.name AS "productName", oi."variantName" AS "variantName", oi.quantity
        FROM "order_items" oi
        JOIN "products" p ON p.id = oi."productId"
       WHERE oi."orderId" = $1
       ORDER BY oi.id ASC`,
     [orderId]
   );
+  const items = rows.map((row) => ({
+    name: formatVariantTitle(row.productName, row.variantName),
+    quantity: row.quantity,
+  }));
 
   const guestTicket = order.dailyNumber != null ? `Гость #${order.dailyNumber}` : 'Гость';
   const customer =

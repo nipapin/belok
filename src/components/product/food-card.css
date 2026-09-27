@@ -35,6 +35,49 @@ html[data-theme="light"] .food-card__footer {
   border-radius: var(--food-radius) var(--food-radius) 0 0;
 }
 
+.food-card__stage {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.food-card__navs {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  aspect-ratio: 1 / 1;
+  pointer-events: none;
+}
+
+.food-card__nav {
+  pointer-events: auto;
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, #fff 90%, transparent);
+  color: #18181b;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 18%);
+  transform: translateY(-50%);
+}
+
+.food-card__nav--prev {
+  left: 0.45rem;
+}
+
+.food-card__nav--next {
+  right: 0.45rem;
+}
+
 .food-card__main {
   display: flex;
   min-height: 0;
@@ -133,6 +176,17 @@ html[data-theme="light"] .food-card__footer {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+}
+
+.food-card__flavor {
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--food-card-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .food-card__chips {

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Minus, Plus, ShoppingCart } from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import ProductGallery from "@/components/product/ProductGallery";
+import { formatVariantTitle } from "@/lib/productTitle";
 import { useCartStore, type CartItemCustomization } from "@/store/cartStore";
-import { Product, ProductIngredient } from "@/types";
+import { Product } from "@/types";
 import { isNewProduct } from "@/lib/productFlags";
 
 function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
@@ -21,7 +23,10 @@ function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => v
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const addItem = useCartStore((s) => s.addItem);
+  const requestedVariantId = searchParams.get("v");
+  const [variantPick, setVariantPick] = useState<{ productId: string; index: number } | null>(null);
 
   const [quantity, setQuantity] = useState(1);
   const [removedIngredients, setRemovedIngredients] = useState<Set<string>>(new Set());
@@ -83,12 +88,27 @@ export default function ProductDetailPage() {
     return (product.price + extras) * quantity;
   };
 
+  const variants = product?.variants ?? [];
+  const requestedIndex = requestedVariantId
+    ? variants.findIndex((variant) => variant.id === requestedVariantId)
+    : -1;
+  const variantIndex =
+    product && variantPick?.productId === product.id
+      ? variantPick.index
+      : requestedIndex >= 0
+        ? requestedIndex
+        : 0;
+  const safeVariantIndex = variants.length === 0 ? 0 : Math.min(variantIndex, variants.length - 1);
+  const selectedVariant = variants[safeVariantIndex] ?? null;
+
   const handleAddToCart = () => {
     if (!product) return;
     addItem({
       productId: product.id,
-      name: product.name,
-      image: product.image,
+      variantId: selectedVariant?.id ?? null,
+      variantName: selectedVariant?.name ?? null,
+      name: formatVariantTitle(product.name, selectedVariant?.name),
+      image: selectedVariant?.image || product.image,
       basePrice: product.price,
       quantity,
       customizations: getCustomizations(),
@@ -121,24 +141,31 @@ export default function ProductDetailPage() {
 
   const defaultIngredients = product.ingredients.filter((pi) => pi.isDefault);
   const extraIngredients = product.ingredients.filter((pi) => pi.isExtra);
+  const slides =
+    variants.length > 0
+      ? variants.map((variant) => ({
+          key: variant.id,
+          image: variant.image || product.image,
+          alt: formatVariantTitle(product.name, variant.name),
+          fallback: variant.name[0] || product.name[0],
+        }))
+      : [
+          {
+            key: product.id,
+            image: product.image,
+            alt: product.name,
+            fallback: product.name[0],
+          },
+        ];
 
   return (
     <div className="">
       <div className="relative -mx-4 -mt-(--client-header-stack-height)">
-        <div className="relative aspect-square w-full bg-white">
-          {product.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={product.image}
-              alt=""
-              className="absolute inset-0 box-border size-full object-contain object-center p-4"
-            />
-          ) : (
-            <span className="flex size-full items-center justify-center text-[6rem] font-bold leading-none text-slate-400">
-              {product.name[0]}
-            </span>
-          )}
-        </div>
+        <ProductGallery
+          slides={slides}
+          index={safeVariantIndex}
+          onIndex={(next) => setVariantPick({ productId: product.id, index: next })}
+        />
         <button
           type="button"
           onClick={() => router.back()}
@@ -163,6 +190,9 @@ export default function ProductDetailPage() {
               ) : null}
             </div>
             <h1 className="heading-section text-balance">{product.name}</h1>
+            {selectedVariant ? (
+              <p className="mt-1 text-base font-semibold text-[var(--lg-text)]">{selectedVariant.name}</p>
+            ) : null}
             {product.weightGrams != null ? (
               <p className="mt-1 text-sm font-medium tabular-nums text-[var(--lg-text-muted)]">
                 {product.weightGrams} г

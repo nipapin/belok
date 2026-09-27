@@ -13,6 +13,8 @@ export interface CartItemCustomization {
 export interface CartItem {
   id: string;
   productId: string;
+  variantId?: string | null;
+  variantName?: string | null;
   name: string;
   image: string | null;
   basePrice: number;
@@ -28,15 +30,34 @@ function customizationKey(customizations: CartItemCustomization[]): string {
     .join('|');
 }
 
-function isSameLine(a: Pick<CartItem, 'productId' | 'customizations'>, b: Pick<CartItem, 'productId' | 'customizations'>): boolean {
-  return a.productId === b.productId && customizationKey(a.customizations) === customizationKey(b.customizations);
+export function cartVariantId(item: { variantId?: string | null }): string | null {
+  return item.variantId ?? null;
+}
+
+export function isSameCartLine(
+  a: Pick<CartItem, 'productId' | 'variantId' | 'customizations'>,
+  b: Pick<CartItem, 'productId' | 'variantId' | 'customizations'>
+): boolean {
+  return (
+    a.productId === b.productId &&
+    cartVariantId(a) === cartVariantId(b) &&
+    customizationKey(a.customizations) === customizationKey(b.customizations)
+  );
+}
+
+function isPlainLine(item: CartItem, productId: string, variantId?: string | null): boolean {
+  return (
+    item.productId === productId &&
+    cartVariantId(item) === (variantId ?? null) &&
+    item.customizations.length === 0
+  );
 }
 
 /** Collapses duplicate lines (same product + same customizations) into one, summing quantities. */
 function mergeDuplicateItems(items: CartItem[]): CartItem[] {
   const merged: CartItem[] = [];
   for (const item of items) {
-    const existing = merged.find((i) => isSameLine(i, item));
+    const existing = merged.find((i) => isSameCartLine(i, item));
     if (existing) existing.quantity += item.quantity;
     else merged.push({ ...item });
   }
@@ -52,10 +73,10 @@ interface CartState {
   getTotalItems: () => number;
   getTotalPrice: () => number;
   getItemPrice: (item: CartItem) => number;
-  /** Quantity of the plain (no customizations) line for a product. */
-  getPlainLineQuantity: (productId: string) => number;
-  /** Find the plain cart line id for a product, if any. */
-  getPlainLineId: (productId: string) => string | null;
+  /** Quantity of the plain (no customizations) line for a product variant. */
+  getPlainLineQuantity: (productId: string, variantId?: string | null) => number;
+  /** Find the plain cart line id for a product variant, if any. */
+  getPlainLineId: (productId: string, variantId?: string | null) => string | null;
 }
 
 export const useCartStore = create<CartState>()(
@@ -65,7 +86,7 @@ export const useCartStore = create<CartState>()(
 
       addItem: (item) => {
         set((state) => {
-          const existing = state.items.find((i) => isSameLine(i, item));
+          const existing = state.items.find((i) => isSameCartLine(i, item));
           if (existing) {
             return {
               items: state.items.map((i) =>
@@ -106,16 +127,14 @@ export const useCartStore = create<CartState>()(
         return items.reduce((sum, item) => sum + getItemPrice(item), 0);
       },
 
-      getPlainLineQuantity: (productId) => {
+      getPlainLineQuantity: (productId, variantId) => {
         return get()
-          .items.filter((i) => i.productId === productId && i.customizations.length === 0)
-          .reduce((sum, i) => sum + i.quantity, 0);
+          .items.filter((item) => isPlainLine(item, productId, variantId))
+          .reduce((sum, item) => sum + item.quantity, 0);
       },
 
-      getPlainLineId: (productId) => {
-        const line = get().items.find(
-          (i) => i.productId === productId && i.customizations.length === 0
-        );
+      getPlainLineId: (productId, variantId) => {
+        const line = get().items.find((item) => isPlainLine(item, productId, variantId));
         return line?.id ?? null;
       },
     }),

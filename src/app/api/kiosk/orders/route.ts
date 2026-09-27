@@ -12,6 +12,7 @@ import { clientIpFromHeaders, rateLimit } from '@/lib/rateLimit';
 import { isTbankConfigured, SBP_MIN_RUBLES, TbankError } from '@/lib/tbank';
 import { startTbankPayment } from '@/lib/tbankPayments';
 import { isValidEmail, normalizeEmail } from '@/lib/verificationCode';
+import { attachVariantSnapshots, VariantOrderError } from '@/lib/productVariants';
 import type {
   IngredientAction,
   OrderItemCustomizationRow,
@@ -23,6 +24,7 @@ import type {
 
 interface IncomingItem {
   productId: string;
+  variantId?: string | null;
   quantity: number;
   customizations?: { ingredientId: string; action: IngredientAction; priceDelta?: number }[];
 }
@@ -141,6 +143,7 @@ export async function POST(request: NextRequest) {
       subtotal += unitPrice * quantity;
       return { ...item, quantity, unitPrice };
     });
+    const stampedItems = await attachVariantSnapshots(computedItems);
 
     const discountAmount = Math.round(subtotal * (discountPercent / 100));
     const total = subtotal - discountAmount;
@@ -172,12 +175,13 @@ export async function POST(request: NextRequest) {
         [orderId, userId, total, discountAmount, comment, userId ? null : guestEmail, ticket, paymentMethod]
       );
 
-      for (const item of computedItems) {
+      for (const item of stampedItems) {
         const itemId = uuidv4();
         await client.query(
-          `INSERT INTO "order_items" (id, "orderId", "productId", quantity, "unitPrice")
-           VALUES ($1, $2, $3, $4, $5)`,
-          [itemId, orderId, item.productId, item.quantity, item.unitPrice]
+          `INSERT INTO "order_items"
+             (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice")
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [itemId, orderId, item.productId, item.variantId, item.variantName, item.quantity, item.unitPrice]
         );
         for (const c of item.customizations || []) {
           await client.query(
@@ -245,6 +249,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof KioskUnauthorizedError) {
       return NextResponse.json({ error: 'Терминал заблокирован' }, { status: 401 });
+    }
+    if (error instanceof VariantOrderError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     console.error('Create kiosk order error:', error);
     return NextResponse.json({ error: 'Ошибка создания заказа' }, { status: 500 });

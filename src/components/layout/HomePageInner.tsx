@@ -130,6 +130,7 @@ function ProductsBlockView({
               weightGrams: product.weightGrams,
               categoryName: product.category?.name,
               createdAt: product.createdAt,
+              variants: product.variants ?? [],
             }}
           />
         );

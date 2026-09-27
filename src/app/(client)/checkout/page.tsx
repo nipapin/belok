@@ -111,6 +111,7 @@ export default function CheckoutPage() {
     try {
       const orderItems = items.map((item) => ({
         productId: item.productId,
+        variantId: item.variantId ?? null,
         quantity: item.quantity,
         customizations: item.customizations.map((c) => ({
           ingredientId: c.ingredientId,

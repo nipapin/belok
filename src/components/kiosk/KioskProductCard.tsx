@@ -26,7 +26,8 @@ function sameCard(prev: KioskProductCardProps, next: KioskProductCardProps) {
     a.carbs === b.carbs &&
     a.weightGrams === b.weightGrams &&
     a.categoryName === b.categoryName &&
-    a.createdAt === b.createdAt
+    a.createdAt === b.createdAt &&
+    (a.variantId ?? null) === (b.variantId ?? null)
   );
 }
 
@@ -38,8 +39,8 @@ export const KioskProductCard = memo(function KioskProductCard({
   const addItem = useKioskCartStore((s) => s.addItem);
   const updateQuantity = useKioskCartStore((s) => s.updateQuantity);
   const removeItem = useKioskCartStore((s) => s.removeItem);
-  const quantity = useKioskCartStore((s) => s.getPlainLineQuantity(product.id));
-  const plainLineId = useKioskCartStore((s) => s.getPlainLineId(product.id));
+  const quantity = useKioskCartStore((s) => s.getPlainLineQuantity(product.id, product.variantId));
+  const plainLineId = useKioskCartStore((s) => s.getPlainLineId(product.id, product.variantId));
   const haptic = useHaptic();
   const [busy, setBusy] = useState(false);
   const busyTimer = useRef<number | undefined>(undefined);
@@ -52,6 +53,7 @@ export const KioskProductCard = memo(function KioskProductCard({
     setBusy(true);
     addItem({
       productId: product.id,
+      variantId: product.variantId ?? null,
       name: product.name,
       image: product.image,
       basePrice: product.price,
