@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useState } from 'react';
-import { Save, X } from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ImagePlus, Plus, Save, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminProductImageField from '@/components/admin/AdminProductImageField';
+import SortableList from '@/components/admin/SortableList';
 import Switch from '@/components/ui/Switch';
 
 interface Ingredient {
@@ -19,6 +20,32 @@ export interface ProductIngredient {
   isDefault: boolean;
   isRemovable: boolean;
   isExtra: boolean;
+}
+
+export interface AdminProductVariant {
+  id: string;
+  name: string;
+  image: string | null;
+}
+
+type VariantDraft = {
+  id: string;
+  persisted: boolean;
+  name: string;
+  image: string;
+  file: File | null;
+  preview: string | null;
+};
+
+function newVariantDraft(): VariantDraft {
+  return {
+    id: crypto.randomUUID(),
+    persisted: false,
+    name: '',
+    image: '',
+    file: null,
+    preview: null,
+  };
 }
 
 export interface AdminProduct {
@@ -38,6 +65,7 @@ export interface AdminProduct {
   sortOrder: number;
   category: { id: string; name: string };
   ingredients: ProductIngredient[];
+  variants?: AdminProductVariant[];
 }
 
 interface Category {
@@ -60,6 +88,7 @@ const emptyForm = {
   weightGrams: '',
   sortOrder: 0,
   ingredientIds: [] as string[],
+  variants: [] as VariantDraft[],
 };
 
 type FormState = typeof emptyForm;
@@ -76,6 +105,8 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const variantsRef = useRef(form.variants);
+  variantsRef.current = form.variants;
 
   const { data: productRes, isLoading: productLoading, isError: productError } = useQuery({
     queryKey: ['admin-product', productId],
@@ -119,9 +150,25 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
       weightGrams: product.weightGrams?.toString() || '',
       sortOrder: product.sortOrder,
       ingredientIds: product.ingredients.map((pi) => pi.ingredientId),
+      variants: (product.variants ?? []).map((variant) => ({
+        id: variant.id,
+        persisted: true,
+        name: variant.name,
+        image: variant.image || '',
+        file: null,
+        preview: null,
+      })),
     });
     setImageFile(null);
   }, [mode, product]);
+
+  useEffect(() => {
+    return () => {
+      for (const variant of variantsRef.current) {
+        if (variant.preview) URL.revokeObjectURL(variant.preview);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!imageFile) {
@@ -166,15 +213,48 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
         imageUrl = uploadData.url;
       }
 
+      const variants = await Promise.all(
+        data.variants.map(async (variant) => {
+          let image = variant.image || '';
+          if (variant.file) {
+            const fd = new FormData();
+            fd.append('file', variant.file);
+            const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd, credentials: 'include' });
+            const uploadData = await uploadRes.json();
+            if (!uploadRes.ok) {
+              throw new Error(uploadData.error || 'Ошибка загрузки изображения');
+            }
+            image = uploadData.url;
+          }
+          return {
+            id: variant.persisted ? variant.id : undefined,
+            name: variant.name.trim(),
+            image: image || null,
+          };
+        })
+      );
+
       const body = {
-        ...data,
+        name: data.name,
+        description: data.description,
+        price: data.price,
         image: imageUrl,
+        categoryId: data.categoryId,
+        isAvailable: data.isAvailable,
+        calories: data.calories,
+        proteins: data.proteins,
+        fats: data.fats,
+        carbs: data.carbs,
+        fiber: data.fiber,
+        weightGrams: data.weightGrams,
+        sortOrder: data.sortOrder,
         ingredients: data.ingredientIds.map((ingredientId: string) => ({
           ingredientId,
           isDefault: true,
           isRemovable: true,
           isExtra: false,
         })),
+        variants,
       };
 
       const url = editingId ? `/api/admin/products/${editingId}` : '/api/admin/products';
@@ -184,7 +264,10 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Failed to save');
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || 'Не удалось сохранить');
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -200,7 +283,40 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
 
   const title = mode === 'edit' ? 'Редактировать товар' : 'Новый товар';
   const saving = saveMutation.isPending;
-  const canSave = Boolean(form.name && form.price && form.categoryId);
+  const canSave = Boolean(
+    form.name &&
+      form.price &&
+      form.categoryId &&
+      form.variants.every((variant) => variant.name.trim())
+  );
+
+  function updateVariant(id: string, patch: Partial<VariantDraft>) {
+    setForm((current) => ({
+      ...current,
+      variants: current.variants.map((variant) => (variant.id === id ? { ...variant, ...patch } : variant)),
+    }));
+  }
+
+  function removeVariant(id: string) {
+    setForm((current) => {
+      const target = current.variants.find((variant) => variant.id === id);
+      if (target?.preview) URL.revokeObjectURL(target.preview);
+      return { ...current, variants: current.variants.filter((variant) => variant.id !== id) };
+    });
+  }
+
+  function setVariantFile(id: string, file: File) {
+    if (!file.type.startsWith('image/')) return;
+    const preview = URL.createObjectURL(file);
+    setForm((current) => ({
+      ...current,
+      variants: current.variants.map((variant) => {
+        if (variant.id !== id) return variant;
+        if (variant.preview) URL.revokeObjectURL(variant.preview);
+        return { ...variant, file, preview };
+      }),
+    }));
+  }
   if (mode === 'edit' && productId && productLoading) {
     return (
       <div className="mx-auto flex min-h-[32vh] w-full max-w-2xl items-center justify-center">
@@ -290,7 +406,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
           <section className="admin-form-section">
             <p className="admin-form-eyebrow">Внешний вид</p>
             <p className="admin-form-hint mt-1.5 mb-4">
-              Превью 1:1, как в карточке товара в меню. Формат JPG, PNG, WebP — до 5 МБ.
+              Фото товара, пока у него нет вариантов. У каждого варианта своё фото. Формат JPG, PNG, WebP — до 5 МБ.
             </p>
             <AdminProductImageField
               previewUrl={currentImageUrl}
@@ -365,6 +481,77 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
           </section>
 
           <section className="admin-form-section">
+            <p className="admin-form-eyebrow">Варианты</p>
+            <p className="admin-form-hint mt-1.5 mb-4">
+              Вкус или другая версия того же товара. Цена у всех одна. Пока вариант один или их нет,
+              в меню это просто товар без переключения. Два и больше — в меню вкус листается стрелками,
+              а в киоске каждый вкус стоит отдельной карточкой.
+            </p>
+            {form.variants.length > 0 ? (
+              <SortableList
+                items={form.variants}
+                disabled={saving}
+                onReorder={(variants) => setForm((current) => ({ ...current, variants }))}
+                renderItem={(variant) => {
+                  const preview = variant.preview || variant.image || null;
+                  return (
+                    <div className="flex items-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] bg-[color-mix(in_srgb,white_55%,var(--lg-fill))] p-2">
+                      <label className="relative flex size-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-white">
+                        {preview ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={preview} alt="" className="size-full object-contain p-1" />
+                        ) : (
+                          <ImagePlus className="size-5 text-(--lg-text-muted)" />
+                        )}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="sr-only"
+                          disabled={saving}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) setVariantFile(variant.id, file);
+                            event.target.value = '';
+                          }}
+                        />
+                      </label>
+                      <input
+                        className={fieldClass}
+                        placeholder="Название, например Клубничный"
+                        value={variant.name}
+                        disabled={saving}
+                        onChange={(event) => updateVariant(variant.id, { name: event.target.value })}
+                      />
+                      <button
+                        type="button"
+                        className="btn-icon size-11 shrink-0"
+                        aria-label="Удалить вариант"
+                        disabled={saving}
+                        onClick={() => removeVariant(variant.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  );
+                }}
+              />
+            ) : (
+              <p className="text-sm text-(--lg-text-muted)">Вариантов нет — в меню это один товар.</p>
+            )}
+            <button
+              type="button"
+              className="btn-outline mt-4 h-11 text-sm"
+              disabled={saving}
+              onClick={() =>
+                setForm((current) => ({ ...current, variants: [...current.variants, newVariantDraft()] }))
+              }
+            >
+              <Plus className="size-4" />
+              Добавить вариант
+            </button>
+          </section>
+
+          <section className="admin-form-section">
             <p className="admin-form-eyebrow">Пищевая ценность</p>
             <p className="admin-form-hint mt-1.5 mb-5">На порцию — опционально, для отображения в меню.</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
@@ -394,7 +581,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
 
           <section className="admin-form-section">
             <p className="admin-form-eyebrow">Состав</p>
-            <p className="admin-form-hint mt-1.5 mb-4">Допы и варианты в карточке блюда.</p>
+            <p className="admin-form-hint mt-1.5 mb-4">Ингредиенты, которые можно убрать или добавить к блюду.</p>
             <div className="max-h-52 space-y-0 overflow-y-auto rounded-xl border border-[color-mix(in_srgb,var(--lg-text)_6%,transparent)] bg-[color-mix(in_srgb,white_50%,var(--lg-fill))] p-1.5">
               {ingredients.map((ing) => (
                 <label

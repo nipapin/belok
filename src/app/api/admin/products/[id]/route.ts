@@ -4,6 +4,7 @@ import { query, queryOne, withTransaction } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import { deletePublicImage } from '@/lib/uploadStorage';
 import { fetchProductById } from '@/lib/queries/products';
+import { replaceProductVariants, type VariantWrite } from '@/lib/productVariants';
 import type { ProductRow } from '@/lib/types';
 
 interface IngredientLink {
@@ -28,6 +29,7 @@ interface UpdateProductBody {
   weightGrams?: string | number | null;
   sortOrder?: number;
   ingredients?: IngredientLink[];
+  variants?: VariantWrite[];
 }
 
 function toNum(v: unknown): number | null {
@@ -102,7 +104,7 @@ export async function PUT(
       add('sortOrder', body.sortOrder);
     }
 
-    await withTransaction(async (client) => {
+    const staleVariantImages = await withTransaction(async (client) => {
       if (sets.length > 0) {
         sqlParams.push(id);
         await client.query(
@@ -128,10 +130,22 @@ export async function PUT(
           );
         }
       }
+      if (body.variants) {
+        return replaceProductVariants(client, id, body.variants);
+      }
+      return [] as string[];
     });
 
+    const keptImage = body.image !== undefined ? body.image : existing.image;
+    const imagesToDelete = new Set<string>();
     if (body.image !== undefined && existing.image && existing.image !== body.image) {
-      await deletePublicImage(existing.image);
+      imagesToDelete.add(existing.image);
+    }
+    for (const url of staleVariantImages) {
+      if (url && url !== keptImage) imagesToDelete.add(url);
+    }
+    for (const url of imagesToDelete) {
+      await deletePublicImage(url);
     }
 
     const product = await fetchProductById(id);
@@ -139,6 +153,9 @@ export async function PUT(
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
       return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });
+    if ((e as Error).message === 'VARIANT_NAME') {
+      return NextResponse.json({ error: 'Укажите название каждого варианта' }, { status: 400 });
+    }
     console.error('Update product error:', e);
     return NextResponse.json({ error: 'Ошибка обновления' }, { status: 500 });
   }
@@ -155,8 +172,19 @@ export async function DELETE(
     if (!existing) {
       return NextResponse.json({ error: 'Товар не найден' }, { status: 404 });
     }
-    await deletePublicImage(existing.image);
+    const variantImages = await query<{ image: string | null }>(
+      `SELECT image FROM "product_variants" WHERE "productId" = $1`,
+      [id]
+    );
+    const images = new Set<string>();
+    if (existing.image) images.add(existing.image);
+    for (const row of variantImages) {
+      if (row.image) images.add(row.image);
+    }
     await query(`DELETE FROM "products" WHERE id = $1`, [id]);
+    for (const url of images) {
+      await deletePublicImage(url);
+    }
     return NextResponse.json({ success: true });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')

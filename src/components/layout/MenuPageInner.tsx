@@ -161,6 +161,7 @@ export function MenuPageInner() {
                         weightGrams: product.weightGrams,
                         categoryName: category.name,
                         createdAt: product.createdAt,
+                        variants: product.variants ?? [],
                       }}
                     />
                   </div>
@@ -189,6 +190,7 @@ export function MenuPageInner() {
                     weightGrams: product.weightGrams,
                     categoryName: product.category?.name,
                     createdAt: product.createdAt,
+                    variants: product.variants ?? [],
                   }}
                 />
               </div>

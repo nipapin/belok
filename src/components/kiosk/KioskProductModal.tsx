@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { nutritionChips } from '@/components/product/FoodCard';
+import { formatVariantTitle } from '@/lib/productTitle';
 import { NutritionChip } from '@/components/product/NutritionChip';
 import { isNewProduct } from '@/lib/productFlags';
 import { useKioskCartStore, type CartItemCustomization } from '@/store/kioskCartStore';
@@ -22,10 +23,11 @@ function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => v
 
 type KioskProductModalProps = {
   productId: string;
+  variantId?: string | null;
   onClose: () => void;
 };
 
-export default function KioskProductModal({ productId, onClose }: KioskProductModalProps) {
+export default function KioskProductModal({ productId, variantId = null, onClose }: KioskProductModalProps) {
   const addItem = useKioskCartStore((s) => s.addItem);
   const [quantity, setQuantity] = useState(1);
   const [removedIngredients, setRemovedIngredients] = useState<Set<string>>(new Set());
@@ -37,6 +39,11 @@ export default function KioskProductModal({ productId, onClose }: KioskProductMo
   });
 
   const product: Product | undefined = data?.product;
+  const variant = product?.variants?.find((item) => item.id === variantId) ?? null;
+  const displayName = product
+    ? formatVariantTitle(product.name, variant?.name)
+    : '';
+  const displayImage = variant?.image || product?.image || null;
 
   const toggleRemove = (ingredientId: string) => {
     setRemovedIngredients((prev) => {
@@ -88,8 +95,9 @@ export default function KioskProductModal({ productId, onClose }: KioskProductMo
     if (!product) return;
     addItem({
       productId: product.id,
-      name: product.name,
-      image: product.image,
+      variantId: variant?.id ?? null,
+      name: displayName,
+      image: displayImage,
       basePrice: product.price,
       quantity,
       customizations: getCustomizations(),
@@ -120,12 +128,12 @@ export default function KioskProductModal({ productId, onClose }: KioskProductMo
           ) : (
             <>
               <div className="food-card__media mt-3 overflow-hidden rounded-2xl">
-                {product.image ? (
+                {displayImage ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={product.image} alt="" className="food-card__img" />
+                  <img src={displayImage} alt="" className="food-card__img" />
                 ) : (
                   <span className="food-card__fallback" aria-hidden>
-                    {product.name[0]}
+                    {displayName[0]}
                   </span>
                 )}
               </div>
@@ -141,7 +149,7 @@ export default function KioskProductModal({ productId, onClose }: KioskProductMo
                       </span>
                     ) : null}
                   </div>
-                  <h2 className="text-2xl font-semibold text-(--lg-text)">{product.name}</h2>
+                  <h2 className="text-2xl font-semibold text-(--lg-text)">{displayName}</h2>
                 </div>
                 <p className="shrink-0 text-2xl font-bold tabular-nums">{product.price} ₽</p>
               </div>

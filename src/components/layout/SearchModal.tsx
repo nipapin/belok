@@ -14,6 +14,7 @@ interface Product {
   image: string | null;
   calories: number | null;
   category: { id: string; name: string };
+  variants?: { id: string; name: string; image: string | null }[];
 }
 
 interface SearchModalProps {
@@ -40,7 +41,8 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         (p) =>
           p.name.toLowerCase().includes(trimmed) ||
           p.description?.toLowerCase().includes(trimmed) ||
-          p.category.name.toLowerCase().includes(trimmed),
+          p.category.name.toLowerCase().includes(trimmed) ||
+          (p.variants ?? []).some((variant) => variant.name.toLowerCase().includes(trimmed)),
       )
     : allProducts;
 
@@ -73,9 +75,13 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   if (!open && !mounted) return null;
   if (typeof document === "undefined") return null;
 
-  function handlePick(id: string) {
+  function handlePick(product: Product) {
     onClose();
-    router.push(`/menu/${id}`);
+    const variant = trimmed
+      ? (product.variants ?? []).find((item) => item.name.toLowerCase().includes(trimmed))
+      : undefined;
+    const query = variant ? `?v=${encodeURIComponent(variant.id)}` : "";
+    router.push(`/menu/${product.id}${query}`);
   }
 
   return createPortal(
@@ -157,7 +163,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                 <li key={p.id}>
                   <button
                     type="button"
-                    onClick={() => handlePick(p.id)}
+                    onClick={() => handlePick(p)}
                     className="glass-tight lg-interactive flex w-full items-center gap-3 p-2 pr-4 text-left"
                   >
                     <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-white">

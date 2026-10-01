@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, withTransaction } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { notifyKitchenNewOrder } from '@/lib/orderNotify';
+import { attachVariantSnapshots, VariantOrderError } from '@/lib/productVariants';
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import { isTbankConfigured, SBP_MIN_RUBLES, TbankError } from '@/lib/tbank';
 import { startTbankPayment } from '@/lib/tbankPayments';
@@ -119,6 +120,7 @@ export async function GET() {
 
 interface IncomingItem {
   productId: string;
+  variantId?: string | null;
   quantity: number;
   customizations?: { ingredientId: string; action: IngredientAction; priceDelta?: number }[];
 }
@@ -172,6 +174,7 @@ export async function POST(request: NextRequest) {
       subtotal += unitPrice * item.quantity;
       return { ...item, unitPrice };
     });
+    const stampedItems = await attachVariantSnapshots(computedItems);
 
     const discountPercent = user.loyaltyLevel?.discountPercent || 0;
     const discountAmount = Math.round(subtotal * (discountPercent / 100));
@@ -253,12 +256,13 @@ export async function POST(request: NextRequest) {
         ]
       );
 
-      for (const item of computedItems) {
+      for (const item of stampedItems) {
         const itemId = uuidv4();
         await client.query(
-          `INSERT INTO "order_items" (id, "orderId", "productId", quantity, "unitPrice")
-           VALUES ($1, $2, $3, $4, $5)`,
-          [itemId, orderId, item.productId, item.quantity, item.unitPrice]
+          `INSERT INTO "order_items"
+             (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice")
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [itemId, orderId, item.productId, item.variantId, item.variantName, item.quantity, item.unitPrice]
         );
         for (const c of item.customizations || []) {
           await client.query(
@@ -323,6 +327,9 @@ export async function POST(request: NextRequest) {
       payment: needsBank ? { paymentUrl, payload: paymentPayload } : null,
     });
   } catch (error) {
+    if (error instanceof VariantOrderError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Create order error:', error);
     return NextResponse.json({ error: 'Ошибка создания заказа' }, { status: 500 });
   }

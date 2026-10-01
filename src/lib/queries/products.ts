@@ -3,6 +3,7 @@ import type {
   CategoryRow,
   IngredientRow,
   ProductRow,
+  ProductVariantRow,
   ProductWithRelations,
 } from '@/lib/types';
 
@@ -69,6 +70,7 @@ function rowToProduct(row: ProductJoinedRow): ProductWithRelations {
     updatedAt: row.updatedAt,
     category: rowToCategory(row),
     ingredients: [],
+    variants: [],
   };
 }
 
@@ -161,6 +163,20 @@ export async function fetchProductsWithRelations(
       isExtra: row.pi_isExtra,
       ingredient,
     });
+  }
+
+  const variants = await query<ProductVariantRow>(
+    `SELECT id, "productId", name, image, "sortOrder"
+       FROM "product_variants"
+      WHERE "productId" = ANY($1::text[])
+      ORDER BY "sortOrder" ASC, name ASC`,
+    [ids]
+  );
+
+  for (const variant of variants) {
+    const product = productMap.get(variant.productId);
+    if (!product) continue;
+    product.variants.push(variant);
   }
 
   return products.map((r) => productMap.get(r.id)!);

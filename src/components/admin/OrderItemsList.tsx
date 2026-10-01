@@ -1,3 +1,5 @@
+import { formatVariantTitle } from '@/lib/productTitle';
+
 export const ORDER_STATUS_LABELS: Record<string, { label: string; chip: string }> = {
   PENDING: { label: 'Ожидает', chip: 'admin-chip-neutral' },
   CONFIRMED: { label: 'Подтверждён', chip: 'bg-sky-100 text-sky-800' },
@@ -15,6 +17,7 @@ export interface OrderCustomizationView {
 
 export interface OrderItemView {
   product: { name: string } | null;
+  variantName?: string | null;
   quantity: number;
   unitPrice: number;
   customizations: OrderCustomizationView[];
@@ -33,7 +36,7 @@ export function OrderItemsList({ items }: { items: OrderItemView[] }) {
         return (
           <div key={i} className="text-xs leading-relaxed text-(--lg-text-muted)">
             <span className="font-medium text-(--lg-text)">
-              {item.product?.name ?? 'Товар'} ×{item.quantity}
+              {formatVariantTitle(item.product?.name ?? 'Товар', item.variantName)} ×{item.quantity}
             </span>
             <span className="ml-1 tabular-nums">· {item.unitPrice} ₽</span>
             {adds.map((c, j) => (

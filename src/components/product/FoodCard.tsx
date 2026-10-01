@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { NutritionChip } from "./NutritionChip";
 import { PriceCTA } from "./PriceCTA";
 import { isNewProduct } from "@/lib/productFlags";
@@ -14,6 +15,12 @@ export type FoodCardNutrition = {
   weightGrams?: number | null;
 };
 
+export type FoodCardVariant = {
+  id: string;
+  name: string;
+  image: string | null;
+};
+
 export type FoodCardModel = {
   id: string;
   name: string;
@@ -21,6 +28,8 @@ export type FoodCardModel = {
   image: string | null;
   categoryName?: string | null;
   createdAt?: string | null;
+  variantId?: string | null;
+  variants?: FoodCardVariant[];
 } & FoodCardNutrition;
 
 type FoodCardProps = {
@@ -28,10 +37,13 @@ type FoodCardProps = {
   quantity: number;
   busy?: boolean;
   eager?: boolean;
+  flavor?: string | null;
   onOpen: () => void;
   onAdd: (event: React.MouseEvent) => void;
   onIncrement: (event: React.MouseEvent) => void;
   onDecrement: (event: React.MouseEvent) => void;
+  onPrevFlavor?: () => void;
+  onNextFlavor?: () => void;
 };
 
 export function nutritionChips(product: FoodCardNutrition): string[] {
@@ -59,16 +71,21 @@ export function FoodCard({
   quantity,
   busy = false,
   eager = false,
+  flavor = null,
   onOpen,
   onAdd,
   onIncrement,
   onDecrement,
+  onPrevFlavor,
+  onNextFlavor,
 }: FoodCardProps) {
   const mediaRef = useRef<HTMLDivElement>(null);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const chips = nutritionChips(product);
-  const openLabel = `Открыть ${product.name}, ${product.price} руб.`;
+  const labelName = flavor ? `${product.name}, ${flavor}` : product.name;
+  const openLabel = `Открыть ${labelName}, ${product.price} руб.`;
   const showImage = Boolean(product.image) && failedSrc !== product.image;
+  const showFlavorNav = Boolean(onPrevFlavor && onNextFlavor);
 
   const resetParallax = useCallback(() => {
     const el = mediaRef.current;
@@ -95,6 +112,7 @@ export function FoodCard({
       onMouseLeave={resetParallax}
     >
       <div className="food-card__clip">
+        <div className="food-card__stage">
         <button
           type="button"
           className="food-card__main"
@@ -109,7 +127,7 @@ export function FoodCard({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={product.image!}
-                alt={product.name}
+                alt={labelName}
                 className="food-card__img"
                 loading="eager"
                 fetchPriority={eager ? "high" : "auto"}
@@ -132,6 +150,7 @@ export function FoodCard({
 
           <div className="food-card__body">
             <h3 className="food-card__title">{product.name}</h3>
+            {flavor ? <p className="food-card__flavor">{flavor}</p> : null}
             {chips.length > 0 ? (
               <div className="food-card__chips">
                 {chips.map((label) => (
@@ -141,6 +160,35 @@ export function FoodCard({
             ) : null}
           </div>
         </button>
+        {showFlavorNav ? (
+          <div className="food-card__navs">
+            <button
+              type="button"
+              className="food-card__nav food-card__nav--prev"
+              aria-label={`Предыдущий вкус ${product.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                event.preventDefault();
+                onPrevFlavor?.();
+              }}
+            >
+              <ChevronLeft className="size-5" strokeWidth={2.25} />
+            </button>
+            <button
+              type="button"
+              className="food-card__nav food-card__nav--next"
+              aria-label={`Следующий вкус ${product.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                event.preventDefault();
+                onNextFlavor?.();
+              }}
+            >
+              <ChevronRight className="size-5" strokeWidth={2.25} />
+            </button>
+          </div>
+        ) : null}
+        </div>
       </div>
 
       <div
@@ -151,9 +199,9 @@ export function FoodCard({
           price={product.price}
           quantity={quantity}
           busy={busy}
-          addLabel={`Добавить ${product.name} в корзину`}
-          incrementLabel={`Добавить ещё ${product.name}`}
-          decrementLabel={`Убрать ${product.name} из корзины`}
+          addLabel={`Добавить ${labelName} в корзину`}
+          incrementLabel={`Добавить ещё ${labelName}`}
+          decrementLabel={`Убрать ${labelName} из корзины`}
           onAdd={onAdd}
           onIncrement={onIncrement}
           onDecrement={onDecrement}

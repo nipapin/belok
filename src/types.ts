@@ -8,6 +8,12 @@ export enum MenuLabel {
   ADMIN = "Админка",
 }
 
+export interface ProductVariant {
+  id: string;
+  name: string;
+  image: string | null;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -24,6 +30,7 @@ export interface Product {
   createdAt?: string;
   category: { id: string; name: string };
   ingredients: ProductIngredient[];
+  variants: ProductVariant[];
 }
 
 export interface Category {

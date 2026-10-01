@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Plus, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { variantCountLabel } from '@/lib/productTitle';
 import SortableList from '@/components/admin/SortableList';
 
 interface Ingredient {
@@ -38,6 +39,7 @@ interface Product {
   sortOrder: number;
   category: { id: string; name: string; sortOrder?: number };
   ingredients: ProductIngredient[];
+  variants?: { id: string }[];
 }
 
 interface CategoryGroup {
@@ -200,7 +202,12 @@ export default function AdminProductsPage() {
                     )}
                     <div className="min-w-0">
                       <p className="font-semibold text-(--lg-text)">{product.name}</p>
-                      <p className="mt-0.5 text-sm tabular-nums text-(--lg-text-muted)">{product.price} ₽</p>
+                      <p className="mt-0.5 text-sm tabular-nums text-(--lg-text-muted)">
+                        {product.price} ₽
+                        {(product.variants?.length ?? 0) > 0
+                          ? ` · ${variantCountLabel(product.variants!.length)}`
+                          : ''}
+                      </p>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-1">
