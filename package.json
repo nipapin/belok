@@ -73,6 +73,7 @@
     "esbuild": true,
     "sharp": true,
     "unrs-resolver": true,
-    "puppeteer@25.10.0": true
+    "puppeteer@25.10.0": true,
+    "core-js-pure": false
   }
 }
