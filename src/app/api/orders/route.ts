@@ -140,6 +140,7 @@ export async function POST(request: NextRequest) {
           fulfillment?: string;
           deliveryAddress?: string;
           deliveryTime?: string;
+          pickupTime?: string;
           contactPhone?: string;
           paymentMethod?: string;
         }
@@ -150,6 +151,7 @@ export async function POST(request: NextRequest) {
     const fulfillment = body?.fulfillment === 'DELIVERY' ? 'DELIVERY' : body?.fulfillment === 'PICKUP' ? 'PICKUP' : null;
     const deliveryAddress = typeof body?.deliveryAddress === 'string' ? body.deliveryAddress.trim() : '';
     const deliveryTime = typeof body?.deliveryTime === 'string' ? body.deliveryTime.trim() : '';
+    const pickupTime = typeof body?.pickupTime === 'string' ? body.pickupTime.trim() : '';
     const contactPhone = typeof body?.contactPhone === 'string' ? body.contactPhone.trim() : '';
 
     if (!items || items.length === 0) {
@@ -188,6 +190,19 @@ export async function POST(request: NextRequest) {
 
     if (!fulfillment) {
       return NextResponse.json({ error: 'Выберите доставку или самовывоз' }, { status: 400 });
+    }
+
+    if (fulfillment === 'DELIVERY' && body?.paymentMethod === 'CASH') {
+      return NextResponse.json({ error: 'При доставке доступна только онлайн-оплата' }, { status: 400 });
+    }
+    if (fulfillment === 'PICKUP' && !pickupTime) {
+      return NextResponse.json({ error: 'Укажите время самовывоза' }, { status: 400 });
+    }
+    if (fulfillment === 'PICKUP' && pickupTime !== 'ASAP') {
+      const time = Date.parse(pickupTime);
+      if (!Number.isFinite(time) || time <= Date.now()) {
+        return NextResponse.json({ error: 'Выберите доступное время самовывоза' }, { status: 400 });
+      }
     }
 
     if (fulfillment === 'DELIVERY') {
@@ -238,8 +253,8 @@ export async function POST(request: NextRequest) {
       await client.query(
         `INSERT INTO "orders"
           (id, "userId", total, "discountAmount", "bonusUsed", comment, "dailyNumber",
-           fulfillment, "deliveryAddress", "deliveryTime", "contactPhone", "paymentMethod")
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+           fulfillment, "deliveryAddress", "deliveryTime", "contactPhone", "paymentMethod", "pickupTime")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
           orderId,
           user.id,
@@ -253,6 +268,7 @@ export async function POST(request: NextRequest) {
           fulfillmentValue === 'DELIVERY' ? deliveryTime : null,
           fulfillmentValue === 'DELIVERY' ? contactPhone : null,
           paymentMethod,
+          fulfillmentValue === 'PICKUP' ? pickupTime : null,
         ]
       );
 
@@ -291,6 +307,7 @@ export async function POST(request: NextRequest) {
 
     let paymentUrl: string | null = null;
     let paymentPayload: string | null = null;
+    let paymentImage: string | null = null;
     if (needsBank) {
       try {
         const payment = await startTbankPayment({
@@ -301,16 +318,17 @@ export async function POST(request: NextRequest) {
         });
         paymentUrl = payment.paymentUrl;
         paymentPayload = payment.payload;
-        if (!paymentUrl && !paymentPayload) {
-          throw new Error('Т-Банк не вернул ссылку на оплату');
+        paymentImage = payment.image;
+        if (paymentMethod === 'SBP' ? !paymentPayload && !paymentImage : !paymentUrl) {
+          throw new Error('Т-Банк не вернул данные для оплаты');
         }
       } catch (error) {
-        console.error('Create T-Bank payment error:', error);
+        console.error('Create T-Bank payment error:', { orderId, paymentMethod, error });
         await query(`UPDATE "orders" SET status = 'CANCELLED' WHERE id = $1`, [orderId]);
         await settleOrderLoyalty(orderId, 'CANCELLED');
         const message =
           error instanceof TbankError ? error.message : 'Не удалось создать платёж';
-        return NextResponse.json({ error: message }, { status: 502 });
+        return NextResponse.json({ error: message, orderId }, { status: 502 });
       }
     }
 
@@ -324,7 +342,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       order,
-      payment: needsBank ? { paymentUrl, payload: paymentPayload } : null,
+      payment: needsBank ? { paymentUrl, payload: paymentPayload, image: paymentImage } : null,
     });
   } catch (error) {
     if (error instanceof VariantOrderError) {

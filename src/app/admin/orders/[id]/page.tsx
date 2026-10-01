@@ -29,6 +29,7 @@ interface AdminOrder {
   fulfillment?: string | null;
   deliveryAddress?: string | null;
   deliveryTime?: string | null;
+  pickupTime?: string | null;
   contactPhone?: string | null;
   paymentMethod?: string | null;
   comment: string | null;
@@ -163,6 +164,9 @@ export default function AdminOrderDetailPage() {
         ) : null}
         {formatDeliveryTime(order.deliveryTime) ? (
           <p className="text-sm text-(--lg-text-muted)">{formatDeliveryTime(order.deliveryTime)}</p>
+        ) : null}
+        {order.fulfillment === 'PICKUP' && formatDeliveryTime(order.pickupTime) ? (
+          <p className="text-sm text-(--lg-text-muted)">Время самовывоза: {formatDeliveryTime(order.pickupTime)}</p>
         ) : null}
       </section>
 

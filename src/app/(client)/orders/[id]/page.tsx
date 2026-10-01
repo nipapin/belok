@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import SbpPayPanel from '@/components/order/SbpPayPanel';
@@ -46,6 +46,7 @@ interface Order {
   fulfillment?: string | null;
   deliveryAddress?: string | null;
   deliveryTime?: string | null;
+  pickupTime?: string | null;
   contactPhone?: string | null;
   paymentMethod?: string | null;
   comment: string | null;
@@ -56,6 +57,7 @@ interface Order {
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const { data, isLoading } = useQuery({
     queryKey: ['order', id],
@@ -115,7 +117,7 @@ export default function OrderDetailPage() {
       {order.paymentStatus === 'PENDING' &&
         order.tbankPaymentId &&
         order.status !== 'CANCELLED' &&
-        order.paymentMethod === 'SBP' && <SbpPayPanel orderId={order.id} />}
+        order.paymentMethod === 'SBP' && <SbpPayPanel orderId={order.id} autoOpenBank={searchParams.get('pay') === 'sbp'} />}
       {order.paymentStatus === 'PENDING' &&
         order.tbankPaymentId &&
         order.status !== 'CANCELLED' &&
@@ -161,6 +163,9 @@ export default function OrderDetailPage() {
           ) : null}
           {formatDeliveryTime(order.deliveryTime) ? (
             <p className="mt-1 text-sm text-(--lg-text-muted)">{formatDeliveryTime(order.deliveryTime)}</p>
+          ) : null}
+          {order.fulfillment === 'PICKUP' && formatDeliveryTime(order.pickupTime) ? (
+            <p className="mt-1 text-sm text-(--lg-text-muted)">Время самовывоза: {formatDeliveryTime(order.pickupTime)}</p>
           ) : null}
           {order.contactPhone ? (
             <p className="mt-1 text-sm text-(--lg-text-muted)">{order.contactPhone}</p>

@@ -40,12 +40,15 @@ export function deliveryTimeLabel(value: string): string {
 export default function DeliveryTimePicker({
   value,
   onChange,
+  label = 'Время',
 }: {
   value: string;
   onChange: (value: string) => void;
+  label?: string;
 }) {
   const today = useMemo(() => startOfDay(new Date()), []);
   const slots = useMemo(() => buildTodaySlots(), []);
+  const hasAvailableSlots = slots.some((slot) => slot.available);
   const [scheduled, setScheduled] = useState(() => Boolean(value && value !== ASAP_TIME));
   const selectedDate = value && value !== ASAP_TIME && !Number.isNaN(new Date(value).getTime()) ? new Date(value) : null;
   const selectedTime = selectedDate
@@ -71,7 +74,7 @@ export default function DeliveryTimePicker({
 
   return (
     <div>
-      <span className="mb-1.5 block text-sm font-medium text-(--lg-text)">Время</span>
+      <span className="mb-1.5 block text-sm font-medium text-(--lg-text)">{label}</span>
       <div className="grid grid-cols-2 items-stretch gap-2">
         <button
           type="button"
@@ -88,11 +91,15 @@ export default function DeliveryTimePicker({
           type="button"
           className={`${scheduled ? 'btn-primary' : 'btn-outline'} h-full w-full flex-col !rounded-[calc(1.75rem/1.618)] py-3.5 text-center text-sm leading-tight`}
           onClick={pickScheduled}
+          disabled={!hasAvailableSlots}
         >
           <CalendarClock className="size-5" strokeWidth={1.75} />
           Ко времени
         </button>
       </div>
+      {!hasAvailableSlots && (
+        <p className="mt-2 text-sm text-(--lg-text-muted)">На сегодня нет доступного времени.</p>
+      )}
       {scheduled && (
         <div className="mt-3 grid grid-cols-4 gap-2">
           {slots.map((slot) => (

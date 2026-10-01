@@ -52,7 +52,7 @@ export async function startTbankPayment(order: {
       payload = qr.payload;
       image = qr.image;
     } catch (error) {
-      console.error('T-Bank GetQr failed:', error);
+      console.error('T-Bank GetQr failed:', { orderId: order.id, paymentId, error });
     }
   }
 
@@ -61,15 +61,26 @@ export async function startTbankPayment(order: {
 }
 
 async function loadSbpQr(paymentId: string): Promise<{ payload: string | null; image: string | null }> {
-  const [payloadQr, imageQr] = await Promise.all([
+  const results = await Promise.allSettled([
     tbankGetQr(paymentId, 'PAYLOAD'),
     tbankGetQr(paymentId, 'IMAGE'),
   ]);
-  const payloadData = typeof payloadQr.Data === 'string' ? payloadQr.Data.trim() : '';
-  const imageData = typeof imageQr.Data === 'string' ? imageQr.Data.trim() : '';
+  const [payloadResult, imageResult] = results;
+  for (const [index, result] of results.entries()) {
+    if (result.status === 'rejected') {
+      console.error('T-Bank QR request failed:', {
+        paymentId, dataType: index === 0 ? 'PAYLOAD' : 'IMAGE',
+        reason: result.reason instanceof Error ? result.reason.message : 'UnknownError',
+      });
+    }
+  }
+  const payloadQr = payloadResult.status === 'fulfilled' ? payloadResult.value : null;
+  const imageQr = imageResult.status === 'fulfilled' ? imageResult.value : null;
+  const payloadData = typeof payloadQr?.Data === 'string' ? payloadQr.Data.trim() : '';
+  const imageData = typeof imageQr?.Data === 'string' ? imageQr.Data.trim() : '';
   return {
-    payload: payloadQr.Success && payloadData.startsWith('http') ? payloadData : null,
-    image: imageQr.Success && imageData.startsWith('<svg') ? imageData : null,
+    payload: payloadQr?.Success && payloadData.startsWith('http') ? payloadData : null,
+    image: imageQr?.Success && imageData.startsWith('<svg') ? imageData : null,
   };
 }
 
@@ -123,20 +134,24 @@ export async function syncSbpPayment(order: OrderRow): Promise<{
   bankStatus: string | null;
   payload: string | null;
   image: string | null;
+  error?: string;
 }> {
   if (order.paymentStatus !== 'PENDING' || !order.tbankPaymentId) {
     return { paymentStatus: order.paymentStatus, bankStatus: null, payload: null, image: null };
   }
 
   let bankStatus: string | null = null;
+  let paymentError: string | undefined;
   try {
     const state = await tbankGetState(order.tbankPaymentId);
+    assertTbankSuccess(state, 'Не удалось проверить оплату');
     bankStatus = state.Status ?? null;
     if (bankStatus) {
       await applyTbankPaymentStatus(order.id, bankStatus);
     }
   } catch (error) {
-    console.error('T-Bank GetState failed:', error);
+    console.error('T-Bank GetState failed:', { orderId: order.id, paymentId: order.tbankPaymentId, error });
+    paymentError = 'Не удалось проверить оплату. Если деньги списаны, не оплачивайте повторно — дождитесь обновления статуса.';
   }
 
   const latest = await queryOne<OrderRow>(`SELECT * FROM "orders" WHERE id = $1`, [order.id]);
@@ -151,9 +166,13 @@ export async function syncSbpPayment(order: OrderRow): Promise<{
     const qr = await loadSbpQr(order.tbankPaymentId);
     payload = qr.payload;
     image = qr.image;
+    if (!payload && !image && !paymentError) {
+      paymentError = 'Не удалось получить данные для оплаты. Попробуйте обновить их.';
+    }
   } catch (error) {
-    console.error('T-Bank GetQr failed:', error);
+    console.error('T-Bank GetQr failed:', { orderId: order.id, paymentId: order.tbankPaymentId, error });
+    paymentError ??= 'Не удалось получить данные для оплаты. Попробуйте обновить их.';
   }
 
-  return { paymentStatus, bankStatus, payload, image };
+  return { paymentStatus, bankStatus, payload, image, error: paymentError };
 }

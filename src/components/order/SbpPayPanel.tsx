@@ -9,6 +9,7 @@ interface PaymentResponse {
   bankStatus?: string | null;
   payload?: string | null;
   image?: string | null;
+  paymentUrl?: string | null;
   error?: string;
 }
 
@@ -29,6 +30,7 @@ export default function SbpPayPanel({
   initialImage = null,
   onStatus,
   showBankLink = true,
+  autoOpenBank = false,
   qrPx = 264,
   hint = 'Отсканируйте QR или откройте приложение банка. Статус обновится сам.',
   cancelledMessage = 'Оплата не прошла или время QR истекло. Заказ отменён, бонусы возвращены.',
@@ -39,19 +41,25 @@ export default function SbpPayPanel({
   initialImage?: string | null;
   onStatus?: (status: string) => void;
   showBankLink?: boolean;
+  autoOpenBank?: boolean;
   qrPx?: number;
   hint?: string;
   cancelledMessage?: string;
 }) {
   const queryClient = useQueryClient();
   const onStatusRef = useRef(onStatus);
-  onStatusRef.current = onStatus;
+  const bankOpenedRef = useRef(false);
+  useEffect(() => {
+    onStatusRef.current = onStatus;
+  }, [onStatus]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['order-payment', orderId, statusUrl],
     queryFn: async (): Promise<PaymentResponse> => {
       const res = await fetch(statusUrl ?? `/api/orders/${orderId}/payment`);
-      return res.json();
+      const payment = await res.json() as PaymentResponse;
+      if (!res.ok) throw new Error(payment.error || 'Не удалось проверить оплату');
+      return payment;
     },
     refetchInterval: (query) => {
       const status = query.state.data?.paymentStatus;
@@ -61,8 +69,18 @@ export default function SbpPayPanel({
   });
 
   const payload = data?.payload || initialPayload || null;
+  const bankUrl = payload || data?.paymentUrl || null;
   const image = data?.image || initialImage || null;
   const svg = image?.trim().startsWith('<svg') ? presentQrSvg(image, qrPx) : '';
+
+  useEffect(() => {
+    if (!autoOpenBank || !bankUrl || bankOpenedRef.current || data?.paymentStatus !== 'PENDING') return;
+    bankOpenedRef.current = true;
+    const orderUrl = new URL(window.location.href);
+    orderUrl.searchParams.delete('pay');
+    window.history.replaceState(null, '', `${orderUrl.pathname}${orderUrl.search}`);
+    window.location.assign(bankUrl);
+  }, [autoOpenBank, bankUrl, data?.paymentStatus]);
 
   useEffect(() => {
     const status = data?.paymentStatus;
@@ -87,6 +105,14 @@ export default function SbpPayPanel({
     <div className="glass-panel mb-4 p-4">
       <h2 className="mb-1 text-center text-base font-semibold text-(--lg-text)">Оплата по СБП</h2>
       <p className="mb-4 text-center text-sm text-(--lg-text-muted)">{hint}</p>
+      {(isError || data?.error) && (
+        <div role="alert" className="mb-4 rounded-2xl border border-rose-400/35 p-3 text-sm text-(--lg-text)">
+          <p>{data?.error || 'Не удалось проверить оплату. Проверьте соединение и обновите статус.'}</p>
+          <button type="button" className="btn-outline mt-2 w-full" disabled={isFetching} onClick={() => void refetch()}>
+            {isFetching ? 'Обновляем…' : 'Обновить оплату'}
+          </button>
+        </div>
+      )}
       {isLoading && !svg ? (
         <div className="flex justify-center py-8">
           <Loader2 className="size-6 animate-spin text-(--lg-text-muted)" />
@@ -99,8 +125,8 @@ export default function SbpPayPanel({
       ) : (
         <p className="mb-4 text-center text-sm text-(--lg-text-muted)">Готовим QR-код…</p>
       )}
-      {showBankLink && payload ? (
-        <a href={payload} className="btn-primary mb-2 flex w-full items-center justify-center gap-2 py-3">
+      {showBankLink && bankUrl ? (
+        <a href={bankUrl} className="btn-primary mb-2 flex w-full items-center justify-center gap-2 py-3">
           <ExternalLink className="size-4" strokeWidth={1.75} />
           Открыть приложение банка
         </a>

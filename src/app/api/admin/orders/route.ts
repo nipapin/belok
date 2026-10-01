@@ -78,6 +78,7 @@ export async function GET() {
       fulfillment: o.fulfillment,
       deliveryAddress: o.deliveryAddress,
       deliveryTime: o.deliveryTime,
+      pickupTime: o.pickupTime,
       contactPhone: o.contactPhone,
       paymentMethod: o.paymentMethod,
       comment: o.comment,

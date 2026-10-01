@@ -70,6 +70,7 @@ export async function fetchAdminOrderById(id: string) {
     fulfillment: order.fulfillment,
     deliveryAddress: order.deliveryAddress,
     deliveryTime: order.deliveryTime,
+    pickupTime: order.pickupTime,
     contactPhone: order.contactPhone,
     paymentMethod: order.paymentMethod,
     comment: order.comment,

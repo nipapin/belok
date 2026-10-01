@@ -132,6 +132,7 @@ export interface OrderRow {
   fulfillment: OrderFulfillment;
   deliveryAddress: string | null;
   deliveryTime: string | null;
+  pickupTime: string | null;
   contactPhone: string | null;
   paymentMethod: OrderPaymentMethod | null;
   comment: string | null;

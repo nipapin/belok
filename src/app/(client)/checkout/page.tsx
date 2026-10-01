@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Banknote, Bike, Check, Loader2, QrCode, Store } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
@@ -11,10 +12,12 @@ import PhoneField from '@/components/checkout/PhoneField';
 import DeliveryTimePicker, { ASAP_TIME } from '@/components/checkout/DeliveryTimePicker';
 import KaliningradAddressField from '@/components/checkout/KaliningradAddressField';
 import { formatRuPhoneMask } from '@/lib/phone';
+import { getClientOs } from '@/lib/clientPlatform';
 import type { OrderFulfillment, OrderPaymentMethod } from '@/lib/types';
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { items, getTotalPrice, clearCart, getItemPrice } = useCartStore();
   const user = useAuthStore((s) => s.user);
   const haptic = useHaptic();
@@ -22,6 +25,7 @@ export default function CheckoutPage() {
   const [fulfillment, setFulfillment] = useState<OrderFulfillment>('PICKUP');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryTime, setDeliveryTime] = useState(ASAP_TIME);
+  const [pickupTime, setPickupTime] = useState(ASAP_TIME);
   const [contactPhone, setContactPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<Extract<OrderPaymentMethod, 'CASH' | 'SBP'>>('SBP');
   const [bonusUsed, setBonusUsed] = useState(0);
@@ -94,14 +98,14 @@ export default function CheckoutPage() {
         setError('Укажите адрес доставки');
         return;
       }
-      if (!deliveryTime) {
-        setError('Укажите время доставки');
-        return;
-      }
       if (contactPhone.replace(/\D/g, '').length < 10) {
         setError('Укажите телефон для связи');
         return;
       }
+    }
+    if (!(fulfillment === 'DELIVERY' ? deliveryTime : pickupTime)) {
+      setError(fulfillment === 'DELIVERY' ? 'Укажите время доставки' : 'Укажите время самовывоза');
+      return;
     }
     if (paymentMethod === 'SBP' && total > 0 && total < 10) {
       setError('Онлайн-оплата принимает платежи от 10 ₽. Спишите бонусы или добавьте товары.');
@@ -130,6 +134,7 @@ export default function CheckoutPage() {
           fulfillment,
           deliveryAddress,
           deliveryTime,
+          pickupTime,
           contactPhone,
           paymentMethod: total > 0 ? paymentMethod : 'BONUS',
         }),
@@ -143,14 +148,25 @@ export default function CheckoutPage() {
       }
 
       haptic('success');
+      queryClient.setQueryData(['order', data.order.id], { order: data.order });
+      if (data.payment) {
+        queryClient.setQueryData(['order-payment', data.order.id, undefined], {
+          paymentStatus: data.order.paymentStatus,
+          payload: data.payment.payload,
+          image: data.payment.image,
+          paymentUrl: data.payment.paymentUrl,
+        });
+      }
       setOrderPlaced(true);
       clearCart();
-      const payUrl = data.payment?.paymentUrl || data.payment?.payload;
-      if (typeof payUrl === 'string' && payUrl) {
-        window.location.assign(payUrl);
+      const orderUrl = `/orders/${data.order.id}`;
+      const bankUrl = data.payment?.payload || data.payment?.paymentUrl;
+      if (getClientOs() !== 'desktop' && typeof bankUrl === 'string' && bankUrl) {
+        // Mount the order before opening the bank, so browser back restores the order UI.
+        router.replace(`${orderUrl}?pay=sbp`);
         return;
       }
-      router.replace(`/orders/${data.order.id}`);
+      router.replace(orderUrl);
     } catch {
       haptic('error');
       setError('Ошибка соединения');
@@ -246,7 +262,10 @@ export default function CheckoutPage() {
             <Store className="size-5" strokeWidth={1.75} />
             Самовывоз
           </button>
-          <button type="button" className={choiceClass(fulfillment === 'DELIVERY')} onClick={() => setFulfillment('DELIVERY')}>
+          <button type="button" className={choiceClass(fulfillment === 'DELIVERY')} onClick={() => {
+            setFulfillment('DELIVERY');
+            setPaymentMethod('SBP');
+          }}>
             <Bike className="size-5" strokeWidth={1.75} />
             Доставка
           </button>
@@ -254,8 +273,13 @@ export default function CheckoutPage() {
         {fulfillment === 'DELIVERY' && (
           <div className="mt-4 space-y-3">
             <KaliningradAddressField value={deliveryAddress} onChange={setDeliveryAddress} />
-            <DeliveryTimePicker value={deliveryTime} onChange={setDeliveryTime} />
+            <DeliveryTimePicker label="Время доставки" value={deliveryTime} onChange={setDeliveryTime} />
             <PhoneField value={contactPhone} onChange={setContactPhone} />
+          </div>
+        )}
+        {fulfillment === 'PICKUP' && (
+          <div className="mt-4">
+            <DeliveryTimePicker label="Время самовывоза" value={pickupTime} onChange={setPickupTime} />
           </div>
         )}
       </div>
@@ -274,8 +298,8 @@ export default function CheckoutPage() {
       {total > 0 && (
         <div className="mb-6">
           <h2 className="mb-3 text-base font-semibold text-(--lg-text)">Оплата</h2>
-          <div className="grid grid-cols-2 items-start gap-2">
-            <div className="min-w-0">
+          <div className={`grid ${fulfillment === 'PICKUP' ? 'grid-cols-2' : 'grid-cols-1'} items-start gap-2`}>
+            {fulfillment === 'PICKUP' && <div className="min-w-0">
               <button
                 type="button"
                 className={`${choiceClass(paymentMethod === 'CASH')} w-full`}
@@ -289,7 +313,7 @@ export default function CheckoutPage() {
                   Возможен перевод
                 </p>
               )}
-            </div>
+            </div>}
             <button
               type="button"
               className={`${choiceClass(paymentMethod === 'SBP')} w-full`}

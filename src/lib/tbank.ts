@@ -82,16 +82,34 @@ async function tbankRequest<T extends Record<string, unknown>>(
   const { terminalKey, password } = credentials();
   const payload = { TerminalKey: terminalKey, ...params };
   const body = { ...payload, Token: tbankToken(payload, password) };
-  const res = await fetch(`${API_URL}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = (await res.json().catch(() => null)) as T | null;
-  if (!data) {
-    throw new TbankError(`Т-Банк ${method}: пустой ответ`, String(res.status));
+  const started = Date.now();
+  const context = { method, orderId: params.OrderId, paymentId: params.PaymentId };
+  try {
+    const res = await fetch(`${API_URL}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const data = (await res.json().catch(() => null)) as T | null;
+    if (!res.ok || !data || data.Success === false) {
+      console.error('T-Bank request failed:', {
+        ...context, httpStatus: res.status, errorCode: data?.ErrorCode,
+        durationMs: Date.now() - started,
+      });
+    }
+    if (!res.ok || !data) {
+      throw new TbankError('Банк временно недоступен. Попробуйте ещё раз.', String(res.status));
+    }
+    return data;
+  } catch (error) {
+    if (error instanceof TbankError) throw error;
+    console.error('T-Bank connection failed:', {
+      ...context, durationMs: Date.now() - started,
+      reason: error instanceof Error ? error.name : 'UnknownError',
+    });
+    throw new TbankError('Не удалось связаться с банком. Попробуйте ещё раз.');
   }
-  return data;
 }
 
 export function paymentIdToString(id: string | number | undefined | null): string | null {
@@ -103,10 +121,6 @@ export function assertTbankSuccess<
   T extends { Success?: boolean; Message?: string; Details?: string; ErrorCode?: string },
 >(result: T, fallback: string): T {
   if (!result.Success) {
-    if (result.ErrorCode === '204') {
-      const password = process.env.TBANK_PASSWORD ?? '';
-      console.error('T-Bank token rejected (204). Password length:', password.length, 'has &:', password.includes('&'));
-    }
     throw new TbankError(result.Message || result.Details || fallback, result.ErrorCode, result.Details);
   }
   return result;
