@@ -181,6 +181,31 @@ npm run start
 - задан `SESSION_SECRET`;
 - применены миграции: `npm run db:migrate`.
 
+### Т-Банк: сертификаты и запуск через PM2
+
+Для онлайн-оплаты нужны `TBANK_TERMINAL_KEY` и `TBANK_PASSWORD` в `.env`.
+API `securepay.tinkoff.ru` использует сертификаты Russian Trusted CA.
+Если Node.js не доверяет этой цепочке, запросы завершаются ошибкой
+`SELF_SIGNED_CERT_IN_CHAIN`, а покупатель видит «Не удалось связаться с банком».
+Инструкция банка: <https://developer.tbank.ru/eacq/intro/certificates/>.
+
+На сервере `belok` корневой и промежуточный сертификаты в PEM-формате
+находятся в `/etc/ssl/tbank/russian-trusted-ca-bundle.pem`.
+`ecosystem.config.js` передаёт этот путь через `NODE_EXTRA_CA_CERTS` при запуске
+основного приложения:
+
+```bash
+pm2 startOrReload ecosystem.config.js --only belok --update-env
+pm2 save
+```
+
+Для другого пути задайте `NODE_EXTRA_CA_CERTS` в окружении этой команды.
+Переменная читается Node.js только при запуске процесса; записи в `.env`
+приложения недостаточно. Проверка TLS остаётся включённой.
+`npm run deploy` использует эту конфигурацию и сохраняет её в PM2 для
+восстановления после перезагрузки сервера. Тестовый процесс `belok-dev`
+настраивается отдельно.
+
 ## Лицензия
 
 Приватный проект (`"private": true` в `package.json`). Условия распространения задайте при необходимости отдельно.

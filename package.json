@@ -11,7 +11,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "icons:generate": "tsx scripts/generate-icons.ts",
     "push:keys": "tsx scripts/generate-vapid-keys.ts",
-    "deploy": "git pull && npm ci --no-fund --no-audit && npm run build && pm2 reload all",
+    "deploy": "git pull && npm ci --no-fund --no-audit && npm run build && pm2 startOrReload ecosystem.config.js --only belok --update-env && pm2 save",
     "test:smoke": "node scripts/smoke-puppeteer.mjs",
     "test:checkout": "node scripts/test-checkout-api.mjs",
     "test:checkout:browser": "node scripts/test-checkout-browser.mjs"
