@@ -15,6 +15,8 @@ const menuItems = [
   { label: 'Категории', icon: Tags, path: '/admin/categories' },
   { label: 'Хиты', icon: Flame, path: '/admin/hits' },
   { label: 'Ингредиенты', icon: ChefHat, path: '/admin/ingredients' },
+  { label: 'Кухня · приготовление', icon: ChefHat, path: '/kitchen' },
+  { label: 'Кухня · техкарты', icon: ChefHat, path: '/admin/kitchen' },
   { label: 'Заказы', icon: Receipt, path: '/admin/orders' },
   { label: 'Касса · Лояльность', icon: ScanLine, path: '/admin/loyalty' },
   { label: 'Пользователи', icon: Users, path: '/admin/users' },

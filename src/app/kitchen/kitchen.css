@@ -1,0 +1,77 @@
+.kitchen-app { --k-ink:#20312c; --k-muted:#61716b; --k-green:#215b42; color:var(--k-ink); background:#f5f5ef; height:100dvh; overflow:auto; font-size:16px; color-scheme:light; }
+.kitchen-header { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:calc(18px + env(safe-area-inset-top)) max(20px, calc((100vw - 1200px)/2)); border-bottom:1px solid #dce2d8; background:#fffef8; }
+.kitchen-brand { display:flex; align-items:center; gap:10px; font-size:25px; font-weight:800; text-decoration:none; color:var(--k-ink); }
+.kitchen-brand span { font-size:13px; font-weight:500; color:var(--k-muted); border-left:1px solid #c9d3c9; padding-left:12px; }
+.kitchen-admin { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--k-muted); }
+.kitchen-catalog { max-width:1200px; margin:auto; padding:40px 20px 60px; }
+.kitchen-eyebrow { margin:0 0 12px; font-size:12px; font-weight:700; color:var(--k-muted); letter-spacing:.08em; text-transform:uppercase; }
+.kitchen-catalog h1 { font-size:clamp(30px,4vw,48px); font-weight:750; letter-spacing:-.035em; line-height:1.15; }
+.kitchen-subtitle { margin:16px 0 28px; color:var(--k-muted); max-width:670px; line-height:1.6; }
+.kitchen-search { display:flex; gap:12px; align-items:center; max-width:640px; background:#fff; border:1px solid #ccd7cc; border-radius:14px; padding:14px 16px; }
+.kitchen-search input { width:100%; background:transparent; outline:none; color:var(--k-ink); min-width:0; }
+.kitchen-categories { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0; }
+.kitchen-categories button { padding:10px 16px; border:1px solid #ccd7cc; border-radius:30px; font-size:13px; background:#fffef8; }
+.kitchen-categories button[aria-pressed=true] { background:var(--k-green); color:white; border-color:var(--k-green); }
+.kitchen-count,.kitchen-muted { color:var(--k-muted); font-size:13px; }
+.kitchen-count { margin-bottom:16px; }
+.kitchen-card-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.kitchen-recipe { background:#fffef8; border:1px solid #d5dfd2; border-radius:20px; padding:24px; min-height:190px; text-align:left; display:flex; flex-direction:column; transition:box-shadow .2s,border-color .2s; }
+.kitchen-recipe:hover { border-color:#6c9378; box-shadow:0 8px 28px #284e3510; }
+.kitchen-recipe-top,.kitchen-recipe-bottom { display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:12px; color:var(--k-muted); }
+.kitchen-recipe h2 { font-size:22px; font-weight:650; line-height:1.25; margin:22px 0; overflow-wrap:anywhere; }
+.kitchen-recipe-bottom { margin-top:auto; color:var(--k-green); font-weight:650; }
+.kitchen-empty { padding:40px 0; color:var(--k-muted); }
+.kitchen-run { display:flex; flex-direction:column; overflow:hidden; }
+.kitchen-run-header { width:100%; max-width:1000px; margin:0 auto; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.kitchen-back { display:flex; align-items:center; gap:6px; color:var(--k-muted); font-size:13px; min-height:44px; }
+.kitchen-mode { display:flex; background:#e8ede3; border-radius:12px; padding:4px; }
+.kitchen-mode button { display:flex; align-items:center; gap:7px; padding:10px 14px; font-size:13px; border-radius:9px; color:var(--k-muted); }
+.kitchen-mode button[aria-pressed=true] { background:#fff; color:var(--k-ink); box-shadow:0 2px 6px #20312c0a; }
+.kitchen-run-content { flex:1; min-height:0; overflow-y:auto; }
+.kitchen-run-inner { max-width:900px; margin:auto; padding:20px 24px 32px; }
+.kitchen-dish-title { font-size:clamp(22px,3vw,32px); font-weight:650; letter-spacing:-.02em; line-height:1.3; margin-bottom:28px; }
+.kitchen-step-label { display:inline-flex; background:#e2ecd9; color:#385c36; padding:8px 13px; border-radius:30px; font-size:13px; font-weight:650; margin-bottom:16px; }
+.kitchen-step-title { font-size:clamp(24px,3.5vw,36px); font-weight:700; line-height:1.25; margin-bottom:20px; }
+.kitchen-step-text { font-size:clamp(21px,3vw,30px); line-height:1.65; white-space:pre-wrap; overflow-wrap:anywhere; max-width:780px; }
+.kitchen-step-photo { display:block; width:100%; max-width:640px; max-height:340px; object-fit:contain; border-radius:16px; margin:24px 0; background:#e8ede3; }
+.kitchen-table-wrap { overflow-x:auto; border:1px solid #d5dfd2; border-radius:14px; background:#fffef8; }
+.kitchen-ingredients table { width:100%; border-collapse:collapse; font-size:14px; }
+.kitchen-ingredients caption { text-align:left; padding:16px; color:var(--k-muted); font-size:12px; }
+.kitchen-ingredients th,.kitchen-ingredients td { padding:12px 14px; text-align:left; border-top:1px solid #e0e6da; white-space:pre-wrap; overflow-wrap:anywhere; }
+.kitchen-ingredients thead { background:#edf1e7; font-size:12px; }
+.kitchen-ingredients tbody th { font-weight:500; min-width:130px; }
+.kitchen-yield { font-weight:650; margin:16px 0; white-space:pre-wrap; }
+.kitchen-note { background:#fff0cf; color:#665021; padding:16px; border-radius:12px; white-space:pre-wrap; font-size:14px; line-height:1.6; margin:20px 0; }
+.kitchen-run-footer { background:#fffef8; padding:16px 24px calc(16px + env(safe-area-inset-bottom)); border-top:1px solid #d5dfd2; }
+.kitchen-actions { display:flex; gap:12px; max-width:852px; margin:auto; }
+.kitchen-button { display:inline-flex; justify-content:center; align-items:center; gap:12px; background:var(--k-green); color:white; font-size:16px; font-weight:650; min-height:56px; border-radius:14px; padding:14px 22px; }
+.kitchen-actions .kitchen-button:last-child { flex:1; }
+.kitchen-button.secondary { background:#edf1e7; color:var(--k-ink); }
+.kitchen-button:disabled { opacity:.4; cursor:default; }
+.kitchen-progress { max-width:852px; height:4px; border-radius:4px; margin:0 auto 16px; background:#e4eadf; overflow:hidden; }
+.kitchen-progress>div { height:100%; background:var(--k-green); transition:width .2s; }
+.kitchen-full-steps { list-style:none; padding:0; margin:32px 0 0; }
+.kitchen-full-steps li { border-top:1px solid #d5dfd2; padding:24px 0; }
+.kitchen-full-steps h2 { font-size:22px; font-weight:650; margin:10px 0; }
+.kitchen-full-steps p { font-size:18px; line-height:1.7; white-space:pre-wrap; }
+.kitchen-complete { text-align:center; padding:30px 0; }
+.kitchen-complete-icon { display:inline-flex; padding:20px; border-radius:50%; background:#e2ecd9; color:var(--k-green); }
+.kitchen-complete h2 { font-size:30px; margin:24px 0 12px; font-weight:700; }
+.kitchen-complete p { color:var(--k-muted); margin-bottom:24px; }
+.kitchen-timer { display:flex; align-items:center; flex-wrap:wrap; gap:16px; border:1px solid #d5dfd2; background:#fffef8; padding:16px; border-radius:14px; margin-top:24px; }
+.kitchen-app button,.kitchen-app a { cursor:pointer; }
+.kitchen-app button:focus-visible,.kitchen-app a:focus-visible,.kitchen-search:focus-within { outline:3px solid #7ea78c; outline-offset:3px; }
+@media(max-width:800px) { .kitchen-card-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:500px) {
+  .kitchen-card-grid { grid-template-columns:1fr; gap:12px; }
+  .kitchen-catalog { padding-top:28px; }
+  .kitchen-recipe { min-height:160px; padding:20px; }
+  .kitchen-admin span { display:none; }
+  .kitchen-run-header { flex-wrap:wrap; padding:10px 16px; }
+  .kitchen-run-inner { padding:16px 16px 24px; }
+  .kitchen-mode button { padding:10px; font-size:12px; }
+  .kitchen-run-footer { padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .kitchen-button { font-size:14px; padding:14px; gap:6px; }
+  .kitchen-actions { gap:8px; }
+  .kitchen-dish-title { margin-bottom:20px; }
+}

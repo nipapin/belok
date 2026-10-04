@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/output/kitchen-qa/
 
 # next.js
 /.next/

@@ -5,7 +5,7 @@ import { SESSION_COOKIE, readSessionIdFromCookie } from '@/lib/sessionCookie';
 
 /** Profile is client-gated (auth modal). Orders/checkout still need a session. */
 const protectedRoutes = ['/orders', '/checkout'];
-const adminRoutes = ['/admin'];
+const adminRoutes = ['/admin', '/kitchen'];
 
 function redirectHomeToMenu(request: NextRequest) {
   const menu = request.nextUrl.clone();
@@ -55,5 +55,6 @@ export const config = {
     '/orders/:path*',
     '/checkout/:path*',
     '/admin/:path*',
+    '/kitchen/:path*',
   ],
 };
