@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { nutritionChips } from '@/components/product/FoodCard';
+import { SpicinessBadge } from '@/components/product/SpicinessBadge';
 import { formatVariantTitle } from '@/lib/productTitle';
 import { NutritionChip } from '@/components/product/NutritionChip';
 import { isNewProduct } from '@/lib/productFlags';
@@ -153,6 +154,7 @@ export default function KioskProductModal({ productId, variantId = null, onClose
                 </div>
                 <p className="shrink-0 text-2xl font-bold tabular-nums">{product.price} ₽</p>
               </div>
+              <SpicinessBadge level={product.spicinessLevel} className="mt-2" />
               {chips.length > 0 ? (
                 <div className="food-card__chips mt-3">
                   {chips.map((label) => (

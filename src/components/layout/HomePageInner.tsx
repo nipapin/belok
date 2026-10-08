@@ -128,6 +128,7 @@ function ProductsBlockView({
               fats: product.fats,
               carbs: product.carbs,
               weightGrams: product.weightGrams,
+              spicinessLevel: product.spicinessLevel,
               categoryName: product.category?.name,
               createdAt: product.createdAt,
               variants: product.variants ?? [],

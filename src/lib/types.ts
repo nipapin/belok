@@ -87,6 +87,7 @@ export interface ProductRow {
   carbs: number | null;
   fiber: number | null;
   weightGrams: number | null;
+  spicinessLevel: number;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;

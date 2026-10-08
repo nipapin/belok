@@ -27,6 +27,7 @@ type KioskTile = {
   fats: number | null;
   carbs: number | null;
   weightGrams: number | null;
+  spicinessLevel: number;
 };
 
 function kioskTiles(product: Product, categoryName: string): KioskTile[] {
@@ -40,6 +41,7 @@ function kioskTiles(product: Product, categoryName: string): KioskTile[] {
     fats: product.fats,
     carbs: product.carbs,
     weightGrams: product.weightGrams,
+    spicinessLevel: product.spicinessLevel,
   };
   const variants = product.variants ?? [];
   if (variants.length === 0) {
@@ -799,6 +801,7 @@ export default function KioskApp() {
                             fats: product.fats,
                             carbs: product.carbs,
                             weightGrams: product.weightGrams,
+                            spicinessLevel: product.spicinessLevel,
                           }}
                           onOpen={() =>
                             setOpenProduct({ productId: product.id, variantId: product.variantId })
