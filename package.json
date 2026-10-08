@@ -14,6 +14,7 @@
     "deploy": "git pull && npm ci --no-fund --no-audit && npm run build && pm2 reload all",
     "test:smoke": "node scripts/smoke-puppeteer.mjs",
     "test:product-options": "tsx --test scripts/test-product-options.mts",
+    "test:menu-search": "tsx --test scripts/test-menu-search.mts",
     "test:product-options:integration": "node scripts/test-product-options-integration.mjs"
   },
   "dependencies": {
