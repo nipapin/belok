@@ -26,6 +26,7 @@ export interface Product {
   carbs: number | null;
   fiber: number | null;
   weightGrams: number | null;
+  spicinessLevel: number;
   categoryId: string;
   createdAt?: string;
   category: { id: string; name: string };

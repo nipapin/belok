@@ -4,6 +4,7 @@ import { withTransaction } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import { fetchProductById, fetchProductsWithRelations } from '@/lib/queries/products';
 import { replaceProductVariants, type VariantWrite } from '@/lib/productVariants';
+import { isSpicinessLevel } from '@/lib/productSpiciness';
 
 interface IngredientLink {
   ingredientId: string;
@@ -25,6 +26,7 @@ interface CreateProductBody {
   carbs?: string | number | null;
   fiber?: string | number | null;
   weightGrams?: string | number | null;
+  spicinessLevel?: number;
   sortOrder?: number;
   ingredients?: IngredientLink[];
   variants?: VariantWrite[];
@@ -52,6 +54,9 @@ export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
     const body = (await request.json()) as CreateProductBody;
+    if (body.spicinessLevel !== undefined && !isSpicinessLevel(body.spicinessLevel)) {
+      return NextResponse.json({ error: 'Острота должна быть целым числом от 0 до 3' }, { status: 400 });
+    }
     const id = uuidv4();
 
     await withTransaction(async (client) => {
@@ -64,8 +69,8 @@ export async function POST(request: NextRequest) {
       await client.query(
         `INSERT INTO "products"
           (id, name, description, price, image, "categoryId", "isAvailable",
-           calories, proteins, fats, carbs, fiber, "weightGrams", "sortOrder")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+           calories, proteins, fats, carbs, fiber, "weightGrams", "sortOrder", "spicinessLevel")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
         [
           id,
           body.name,
@@ -81,6 +86,7 @@ export async function POST(request: NextRequest) {
           toNum(body.fiber),
           toNum(body.weightGrams),
           nextSort,
+          body.spicinessLevel ?? 0,
         ]
       );
 

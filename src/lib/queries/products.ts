@@ -65,6 +65,7 @@ function rowToProduct(row: ProductJoinedRow): ProductWithRelations {
     carbs: row.carbs,
     fiber: row.fiber,
     weightGrams: row.weightGrams,
+    spicinessLevel: row.spicinessLevel,
     sortOrder: row.sortOrder,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -96,7 +97,7 @@ export async function fetchProductsWithRelations(
     `SELECT
        p."id", p."name", p."description", p."price", p."image", p."categoryId",
        p."isAvailable", p."calories", p."proteins", p."fats", p."carbs", p."fiber",
-       p."weightGrams",
+       p."weightGrams", p."spicinessLevel",
        p."sortOrder", p."createdAt", p."updatedAt",
        c."id"        AS "c_id",
        c."name"      AS "c_name",

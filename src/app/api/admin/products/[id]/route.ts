@@ -6,6 +6,7 @@ import { deletePublicImage } from '@/lib/uploadStorage';
 import { fetchProductById } from '@/lib/queries/products';
 import { replaceProductVariants, type VariantWrite } from '@/lib/productVariants';
 import type { ProductRow } from '@/lib/types';
+import { isSpicinessLevel } from '@/lib/productSpiciness';
 
 interface IngredientLink {
   ingredientId: string;
@@ -27,6 +28,7 @@ interface UpdateProductBody {
   carbs?: string | number | null;
   fiber?: string | number | null;
   weightGrams?: string | number | null;
+  spicinessLevel?: number;
   sortOrder?: number;
   ingredients?: IngredientLink[];
   variants?: VariantWrite[];
@@ -65,6 +67,9 @@ export async function PUT(
     await requireAdmin();
     const { id } = await params;
     const body = (await request.json()) as UpdateProductBody;
+    if (body.spicinessLevel !== undefined && !isSpicinessLevel(body.spicinessLevel)) {
+      return NextResponse.json({ error: 'Острота должна быть целым числом от 0 до 3' }, { status: 400 });
+    }
 
     const existing = await queryOne<ProductRow>(`SELECT * FROM "products" WHERE id = $1`, [id]);
     if (!existing) {
@@ -91,6 +96,7 @@ export async function PUT(
     if (body.carbs !== undefined) add('carbs', toNum(body.carbs));
     if (body.fiber !== undefined) add('fiber', toNum(body.fiber));
     if (body.weightGrams !== undefined) add('weightGrams', toNum(body.weightGrams));
+    if (body.spicinessLevel !== undefined) add('spicinessLevel', body.spicinessLevel);
 
     const categoryChanged =
       body.categoryId !== undefined && body.categoryId !== existing.categoryId;

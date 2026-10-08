@@ -7,6 +7,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminProductImageField from '@/components/admin/AdminProductImageField';
 import SortableList from '@/components/admin/SortableList';
 import Switch from '@/components/ui/Switch';
+import { SpicinessBadge } from '@/components/product/SpicinessBadge';
+import { SPICINESS_LEVELS } from '@/lib/productSpiciness';
 
 interface Ingredient {
   id: string;
@@ -62,6 +64,7 @@ export interface AdminProduct {
   carbs: number | null;
   fiber: number | null;
   weightGrams: number | null;
+  spicinessLevel: number;
   sortOrder: number;
   category: { id: string; name: string };
   ingredients: ProductIngredient[];
@@ -86,6 +89,7 @@ const emptyForm = {
   carbs: '',
   fiber: '',
   weightGrams: '',
+  spicinessLevel: 0,
   sortOrder: 0,
   ingredientIds: [] as string[],
   variants: [] as VariantDraft[],
@@ -148,6 +152,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
       carbs: product.carbs?.toString() || '',
       fiber: product.fiber?.toString() || '',
       weightGrams: product.weightGrams?.toString() || '',
+      spicinessLevel: product.spicinessLevel ?? 0,
       sortOrder: product.sortOrder,
       ingredientIds: product.ingredients.map((pi) => pi.ingredientId),
       variants: (product.variants ?? []).map((variant) => ({
@@ -247,6 +252,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
         carbs: data.carbs,
         fiber: data.fiber,
         weightGrams: data.weightGrams,
+        spicinessLevel: data.spicinessLevel,
         sortOrder: data.sortOrder,
         ingredients: data.ingredientIds.map((ingredientId: string) => ({
           ingredientId,
@@ -479,6 +485,32 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
               </label>
             </div>
           </section>
+
+          <fieldset className="admin-form-section min-w-0" disabled={saving}>
+            <legend className="sr-only">Острота</legend>
+            <p className="admin-form-eyebrow" aria-hidden="true">Острота</p>
+            <p className="admin-form-hint mt-1.5 mb-4">
+              Выберите от 1 до 3 перчиков. Если блюдо не острое, перчики на карточке не показываются.
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {SPICINESS_LEVELS.map(({ value, label }) => (
+                <label key={value} className="relative block cursor-pointer">
+                  <input
+                    type="radio"
+                    name="spicinessLevel"
+                    value={value}
+                    checked={form.spicinessLevel === value}
+                    onChange={() => setForm((current) => ({ ...current, spicinessLevel: value }))}
+                    className="peer sr-only"
+                  />
+                  <span className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-(--lg-ring) px-2 py-3 text-sm font-medium text-(--lg-text) transition peer-checked:border-rose-500 peer-checked:bg-rose-500/10 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-rose-500 peer-disabled:opacity-50">
+                    {value > 0 ? <SpicinessBadge level={value} /> : null}
+                    <span>{label}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <section className="admin-form-section">
             <p className="admin-form-eyebrow">Варианты</p>

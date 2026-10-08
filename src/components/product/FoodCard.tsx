@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { NutritionChip } from "./NutritionChip";
 import { PriceCTA } from "./PriceCTA";
 import { isNewProduct } from "@/lib/productFlags";
+import { SpicinessBadge } from "./SpicinessBadge";
+import { SPICINESS_LEVELS } from "@/lib/productSpiciness";
 import "./food-card.css";
 
 export type FoodCardNutrition = {
@@ -30,6 +32,7 @@ export type FoodCardModel = {
   createdAt?: string | null;
   variantId?: string | null;
   variants?: FoodCardVariant[];
+  spicinessLevel?: number;
 } & FoodCardNutrition;
 
 type FoodCardProps = {
@@ -83,7 +86,8 @@ export function FoodCard({
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const chips = nutritionChips(product);
   const labelName = flavor ? `${product.name}, ${flavor}` : product.name;
-  const openLabel = `Открыть ${labelName}, ${product.price} руб.`;
+  const spiciness = SPICINESS_LEVELS.find(({ value }) => value === product.spicinessLevel && value > 0);
+  const openLabel = `Открыть ${labelName}, ${product.price} руб.${spiciness ? `, ${spiciness.label}, острота ${spiciness.value} из 3` : ''}`;
   const showImage = Boolean(product.image) && failedSrc !== product.image;
   const showFlavorNav = Boolean(onPrevFlavor && onNextFlavor);
 
@@ -150,6 +154,7 @@ export function FoodCard({
 
           <div className="food-card__body">
             <h3 className="food-card__title">{product.name}</h3>
+            <SpicinessBadge level={product.spicinessLevel} />
             {flavor ? <p className="food-card__flavor">{flavor}</p> : null}
             {chips.length > 0 ? (
               <div className="food-card__chips">

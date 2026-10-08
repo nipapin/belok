@@ -32,6 +32,7 @@ function sameProductCard(prev: ProductCardProps, next: ProductCardProps) {
     a.fats === b.fats &&
     a.carbs === b.carbs &&
     a.weightGrams === b.weightGrams &&
+    a.spicinessLevel === b.spicinessLevel &&
     a.categoryName === b.categoryName &&
     a.createdAt === b.createdAt &&
     variantSignature(a) === variantSignature(b)

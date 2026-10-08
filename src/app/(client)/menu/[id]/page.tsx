@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import ProductGallery from "@/components/product/ProductGallery";
+import { SpicinessBadge } from "@/components/product/SpicinessBadge";
 import { formatVariantTitle } from "@/lib/productTitle";
 import { useCartStore, type CartItemCustomization } from "@/store/cartStore";
 import { Product } from "@/types";
@@ -188,6 +189,7 @@ export default function ProductDetailPage() {
                   Новинка
                 </span>
               ) : null}
+              <SpicinessBadge level={product.spicinessLevel} />
             </div>
             <h1 className="heading-section text-balance">{product.name}</h1>
             {selectedVariant ? (
