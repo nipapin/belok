@@ -661,17 +661,18 @@ html[data-theme="light"] {
     transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
   }
 
-  /* Fullscreen search modal backdrop — heavy frosted glass over the page */
+  /* Opaque search surface: nested backdrop filters can drop text on mobile GPUs. */
   .search-modal-backdrop {
-    background-color: rgba(12, 14, 22, 0.78);
-    -webkit-backdrop-filter: blur(48px) saturate(140%) brightness(0.7);
-    backdrop-filter: blur(48px) saturate(140%) brightness(0.7);
+    background-color: #20242e;
   }
 
   html[data-theme="light"] .search-modal-backdrop {
-    background-color: rgba(240, 244, 250, 0.82);
-    -webkit-backdrop-filter: blur(48px) saturate(140%) brightness(1.05);
-    backdrop-filter: blur(48px) saturate(140%) brightness(1.05);
+    background-color: #eff3fb;
+  }
+
+  .search-modal-backdrop :is(.glass-tight, .glass-panel, .lg-bar, .lg-button-primary, .lg-button-outline, .lg-button-icon) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   /* Food card image overlay chips */
