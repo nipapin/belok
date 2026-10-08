@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cartStore";
 import { useHaptic } from "@/hooks/useHaptic";
 import { formatVariantTitle } from "@/lib/productTitle";
+import { resolveVariant } from '@/lib/productOptions';
 import { FoodCard, type FoodCardModel } from "./FoodCard";
 
 export type ProductCardModel = FoodCardModel;
@@ -15,7 +16,7 @@ type ProductCardProps = {
 };
 
 function variantSignature(product: ProductCardModel) {
-  return (product.variants ?? []).map((variant) => `${variant.id}:${variant.name}:${variant.image ?? ""}`).join("|");
+  return JSON.stringify(product.variants ?? []);
 }
 
 function sameProductCard(prev: ProductCardProps, next: ProductCardProps) {
@@ -27,6 +28,7 @@ function sameProductCard(prev: ProductCardProps, next: ProductCardProps) {
     a.image === b.image &&
     a.name === b.name &&
     a.price === b.price &&
+    a.hasOptions === b.hasOptions &&
     a.calories === b.calories &&
     a.proteins === b.proteins &&
     a.fats === b.fats &&
@@ -54,6 +56,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
   const [busy, setBusy] = useState(false);
   const busyTimer = useRef<number | undefined>(undefined);
   const choosable = variants.length > 1;
+  const display = resolveVariant(product, active);
   const image = active?.image || product.image;
   const flavor = active?.name ?? null;
 
@@ -61,6 +64,11 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
 
   function handleAdd(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.hasOptions) {
+      const query = active ? `?v=${encodeURIComponent(active.id)}` : '';
+      router.push(`/menu/${product.id}${query}`);
+      return;
+    }
     if (busy) return;
     setBusy(true);
     addItem({
@@ -69,7 +77,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
       variantName: active?.name ?? null,
       name: formatVariantTitle(product.name, active?.name),
       image,
-      basePrice: product.price,
+      basePrice: display.price,
       quantity: 1,
       customizations: [],
     });
@@ -102,7 +110,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
 
   return (
     <FoodCard
-      product={{ ...product, image }}
+      product={{ ...display, image }}
       flavor={flavor}
       quantity={quantity}
       busy={busy}

@@ -7,6 +7,8 @@ import { Category, Product } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+const EMPTY_CATEGORIES: Category[] = [];
+const EMPTY_PRODUCTS: Product[] = [];
 const productCarouselClass = "product-carousel";
 const productSlideClass =
   "flex w-[min(72vw,280px)] min-w-[220px] shrink-0 snap-start sm:w-[240px]";
@@ -14,7 +16,7 @@ const productSlideClass =
 export function MenuPageInner() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const selectedCategoryRef = useRef<string | null>(null);
-  selectedCategoryRef.current = selectedCategory;
+  useEffect(() => { selectedCategoryRef.current = selectedCategory; }, [selectedCategory]);
   // While a click-triggered smooth scroll is in flight, the IntersectionObserver
   // must not overwrite the selected chip with intermediate categories.
   const suppressObserverRef = useRef(false);
@@ -30,8 +32,8 @@ export function MenuPageInner() {
     queryFn: () => fetch("/api/products").then((r) => r.json()),
   });
 
-  const categories: Category[] = categoriesData?.categories ?? [];
-  const allProducts: Product[] = productsData?.products ?? [];
+  const categories: Category[] = categoriesData?.categories ?? EMPTY_CATEGORIES;
+  const allProducts: Product[] = productsData?.products ?? EMPTY_PRODUCTS;
 
   const productsByCategory = useMemo(() => {
     const grouped = new Map<string, Product[]>();
@@ -163,6 +165,7 @@ export function MenuPageInner() {
                         categoryName: category.name,
                         createdAt: product.createdAt,
                         variants: product.variants ?? [],
+                        hasOptions: product.ingredients?.some((link) => link.isExtra && link.ingredient.isAvailable !== false),
                       }}
                     />
                   </div>
@@ -193,6 +196,7 @@ export function MenuPageInner() {
                     categoryName: product.category?.name,
                     createdAt: product.createdAt,
                     variants: product.variants ?? [],
+                    hasOptions: product.ingredients?.some((link) => link.isExtra && link.ingredient.isAvailable !== false),
                   }}
                 />
               </div>

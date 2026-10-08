@@ -119,12 +119,12 @@ export const useCartStore = create<CartState>()(
 
       getItemPrice: (item) => {
         const extras = item.customizations.reduce((sum, c) => sum + c.priceDelta, 0);
-        return (item.basePrice + extras) * item.quantity;
+        return Math.round((item.basePrice + extras) * 100) * item.quantity / 100;
       },
 
       getTotalPrice: () => {
         const { items, getItemPrice } = get();
-        return items.reduce((sum, item) => sum + getItemPrice(item), 0);
+        return Math.round(items.reduce((sum, item) => sum + getItemPrice(item), 0) * 100) / 100;
       },
 
       getPlainLineQuantity: (productId, variantId) => {

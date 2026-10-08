@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { PoolClient } from 'pg';
 import { query } from '@/lib/db';
+import { VARIANT_NUMBER_FIELDS, type VariantNumberField } from '@/lib/productOptions';
 
-export interface VariantWrite {
+export interface VariantWrite extends Partial<Record<VariantNumberField, number | string | null>> {
   id?: string | null;
   name: string;
   image?: string | null;
@@ -30,6 +31,15 @@ export async function replaceProductVariants(
     name: variant.name.trim(),
     image: variant.image?.trim() || null,
     sortOrder: index,
+    values: VARIANT_NUMBER_FIELDS.map((field) => {
+      const raw = variant[field];
+      if (raw == null || raw === '') return null;
+      if (typeof raw !== 'number' && typeof raw !== 'string') throw new Error('VARIANT_VALUE');
+      const value = Number(raw);
+      if (!Number.isFinite(value) || value < 0 || value > 1000000) throw new Error('VARIANT_VALUE');
+      if (field === 'price' && Math.abs(value * 100 - Math.round(value * 100)) > 0.00001) throw new Error('VARIANT_VALUE');
+      return value;
+    }),
   }));
 
   if (cleaned.some((variant) => !variant.name)) {
@@ -45,16 +55,17 @@ export async function replaceProductVariants(
       if (previous.image && previous.image !== variant.image) staleImages.push(previous.image);
       await client.query(
         `UPDATE "product_variants"
-            SET name = $1, image = $2, "sortOrder" = $3
-          WHERE id = $4`,
-        [variant.name, variant.image, variant.sortOrder, variant.id]
+            SET name = $1, image = $2, "sortOrder" = $3,
+                ${VARIANT_NUMBER_FIELDS.map((field, i) => `"${field}" = $${i + 4}`).join(', ')}
+          WHERE id = $12`,
+        [variant.name, variant.image, variant.sortOrder, ...variant.values, variant.id]
       );
       kept.add(variant.id);
     } else {
       await client.query(
-        `INSERT INTO "product_variants" (id, "productId", name, image, "sortOrder")
-         VALUES ($1, $2, $3, $4, $5)`,
-        [uuidv4(), productId, variant.name, variant.image, variant.sortOrder]
+        `INSERT INTO "product_variants" (id, "productId", name, image, "sortOrder", ${VARIANT_NUMBER_FIELDS.map((field) => `"${field}"`).join(', ')})
+         VALUES (${Array.from({ length: 13 }, (_, i) => `$${i + 1}`).join(', ')})`,
+        [uuidv4(), productId, variant.name, variant.image, variant.sortOrder, ...variant.values]
       );
     }
   }

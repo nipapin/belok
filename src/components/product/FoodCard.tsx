@@ -14,14 +14,13 @@ export type FoodCardNutrition = {
   proteins?: number | null;
   fats?: number | null;
   carbs?: number | null;
+  volumeMl?: number | null;
   weightGrams?: number | null;
 };
 
-export type FoodCardVariant = {
-  id: string;
-  name: string;
-  image: string | null;
-};
+export type FoodCardVariant = import("@/types").ProductVariant;
+
+
 
 export type FoodCardModel = {
   id: string;
@@ -32,6 +31,7 @@ export type FoodCardModel = {
   createdAt?: string | null;
   variantId?: string | null;
   variants?: FoodCardVariant[];
+  hasOptions?: boolean;
   spicinessLevel?: number;
 } & FoodCardNutrition;
 
@@ -51,6 +51,7 @@ type FoodCardProps = {
 
 export function nutritionChips(product: FoodCardNutrition): string[] {
   const chips: string[] = [];
+  if (product.volumeMl != null) chips.push(`${product.volumeMl} мл`);
   if (product.weightGrams != null) chips.push(`${product.weightGrams} г`);
   if (product.calories != null) chips.push(`${product.calories} ккал`);
   if (product.proteins != null) chips.push(`Б ${product.proteins} г`);
@@ -82,6 +83,8 @@ export function FoodCard({
   onPrevFlavor,
   onNextFlavor,
 }: FoodCardProps) {
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swiped = useRef(false);
   const mediaRef = useRef<HTMLDivElement>(null);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const chips = nutritionChips(product);
@@ -120,10 +123,22 @@ export function FoodCard({
         <button
           type="button"
           className="food-card__main"
-          onClick={onOpen}
+          onClick={(event) => { if (swiped.current) { event.preventDefault(); swiped.current = false; return; } onOpen(); }}
           aria-label={openLabel}
         >
-          <div ref={mediaRef} className="food-card__media">
+          <div ref={mediaRef} className="food-card__media" style={showFlavorNav ? { touchAction: 'pan-y' } : undefined}
+            onPointerDown={(event) => { touchStart.current = { x: event.clientX, y: event.clientY }; swiped.current = false; }}
+            onPointerUp={(event) => {
+              const start = touchStart.current;
+              touchStart.current = null;
+              if (!start || !showFlavorNav) return;
+              const dx = event.clientX - start.x;
+              const dy = event.clientY - start.y;
+              if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                swiped.current = true;
+                if (dx < 0) onNextFlavor?.(); else onPrevFlavor?.();
+              }
+            }} onPointerCancel={() => { touchStart.current = null; }}>
             {showImage ? (
               // Direct S3 URL — Next optimizer times out on twcstorage.
               // Never loading="lazy": Chrome Android unloads lazy images during
@@ -170,7 +185,7 @@ export function FoodCard({
             <button
               type="button"
               className="food-card__nav food-card__nav--prev"
-              aria-label={`Предыдущий вкус ${product.name}`}
+              aria-label={`Предыдущий вариант ${product.name}`}
               onClick={(event) => {
                 event.stopPropagation();
                 event.preventDefault();
@@ -182,7 +197,7 @@ export function FoodCard({
             <button
               type="button"
               className="food-card__nav food-card__nav--next"
-              aria-label={`Следующий вкус ${product.name}`}
+              aria-label={`Следующий вариант ${product.name}`}
               onClick={(event) => {
                 event.stopPropagation();
                 event.preventDefault();

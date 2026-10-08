@@ -180,13 +180,12 @@ html[data-theme="light"] .food-card__footer {
 
 .food-card__flavor {
   margin: 0;
-  overflow: hidden;
   font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.2;
   color: var(--food-card-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .food-card__chips {

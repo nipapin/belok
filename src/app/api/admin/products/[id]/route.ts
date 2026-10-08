@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
+import { replaceProductIngredients, type IngredientLinkWrite } from '@/lib/productIngredients';
 import { query, queryOne, withTransaction } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import { deletePublicImage } from '@/lib/uploadStorage';
@@ -8,12 +8,6 @@ import { replaceProductVariants, type VariantWrite } from '@/lib/productVariants
 import type { ProductRow } from '@/lib/types';
 import { isSpicinessLevel } from '@/lib/productSpiciness';
 
-interface IngredientLink {
-  ingredientId: string;
-  isDefault?: boolean;
-  isRemovable?: boolean;
-  isExtra?: boolean;
-}
 
 interface UpdateProductBody {
   name?: string;
@@ -30,7 +24,7 @@ interface UpdateProductBody {
   weightGrams?: string | number | null;
   spicinessLevel?: number;
   sortOrder?: number;
-  ingredients?: IngredientLink[];
+  ingredients?: IngredientLinkWrite[];
   variants?: VariantWrite[];
 }
 
@@ -118,24 +112,10 @@ export async function PUT(
           sqlParams
         );
       }
-      if (body.ingredients) {
-        await client.query(`DELETE FROM "product_ingredients" WHERE "productId" = $1`, [id]);
-        for (const ing of body.ingredients) {
-          await client.query(
-            `INSERT INTO "product_ingredients"
-              (id, "productId", "ingredientId", "isDefault", "isRemovable", "isExtra")
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [
-              uuidv4(),
-              id,
-              ing.ingredientId,
-              ing.isDefault ?? true,
-              ing.isRemovable ?? true,
-              ing.isExtra ?? false,
-            ]
-          );
-        }
+      if (body.ingredients !== undefined) {
+        await replaceProductIngredients(client, id, body.ingredients);
       }
+
       if (body.variants) {
         return replaceProductVariants(client, id, body.variants);
       }
@@ -159,6 +139,12 @@ export async function PUT(
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
       return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });
+    if ((e as Error).message === 'VARIANT_VALUE') {
+      return NextResponse.json({ error: 'Цена и показатели варианта должны быть неотрицательными числами; цена — с точностью до копеек' }, { status: 400 });
+    }
+    if ((e as Error).message === 'INGREDIENT_OPTIONS') {
+      return NextResponse.json({ error: 'Проверьте ингредиенты и группы выбора. В группе допускается один заменяемый ингредиент по умолчанию' }, { status: 400 });
+    }
     if ((e as Error).message === 'VARIANT_NAME') {
       return NextResponse.json({ error: 'Укажите название каждого варианта' }, { status: 400 });
     }

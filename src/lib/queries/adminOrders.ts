@@ -96,8 +96,8 @@ export async function fetchAdminOrderById(id: string) {
           return {
             ...c,
             ingredient: ingredient
-              ? { id: ingredient.id, name: ingredient.name, price: ingredient.price }
-              : null,
+              ? { id: ingredient.id, name: c.ingredientName ?? ingredient.name, price: c.priceDelta }
+              : c.ingredientName ? { id: c.ingredientId, name: c.ingredientName, price: c.priceDelta } : null,
           };
         }),
     })),

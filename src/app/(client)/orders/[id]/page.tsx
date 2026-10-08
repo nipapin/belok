@@ -30,7 +30,7 @@ interface OrderItem {
   unitPrice: number;
   variantName?: string | null;
   product: { name: string; image: string | null };
-  customizations: { ingredientId: string; action: string; priceDelta: number }[];
+  customizations: { ingredientName?: string | null; ingredientId: string; action: string; priceDelta: number }[];
 }
 
 interface Order {
@@ -181,7 +181,7 @@ export default function OrderDetailPage() {
               </p>
               {item.customizations.length > 0 && (
                 <p className="mt-0.5 text-xs text-(--lg-text-muted)">
-                  {item.customizations.map((c) => (c.action === 'REMOVE' ? 'Без ' : '+ ') + c.ingredientId).join(', ')}
+                  {item.customizations.map((c) => (c.action === 'REMOVE' ? 'Без ' : '+ ') + (c.ingredientName ?? 'ингредиент')).join(', ')}
                 </p>
               )}
             </div>

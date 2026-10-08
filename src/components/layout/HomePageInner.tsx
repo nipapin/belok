@@ -132,6 +132,7 @@ function ProductsBlockView({
               categoryName: product.category?.name,
               createdAt: product.createdAt,
               variants: product.variants ?? [],
+              hasOptions: product.ingredients?.some((link) => link.isExtra && link.ingredient.isAvailable !== false),
             }}
           />
         );

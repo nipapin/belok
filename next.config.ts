@@ -56,6 +56,7 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  distDir: process.env.BELOK_TEST_MODE === '1' ? '.next-test' : '.next',
   env: {
     // Public Mapbox token (pk.). Stored as MAPBOX_API_KEY so the same value
     // stays server-side for geocoding and is inlined for the map tiles.

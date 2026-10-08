@@ -8,6 +8,8 @@ import AdminProductImageField from '@/components/admin/AdminProductImageField';
 import SortableList from '@/components/admin/SortableList';
 import Switch from '@/components/ui/Switch';
 import { SpicinessBadge } from '@/components/product/SpicinessBadge';
+import { VARIANT_NUMBER_FIELDS, type VariantValues } from '@/lib/productOptions';
+import type { IngredientLinkWrite } from '@/lib/productIngredients';
 import { SPICINESS_LEVELS } from '@/lib/productSpiciness';
 
 interface Ingredient {
@@ -22,15 +24,16 @@ export interface ProductIngredient {
   isDefault: boolean;
   isRemovable: boolean;
   isExtra: boolean;
+  optionGroup?: string | null;
 }
 
-export interface AdminProductVariant {
+export interface AdminProductVariant extends VariantValues {
   id: string;
   name: string;
   image: string | null;
 }
 
-type VariantDraft = {
+type VariantDraft = Record<(typeof VARIANT_NUMBER_FIELDS)[number], string> & {
   id: string;
   persisted: boolean;
   name: string;
@@ -41,6 +44,7 @@ type VariantDraft = {
 
 function newVariantDraft(): VariantDraft {
   return {
+    price: '', calories: '', proteins: '', fats: '', carbs: '', fiber: '', weightGrams: '', volumeMl: '',
     id: crypto.randomUUID(),
     persisted: false,
     name: '',
@@ -91,7 +95,7 @@ const emptyForm = {
   weightGrams: '',
   spicinessLevel: 0,
   sortOrder: 0,
-  ingredientIds: [] as string[],
+  ingredientLinks: [] as IngredientLinkWrite[],
   variants: [] as VariantDraft[],
 };
 
@@ -106,11 +110,12 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
   const router = useRouter();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [loadedProductId, setLoadedProductId] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const variantsRef = useRef(form.variants);
-  variantsRef.current = form.variants;
+  useLayoutEffect(() => { variantsRef.current = form.variants; }, [form.variants]);
 
   const { data: productRes, isLoading: productLoading, isError: productError } = useQuery({
     queryKey: ['admin-product', productId],
@@ -137,8 +142,8 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
   const categories: Category[] = categoriesData?.categories ?? [];
   const ingredients: Ingredient[] = ingredientsData?.ingredients ?? [];
 
-  useLayoutEffect(() => {
-    if (mode !== 'edit' || !product) return;
+  if (mode === 'edit' && product && loadedProductId !== product.id) {
+    setLoadedProductId(product.id);
     setForm({
       name: product.name,
       description: product.description || '',
@@ -154,8 +159,9 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
       weightGrams: product.weightGrams?.toString() || '',
       spicinessLevel: product.spicinessLevel ?? 0,
       sortOrder: product.sortOrder,
-      ingredientIds: product.ingredients.map((pi) => pi.ingredientId),
+      ingredientLinks: product.ingredients.map((pi) => ({ ingredientId: pi.ingredientId, isDefault: pi.isDefault, isRemovable: pi.isRemovable, isExtra: pi.isExtra, optionGroup: pi.optionGroup ?? null })),
       variants: (product.variants ?? []).map((variant) => ({
+        ...Object.fromEntries(VARIANT_NUMBER_FIELDS.map((field) => [field, variant[field]?.toString() ?? ''])) as Record<(typeof VARIANT_NUMBER_FIELDS)[number], string>,
         id: variant.id,
         persisted: true,
         name: variant.name,
@@ -165,7 +171,8 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
       })),
     });
     setImageFile(null);
-  }, [mode, product]);
+    setFilePreviewUrl(null);
+  }
 
   useEffect(() => {
     return () => {
@@ -175,36 +182,33 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
     };
   }, []);
 
-  useEffect(() => {
-    if (!imageFile) {
-      setFilePreviewUrl(null);
-      return;
-    }
-    const u = URL.createObjectURL(imageFile);
-    setFilePreviewUrl(u);
-    return () => URL.revokeObjectURL(u);
-  }, [imageFile]);
+  useEffect(() => () => { if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl); }, [filePreviewUrl]);
+
+  const setProductFile = (file: File) => {
+    setImageFile(file);
+    setFilePreviewUrl(URL.createObjectURL(file));
+  };
 
   const currentImageUrl = filePreviewUrl || form.image || null;
 
   const clearProductImage = () => {
     setImageFile(null);
+    setFilePreviewUrl(null);
     setForm((f) => ({ ...f, image: '' }));
   };
 
   const toggleIngredient = (id: string) => {
-    setForm((f) => ({
-      ...f,
-      ingredientIds: f.ingredientIds.includes(id)
-        ? f.ingredientIds.filter((x) => x !== id)
-        : [...f.ingredientIds, id],
-    }));
+    setForm((current) => ({ ...current, ingredientLinks: current.ingredientLinks.some((link) => link.ingredientId === id)
+      ? current.ingredientLinks.filter((link) => link.ingredientId !== id)
+      : [...current.ingredientLinks, { ingredientId: id, isDefault: true, isRemovable: true, isExtra: false, optionGroup: null }] }));
   };
+  const updateIngredient = (id: string, patch: Partial<IngredientLinkWrite>) => setForm((current) => ({ ...current,
+    ingredientLinks: current.ingredientLinks.map((link) => link.ingredientId === id ? { ...link, ...patch } : link) }));
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormState & { image?: string }) => {
       const editingId = mode === 'edit' ? productId : undefined;
-      let imageUrl = data.image || product?.image || '';
+      let imageUrl = data.image || '';
 
       if (imageFile) {
         const fd = new FormData();
@@ -233,6 +237,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
           }
           return {
             id: variant.persisted ? variant.id : undefined,
+            ...Object.fromEntries(VARIANT_NUMBER_FIELDS.map((field) => [field, variant[field] === '' ? null : Number(variant[field])])),
             name: variant.name.trim(),
             image: image || null,
           };
@@ -254,12 +259,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
         weightGrams: data.weightGrams,
         spicinessLevel: data.spicinessLevel,
         sortOrder: data.sortOrder,
-        ingredients: data.ingredientIds.map((ingredientId: string) => ({
-          ingredientId,
-          isDefault: true,
-          isRemovable: true,
-          isExtra: false,
-        })),
+        ingredients: data.ingredientLinks,
         variants,
       };
 
@@ -278,6 +278,8 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['product', productId] });
       queryClient.invalidateQueries({ queryKey: ['admin-product', productId] });
       router.push('/admin/products');
     },
@@ -293,7 +295,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
     form.name &&
       form.price &&
       form.categoryId &&
-      form.variants.every((variant) => variant.name.trim())
+      form.variants.every((variant) => variant.name.trim() && VARIANT_NUMBER_FIELDS.every((field) => variant[field] === '' || (Number.isFinite(Number(variant[field])) && Number(variant[field]) >= 0)))
   );
 
   function updateVariant(id: string, patch: Partial<VariantDraft>) {
@@ -416,7 +418,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
             </p>
             <AdminProductImageField
               previewUrl={currentImageUrl}
-              onFileSelect={(file) => setImageFile(file)}
+              onFileSelect={setProductFile}
               onClear={clearProductImage}
               showHeading={false}
             />
@@ -515,9 +517,8 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
           <section className="admin-form-section">
             <p className="admin-form-eyebrow">Варианты</p>
             <p className="admin-form-hint mt-1.5 mb-4">
-              Вкус или другая версия того же товара. Цена у всех одна. Пока вариант один или их нет,
-              в меню это просто товар без переключения. Два и больше — в меню вкус листается стрелками,
-              а в киоске каждый вкус стоит отдельной карточкой.
+              Версия блюда или размер напитка. Варианты листаются в одной карточке меню и киоска.
+              Пустые цена и КБЖУ используют значения основного товара. Объём укажите в миллилитрах.
             </p>
             {form.variants.length > 0 ? (
               <SortableList
@@ -527,7 +528,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
                 renderItem={(variant) => {
                   const preview = variant.preview || variant.image || null;
                   return (
-                    <div className="flex items-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] bg-[color-mix(in_srgb,white_55%,var(--lg-fill))] p-2">
+                    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] bg-[color-mix(in_srgb,white_55%,var(--lg-fill))] p-2">
                       <label className="relative flex size-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-white">
                         {preview ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -549,7 +550,8 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
                       </label>
                       <input
                         className={fieldClass}
-                        placeholder="Название, например Клубничный"
+                        aria-label="Название варианта"
+                        placeholder="Название, например Большой"
                         value={variant.name}
                         disabled={saving}
                         onChange={(event) => updateVariant(variant.id, { name: event.target.value })}
@@ -563,6 +565,14 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
                       >
                         <Trash2 className="size-4" />
                       </button>
+                      <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
+                        {([['price', 'Цена, ₽'], ['volumeMl', 'Объём, мл'], ['weightGrams', 'Вес, г'], ['calories', 'Ккал'], ['proteins', 'Белки, г'], ['fats', 'Жиры, г'], ['carbs', 'Углеводы, г'], ['fiber', 'Клетчатка, г']] as const).map(([field, label]) => (
+                          <label key={field} className="flex min-w-0 flex-col gap-1 text-xs text-(--lg-text-muted)">
+                            {label}
+                            <input type="number" min="0" step={field === 'price' ? '0.01' : 'any'} className={fieldClass} aria-label={`${label} варианта ${variant.name}`} value={variant[field]} placeholder={field === 'volumeMl' ? 'Не указан' : 'Как у товара'} disabled={saving} onChange={(event) => updateVariant(variant.id, { [field]: event.target.value })} />
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   );
                 }}
@@ -612,24 +622,29 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
           </section>
 
           <section className="admin-form-section">
-            <p className="admin-form-eyebrow">Состав</p>
-            <p className="admin-form-hint mt-1.5 mb-4">Ингредиенты, которые можно убрать или добавить к блюду.</p>
-            <div className="max-h-52 space-y-0 overflow-y-auto rounded-xl border border-[color-mix(in_srgb,var(--lg-text)_6%,transparent)] bg-[color-mix(in_srgb,white_50%,var(--lg-fill))] p-1.5">
-              {ingredients.map((ing) => (
-                <label
-                  key={ing.id}
-                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm text-(--lg-text) transition hover:bg-[color-mix(in_srgb,var(--lg-text)_4%,transparent)]"
-                >
-                  <input
-                    type="checkbox"
-                    className="size-[1.05rem] shrink-0 rounded border-[color-mix(in_srgb,var(--lg-text)_15%,transparent)] accent-[#18181b]"
-                    checked={form.ingredientIds.includes(ing.id)}
-                    onChange={() => toggleIngredient(ing.id)}
-                  />
-                  <span className="min-w-0 flex-1 text-[0.9375rem] text-(--lg-text)">{ing.name}</span>
-                  <span className="shrink-0 tabular-nums text-sm text-(--lg-text-muted)">+{ing.price} ₽</span>
-                </label>
-              ))}
+            <p className="admin-form-eyebrow">Состав и добавки</p>
+            <p className="admin-form-hint mt-1.5 mb-4">Укажите состав и платные добавки. Одинаковая группа, например «Молоко» или «Сироп», объединяет варианты в выбор одного. Для замены молока включите в группу обычное молоко как заменяемый состав, а альтернативы — как добавки.</p>
+            <div className="space-y-3">
+              {ingredients.map((ing) => {
+                const link = form.ingredientLinks.find((entry) => entry.ingredientId === ing.id);
+                return (
+                  <div key={ing.id} className="rounded-xl border border-(--lg-ring) p-3">
+                    <label className="flex min-h-10 items-center gap-3">
+                      <input type="checkbox" className="size-5 accent-emerald-600" checked={Boolean(link)} disabled={saving} onChange={() => toggleIngredient(ing.id)} />
+                      <span className="flex-1 font-medium">{ing.name}</span><span className="text-sm">+{ing.price} ₽</span>
+                    </label>
+                    {link ? <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                      <label className="flex items-center gap-2"><input type="checkbox" checked={link.isDefault ?? false} disabled={saving} onChange={(event) => updateIngredient(ing.id, { isDefault: event.target.checked })} />В составе</label>
+                      <label className="flex items-center gap-2"><input type="checkbox" checked={link.isRemovable ?? false} disabled={saving} onChange={(event) => updateIngredient(ing.id, { isRemovable: event.target.checked })} />Можно убрать</label>
+                      <label className="flex items-center gap-2"><input type="checkbox" checked={link.isExtra ?? false} disabled={saving} onChange={(event) => updateIngredient(ing.id, { isExtra: event.target.checked })} />Можно добавить</label>
+                      <label className="flex w-full flex-col gap-1">Группа выбора
+                        <input className={fieldClass} aria-label={`Группа выбора ${ing.name}`} value={link.optionGroup ?? ''} maxLength={80} placeholder="Без группы — независимая добавка" disabled={saving} onChange={(event) => updateIngredient(ing.id, { optionGroup: event.target.value })} />
+                      </label>
+                    </div> : null}
+                  </div>
+                );
+              })}
+              {ingredients.length === 0 ? <p className="text-sm text-(--lg-text-muted)">Сначала добавьте ингредиенты в разделе «Ингредиенты».</p> : null}
             </div>
           </section>
         </div>

@@ -15,6 +15,9 @@
 
 # next.js
 /.next/
+/.next-test/
+/output/product-options-qa/
+/output/audio-2026-10-08/
 /out/
 
 # production

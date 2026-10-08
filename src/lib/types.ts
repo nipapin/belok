@@ -94,6 +94,14 @@ export interface ProductRow {
 }
 
 export interface ProductVariantRow {
+  price?: number | null;
+  calories?: number | null;
+  proteins?: number | null;
+  fats?: number | null;
+  carbs?: number | null;
+  fiber?: number | null;
+  weightGrams?: number | null;
+  volumeMl?: number | null;
   id: string;
   productId: string;
   name: string;
@@ -108,6 +116,7 @@ export interface ProductIngredientRow {
   isDefault: boolean;
   isRemovable: boolean;
   isExtra: boolean;
+  optionGroup: string | null;
 }
 
 export interface ProductIngredientWithIngredient extends ProductIngredientRow {
@@ -154,6 +163,7 @@ export interface OrderItemRow {
 }
 
 export interface OrderItemCustomizationRow {
+  ingredientName: string | null;
   id: string;
   orderItemId: string;
   ingredientId: string;

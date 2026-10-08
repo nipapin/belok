@@ -3,24 +3,17 @@
 import { useState } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import ProductOptions from '@/components/product/ProductOptions';
+import ProductGallery from '@/components/product/ProductGallery';
+import { optionCustomizations, resolveVariant } from '@/lib/productOptions';
 import { nutritionChips } from '@/components/product/FoodCard';
 import { SpicinessBadge } from '@/components/product/SpicinessBadge';
 import { formatVariantTitle } from '@/lib/productTitle';
 import { NutritionChip } from '@/components/product/NutritionChip';
 import { isNewProduct } from '@/lib/productFlags';
-import { useKioskCartStore, type CartItemCustomization } from '@/store/kioskCartStore';
+import { useKioskCartStore } from '@/store/kioskCartStore';
 import type { Product } from '@/types';
 import '@/components/product/food-card.css';
-
-function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
-  return (
-    <label htmlFor={id} className="relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center">
-      <input id={id} type="checkbox" className="peer sr-only" checked={checked} onChange={onChange} />
-      <span className="pointer-events-none absolute inset-0 rounded-full bg-[color-mix(in_srgb,var(--lg-text)_12%,transparent)] transition peer-checked:bg-emerald-600" />
-      <span className="pointer-events-none absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow transition peer-checked:translate-x-[1.5rem]" />
-    </label>
-  );
-}
 
 type KioskProductModalProps = {
   productId: string;
@@ -30,6 +23,7 @@ type KioskProductModalProps = {
 
 export default function KioskProductModal({ productId, variantId = null, onClose }: KioskProductModalProps) {
   const addItem = useKioskCartStore((s) => s.addItem);
+  const [pickedVariantId, setPickedVariantId] = useState(variantId);
   const [quantity, setQuantity] = useState(1);
   const [removedIngredients, setRemovedIngredients] = useState<Set<string>>(new Set());
   const [addedExtras, setAddedExtras] = useState<Set<string>>(new Set());
@@ -40,66 +34,27 @@ export default function KioskProductModal({ productId, variantId = null, onClose
   });
 
   const product: Product | undefined = data?.product;
-  const variant = product?.variants?.find((item) => item.id === variantId) ?? null;
+  const variant = product?.variants?.find((item) => item.id === pickedVariantId) ?? product?.variants?.[0] ?? null;
+  const display = product ? resolveVariant(product, variant) : null;
   const displayName = product
     ? formatVariantTitle(product.name, variant?.name)
     : '';
   const displayImage = variant?.image || product?.image || null;
 
-  const toggleRemove = (ingredientId: string) => {
-    setRemovedIngredients((prev) => {
-      const next = new Set(prev);
-      if (next.has(ingredientId)) next.delete(ingredientId);
-      else next.add(ingredientId);
-      return next;
-    });
-  };
-
-  const toggleExtra = (ingredientId: string) => {
-    setAddedExtras((prev) => {
-      const next = new Set(prev);
-      if (next.has(ingredientId)) next.delete(ingredientId);
-      else next.add(ingredientId);
-      return next;
-    });
-  };
-
-  const getCustomizations = (): CartItemCustomization[] => {
-    if (!product) return [];
-    const customizations: CartItemCustomization[] = [];
-    for (const pi of product.ingredients) {
-      if (pi.isDefault && pi.isRemovable && removedIngredients.has(pi.ingredient.id)) {
-        customizations.push({
-          ingredientId: pi.ingredient.id,
-          ingredientName: pi.ingredient.name,
-          action: 'REMOVE',
-          priceDelta: 0,
-        });
-      }
-      if (pi.isExtra && addedExtras.has(pi.ingredient.id)) {
-        customizations.push({
-          ingredientId: pi.ingredient.id,
-          ingredientName: pi.ingredient.name,
-          action: 'ADD',
-          priceDelta: pi.ingredient.price,
-        });
-      }
-    }
-    return customizations;
-  };
-
-  const extrasTotal = getCustomizations().reduce((s, c) => s + c.priceDelta, 0);
-  const linePrice = product ? (product.price + extrasTotal) * quantity : 0;
-  const chips = product ? nutritionChips(product) : [];
+  const getCustomizations = () => product ? optionCustomizations(product.ingredients, removedIngredients, addedExtras) : [];
+  const extrasTotal = getCustomizations().reduce((sum, choice) => sum + choice.priceDelta, 0);
+  const linePrice = display ? Math.round((display.price + extrasTotal) * quantity * 100) / 100 : 0;
+  const chips = display ? nutritionChips(display) : [];
 
   function handleAdd() {
     if (!product) return;
     addItem({
       productId: product.id,
       variantId: variant?.id ?? null,
+      variantName: variant?.name ?? null,
       name: displayName,
       image: displayImage,
-      basePrice: product.price,
+      basePrice: display!.price,
       quantity,
       customizations: getCustomizations(),
     });
@@ -128,15 +83,8 @@ export default function KioskProductModal({ productId, variantId = null, onClose
             <p className="py-10 text-center text-(--lg-text-muted)">Товар не найден</p>
           ) : (
             <>
-              <div className="food-card__media mt-3 overflow-hidden rounded-2xl">
-                {displayImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={displayImage} alt="" className="food-card__img" />
-                ) : (
-                  <span className="food-card__fallback" aria-hidden>
-                    {displayName[0]}
-                  </span>
-                )}
+              <div className="mt-3 overflow-hidden rounded-2xl">
+                <ProductGallery slides={(product.variants.length ? product.variants : [{ id: product.id, name: product.name, image: product.image }]).map((entry) => ({ key: entry.id, image: entry.image || product.image, alt: entry.name, fallback: entry.name[0] }))} index={Math.max(0, product.variants.findIndex((entry) => entry.id === variant?.id))} onIndex={(index) => setPickedVariantId(product.variants[index]?.id ?? null)} />
               </div>
               <div className="mt-4 flex items-start justify-between gap-3">
                 <div>
@@ -152,8 +100,9 @@ export default function KioskProductModal({ productId, variantId = null, onClose
                   </div>
                   <h2 className="text-2xl font-semibold text-(--lg-text)">{displayName}</h2>
                 </div>
-                <p className="shrink-0 text-2xl font-bold tabular-nums">{product.price} ₽</p>
+                <p className="shrink-0 text-2xl font-bold tabular-nums">{display!.price} ₽</p>
               </div>
+              {display?.volumeMl != null ? <p className="mt-2 text-sm font-medium">{display.volumeMl} мл</p> : null}
               <SpicinessBadge level={product.spicinessLevel} className="mt-2" />
               {chips.length > 0 ? (
                 <div className="food-card__chips mt-3">
@@ -166,58 +115,7 @@ export default function KioskProductModal({ productId, variantId = null, onClose
                 <p className="mt-3 text-sm leading-relaxed text-(--lg-text-muted)">{product.description}</p>
               ) : null}
 
-              {product.ingredients.filter((pi) => pi.isDefault).length > 0 ? (
-                <>
-                  <h3 className="mt-6 mb-2 text-base font-semibold">Состав</h3>
-                  <div className="glass-panel divide-y divide-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] p-1">
-                    {product.ingredients
-                      .filter((pi) => pi.isDefault)
-                      .map((pi) => (
-                        <div key={pi.id} className="flex items-center justify-between gap-3 px-3 py-3">
-                          <span
-                            className={`text-base ${
-                              removedIngredients.has(pi.ingredient.id)
-                                ? 'text-(--lg-text-muted) line-through opacity-70'
-                                : 'text-(--lg-text)'
-                            }`}
-                          >
-                            {pi.ingredient.name}
-                          </span>
-                          {pi.isRemovable ? (
-                            <Toggle
-                              id={`kiosk-ing-${pi.id}`}
-                              checked={!removedIngredients.has(pi.ingredient.id)}
-                              onChange={() => toggleRemove(pi.ingredient.id)}
-                            />
-                          ) : null}
-                        </div>
-                      ))}
-                  </div>
-                </>
-              ) : null}
-
-              {product.ingredients.filter((pi) => pi.isExtra).length > 0 ? (
-                <>
-                  <h3 className="mt-6 mb-2 text-base font-semibold">Добавить</h3>
-                  <div className="glass-panel divide-y divide-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] p-1">
-                    {product.ingredients
-                      .filter((pi) => pi.isExtra)
-                      .map((pi) => (
-                        <div key={pi.id} className="flex items-center justify-between gap-3 px-3 py-3">
-                          <div>
-                            <p className="text-base font-medium">{pi.ingredient.name}</p>
-                            <p className="text-sm text-(--lg-text-muted)">+{pi.ingredient.price} ₽</p>
-                          </div>
-                          <Toggle
-                            id={`kiosk-ex-${pi.id}`}
-                            checked={addedExtras.has(pi.ingredient.id)}
-                            onChange={() => toggleExtra(pi.ingredient.id)}
-                          />
-                        </div>
-                      ))}
-                  </div>
-                </>
-              ) : null}
+              <ProductOptions links={product.ingredients} removed={removedIngredients} added={addedExtras} onRemoved={setRemovedIngredients} onAdded={setAddedExtras} />
             </>
           )}
         </div>
@@ -237,7 +135,7 @@ export default function KioskProductModal({ productId, variantId = null, onClose
               <button
                 type="button"
                 className="btn-icon size-12"
-                onClick={() => setQuantity((q) => q + 1)}
+                onClick={() => setQuantity((q) => Math.min(100, q + 1))}
                 aria-label="Больше"
               >
                 <Plus className="size-5" />

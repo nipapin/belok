@@ -4,22 +4,14 @@ import { useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import ProductOptions from '@/components/product/ProductOptions';
+import { optionCustomizations, resolveVariant } from '@/lib/productOptions';
 import ProductGallery from "@/components/product/ProductGallery";
 import { SpicinessBadge } from "@/components/product/SpicinessBadge";
 import { formatVariantTitle } from "@/lib/productTitle";
-import { useCartStore, type CartItemCustomization } from "@/store/cartStore";
+import { useCartStore } from "@/store/cartStore";
 import { Product } from "@/types";
 import { isNewProduct } from "@/lib/productFlags";
-
-function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
-  return (
-    <label htmlFor={id} className="relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center">
-      <input id={id} type="checkbox" className="peer sr-only" checked={checked} onChange={onChange} />
-      <span className="pointer-events-none absolute inset-0 rounded-full bg-[color-mix(in_srgb,var(--lg-text)_12%,transparent)] transition peer-checked:bg-emerald-600" />
-      <span className="pointer-events-none absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-[1.25rem]" />
-    </label>
-  );
-}
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,54 +32,8 @@ export default function ProductDetailPage() {
 
   const product: Product | undefined = data?.product;
 
-  const toggleRemove = (ingredientId: string) => {
-    setRemovedIngredients((prev) => {
-      const next = new Set(prev);
-      if (next.has(ingredientId)) next.delete(ingredientId);
-      else next.add(ingredientId);
-      return next;
-    });
-  };
-
-  const toggleExtra = (ingredientId: string) => {
-    setAddedExtras((prev) => {
-      const next = new Set(prev);
-      if (next.has(ingredientId)) next.delete(ingredientId);
-      else next.add(ingredientId);
-      return next;
-    });
-  };
-
-  const getCustomizations = (): CartItemCustomization[] => {
-    if (!product) return [];
-    const customizations: CartItemCustomization[] = [];
-
-    for (const pi of product.ingredients) {
-      if (pi.isDefault && pi.isRemovable && removedIngredients.has(pi.ingredient.id)) {
-        customizations.push({
-          ingredientId: pi.ingredient.id,
-          ingredientName: pi.ingredient.name,
-          action: "REMOVE",
-          priceDelta: 0,
-        });
-      }
-      if (pi.isExtra && addedExtras.has(pi.ingredient.id)) {
-        customizations.push({
-          ingredientId: pi.ingredient.id,
-          ingredientName: pi.ingredient.name,
-          action: "ADD",
-          priceDelta: pi.ingredient.price,
-        });
-      }
-    }
-    return customizations;
-  };
-
-  const calcPrice = () => {
-    if (!product) return 0;
-    const extras = getCustomizations().reduce((s, c) => s + c.priceDelta, 0);
-    return (product.price + extras) * quantity;
-  };
+  const getCustomizations = () => product ? optionCustomizations(product.ingredients, removedIngredients, addedExtras) : [];
+  const calcPrice = () => product ? Math.round((resolveVariant(product, selectedVariant).price + getCustomizations().reduce((sum, choice) => sum + choice.priceDelta, 0)) * quantity * 100) / 100 : 0;
 
   const variants = product?.variants ?? [];
   const requestedIndex = requestedVariantId
@@ -110,7 +56,7 @@ export default function ProductDetailPage() {
       variantName: selectedVariant?.name ?? null,
       name: formatVariantTitle(product.name, selectedVariant?.name),
       image: selectedVariant?.image || product.image,
-      basePrice: product.price,
+      basePrice: resolveVariant(product, selectedVariant).price,
       quantity,
       customizations: getCustomizations(),
     });
@@ -140,8 +86,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const defaultIngredients = product.ingredients.filter((pi) => pi.isDefault);
-  const extraIngredients = product.ingredients.filter((pi) => pi.isExtra);
+  const display = resolveVariant(product, selectedVariant);
   const slides =
     variants.length > 0
       ? variants.map((variant) => ({
@@ -195,32 +140,33 @@ export default function ProductDetailPage() {
             {selectedVariant ? (
               <p className="mt-1 text-base font-semibold text-[var(--lg-text)]">{selectedVariant.name}</p>
             ) : null}
-            {product.weightGrams != null ? (
+            {display.weightGrams != null ? (
               <p className="mt-1 text-sm font-medium tabular-nums text-[var(--lg-text-muted)]">
-                {product.weightGrams} г
+                {display.weightGrams} г
               </p>
             ) : null}
           </div>
           <p className="shrink-0 text-xl font-bold tracking-tight tabular-nums text-[var(--lg-text)]">
-            {product.price} ₽
+            {display.price} ₽
           </p>
         </div>
 
+        {display.volumeMl != null ? <p className="mb-3 text-sm font-medium">{display.volumeMl} мл</p> : null}
         {product.description && (
           <p className="mb-4 text-sm leading-relaxed text-[var(--lg-text-muted)]">{product.description}</p>
         )}
 
-        {([product.weightGrams, product.calories, product.proteins, product.fats, product.carbs, product.fiber] as (number | null)[]).some(
+        {([display.weightGrams, display.calories, display.proteins, display.fats, display.carbs, display.fiber] as (number | null)[]).some(
           (v) => v != null,
         ) && (
           <div className="mb-6 grid grid-cols-6 gap-1">
             {[
-              { label: "Вес, г", value: product.weightGrams, span: "col-span-2" },
-              { label: "Ккал", value: product.calories, span: "col-span-2" },
-              { label: "Белки, г", value: product.proteins, span: "col-span-2" },
-              { label: "Жиры, г", value: product.fats, span: "col-span-2" },
-              { label: "Углеводы, г", value: product.carbs, span: "col-span-2" },
-              { label: "Клетчатка, г", value: product.fiber, span: "col-span-2" },
+              { label: "Вес, г", value: display.weightGrams, span: "col-span-2" },
+              { label: "Ккал", value: display.calories, span: "col-span-2" },
+              { label: "Белки, г", value: display.proteins, span: "col-span-2" },
+              { label: "Жиры, г", value: display.fats, span: "col-span-2" },
+              { label: "Углеводы, г", value: display.carbs, span: "col-span-2" },
+              { label: "Клетчатка, г", value: display.fiber, span: "col-span-2" },
             ]
               .filter((item) => item.value != null)
               .map((item) => (
@@ -234,54 +180,7 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {defaultIngredients.length > 0 && (
-          <>
-            <h2 className="mb-2 text-base font-semibold text-[var(--lg-text)]">Состав</h2>
-            <div className="glass-panel mb-4 divide-y divide-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] p-1">
-              {defaultIngredients.map((pi) => (
-                <div key={pi.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                  <span
-                    className={`text-sm ${
-                      removedIngredients.has(pi.ingredient.id)
-                        ? "text-[var(--lg-text-muted)] line-through opacity-70"
-                        : "text-[var(--lg-text)]"
-                    }`}
-                  >
-                    {pi.ingredient.name}
-                  </span>
-                  {pi.isRemovable && (
-                    <Toggle
-                      id={`ing-${pi.id}`}
-                      checked={!removedIngredients.has(pi.ingredient.id)}
-                      onChange={() => toggleRemove(pi.ingredient.id)}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {extraIngredients.length > 0 && (
-          <>
-            <h2 className="mb-2 text-base font-semibold text-[var(--lg-text)]">Добавить</h2>
-            <div className="glass-panel mb-6 divide-y divide-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] p-1">
-              {extraIngredients.map((pi) => (
-                <div key={pi.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--lg-text)]">{pi.ingredient.name}</p>
-                    <p className="text-xs text-[var(--lg-text-muted)]">+{pi.ingredient.price} ₽</p>
-                  </div>
-                  <Toggle
-                    id={`ex-${pi.id}`}
-                    checked={addedExtras.has(pi.ingredient.id)}
-                    onChange={() => toggleExtra(pi.ingredient.id)}
-                  />
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+        <ProductOptions links={product.ingredients} removed={removedIngredients} added={addedExtras} onRemoved={setRemovedIngredients} onAdded={setAddedExtras} />
 
         <div className="glass-panel-strong p-2 sticky bottom-0 left-0 right-0 flex items-center justify-between">
           <button type="button" className="btn-primary" onClick={handleAddToCart}>
@@ -299,7 +198,7 @@ export default function ProductDetailPage() {
             <span className="min-w-10 text-center text-xl font-bold tabular-nums text-[var(--lg-text)]">
               {quantity}
             </span>
-            <button type="button" className="btn-icon" onClick={() => setQuantity(quantity + 1)} aria-label="Больше">
+            <button type="button" className="btn-icon" onClick={() => setQuantity(Math.min(100, quantity + 1))} aria-label="Больше">
               <Plus className="size-4" />
             </button>
           </div>

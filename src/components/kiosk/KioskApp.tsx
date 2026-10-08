@@ -4,8 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { ArrowLeft, Banknote, Loader2, Minus, Plus, QrCode, Trash2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { brandMark } from '@/lib/brand';
-import { formatVariantTitle } from '@/lib/productTitle';
-import { FoodCardSkeleton } from '@/components/product/FoodCard';
+import { FoodCardSkeleton, type FoodCardModel } from '@/components/product/FoodCard';
 import { KioskProductCard } from '@/components/kiosk/KioskProductCard';
 import KioskPinPad from '@/components/kiosk/KioskPinPad';
 import KioskProductModal from '@/components/kiosk/KioskProductModal';
@@ -13,47 +12,10 @@ import SbpPayPanel from '@/components/order/SbpPayPanel';
 import { useKioskCartStore } from '@/store/kioskCartStore';
 import type { Category, Product } from '@/types';
 
-type KioskTile = {
-  key: string;
-  id: string;
-  variantId: string | null;
-  name: string;
-  price: number;
-  image: string | null;
-  categoryName: string;
-  createdAt?: string;
-  calories: number | null;
-  proteins: number | null;
-  fats: number | null;
-  carbs: number | null;
-  weightGrams: number | null;
-  spicinessLevel: number;
-};
+type KioskTile = FoodCardModel & { key: string; categoryName: string };
 
 function kioskTiles(product: Product, categoryName: string): KioskTile[] {
-  const shared = {
-    id: product.id,
-    price: product.price,
-    categoryName,
-    createdAt: product.createdAt,
-    calories: product.calories,
-    proteins: product.proteins,
-    fats: product.fats,
-    carbs: product.carbs,
-    weightGrams: product.weightGrams,
-    spicinessLevel: product.spicinessLevel,
-  };
-  const variants = product.variants ?? [];
-  if (variants.length === 0) {
-    return [{ ...shared, key: product.id, variantId: null, name: product.name, image: product.image }];
-  }
-  return variants.map((variant) => ({
-    ...shared,
-    key: variant.id,
-    variantId: variant.id,
-    name: formatVariantTitle(product.name, variant.name),
-    image: variant.image || product.image,
-  }));
+  return [{ ...product, key: product.id, categoryName, variants: product.variants ?? [], hasOptions: product.ingredients.some((link) => link.isExtra && link.ingredient.isAvailable !== false) }];
 }
 
 type Step = 'menu' | 'checkout' | 'pay' | 'success';
@@ -790,7 +752,8 @@ export default function KioskApp() {
                           eager={categoryIndex === 0 && index < 4}
                           product={{
                             id: product.id,
-                            variantId: product.variantId,
+                            variants: product.variants,
+                            hasOptions: product.hasOptions,
                             name: product.name,
                             price: product.price,
                             image: product.image,
@@ -803,8 +766,8 @@ export default function KioskApp() {
                             weightGrams: product.weightGrams,
                             spicinessLevel: product.spicinessLevel,
                           }}
-                          onOpen={() =>
-                            setOpenProduct({ productId: product.id, variantId: product.variantId })
+                          onOpen={(variantId) =>
+                            setOpenProduct({ productId: product.id, variantId })
                           }
                         />
                       ))}

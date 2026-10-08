@@ -12,7 +12,8 @@ import { clientIpFromHeaders, rateLimit } from '@/lib/rateLimit';
 import { isTbankConfigured, SBP_MIN_RUBLES, TbankError } from '@/lib/tbank';
 import { startTbankPayment } from '@/lib/tbankPayments';
 import { isValidEmail, normalizeEmail } from '@/lib/verificationCode';
-import { attachVariantSnapshots, VariantOrderError } from '@/lib/productVariants';
+import { priceOrderItems } from '@/lib/orderPricing';
+import { VariantOrderError } from '@/lib/productVariants';
 import type {
   IngredientAction,
   OrderItemCustomizationRow,
@@ -123,27 +124,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const productIds = items.map((i) => i.productId);
-    const products = await query<ProductRow>(
-      `SELECT * FROM "products" WHERE id = ANY($1::text[])`,
-      [productIds]
-    );
-    const productMap = new Map(products.map((p) => [p.id, p]));
-
-    let subtotal = 0;
-    const computedItems = items.map((item) => {
-      const product = productMap.get(item.productId);
-      if (!product) throw new Error(`Product ${item.productId} not found`);
-      if (!product.isAvailable) throw new Error(`Product ${item.productId} unavailable`);
-      const quantity = Math.max(1, Math.floor(item.quantity) || 1);
-      const extras = (item.customizations || [])
-        .filter((c) => c.action === 'ADD')
-        .reduce((s, c) => s + (c.priceDelta || 0), 0);
-      const unitPrice = product.price + extras;
-      subtotal += unitPrice * quantity;
-      return { ...item, quantity, unitPrice };
-    });
-    const stampedItems = await attachVariantSnapshots(computedItems);
+    const stampedItems = await priceOrderItems(items);
+    const subtotal = Math.round(stampedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0) * 100) / 100;
 
     const discountAmount = Math.round(subtotal * (discountPercent / 100));
     const total = subtotal - discountAmount;
@@ -186,9 +168,9 @@ export async function POST(request: NextRequest) {
         for (const c of item.customizations || []) {
           await client.query(
             `INSERT INTO "order_item_customizations"
-              (id, "orderItemId", "ingredientId", action, "priceDelta")
-             VALUES ($1, $2, $3, $4, $5)`,
-            [uuidv4(), itemId, c.ingredientId, c.action, c.priceDelta || 0]
+              (id, "orderItemId", "ingredientId", action, "priceDelta", "ingredientName")
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [uuidv4(), itemId, c.ingredientId, c.action, c.priceDelta, c.ingredientName]
           );
         }
       }
