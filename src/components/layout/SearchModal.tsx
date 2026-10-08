@@ -158,7 +158,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           event.preventDefault();
           void selectProducts(query);
         }}>
-          <div className="lg-bar relative flex flex-1 items-center px-2 py-1.5">
+          <div className="lg-bar relative flex min-w-0 flex-1 items-center px-2 py-1.5">
             <Search
               className="pointer-events-none mr-3 size-[18px] shrink-0 text-[var(--lg-text-muted)]"
               strokeWidth={1.75}

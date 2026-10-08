@@ -1,0 +1,68 @@
+name: Build and deploy dev
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: belok-dev-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      # These are build placeholders. Real backend secrets are loaded on the VPS.
+      DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
+      SESSION_SECRET: ci-build-placeholder-never-used-at-runtime
+      NEXT_PUBLIC_APP_URL: https://dev.belok.pro
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.DEV_VAPID_PUBLIC_KEY }}
+      MAPBOX_API_KEY: ${{ vars.DEV_MAPBOX_PUBLIC_KEY }}
+      NEXT_TELEMETRY_DISABLED: '1'
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.21.0'
+          cache: npm
+      - run: npm ci --no-fund --no-audit
+      - run: npm run test:menu-search && npm run test:product-options
+      - run: python3 scripts/deploy/test-deploy.py
+      - run: npx eslint src/components/layout/SearchModal.tsx src/lib/menuSearch.server.ts src/app/api/products/search/route.ts scripts/test-menu-search.mts scripts/package-release.mjs
+      - run: npm run build
+      - run: node scripts/package-release.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: belok-dev-${{ github.sha }}
+          path: output/belok-dev.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+      - name: Deploy ready release to dev
+        if: github.ref == 'refs/heads/dev' && github.event_name != 'pull_request'
+        env:
+          DEPLOY_KEY: ${{ secrets.DEV_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ vars.DEV_DEPLOY_HOST }}
+          DEPLOY_HOST_KEY: ${{ vars.DEV_DEPLOY_HOST_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_KEY"
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_HOST_KEY"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/belok-dev
+          chmod 600 ~/.ssh/belok-dev
+          printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/belok-dev -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
+            "root@$DEPLOY_HOST" "deploy $GITHUB_SHA" < output/belok-dev.tar.gz
+          rm ~/.ssh/belok-dev

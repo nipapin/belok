@@ -56,6 +56,8 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  generateBuildId: async () => process.env.GITHUB_SHA || null,
   distDir: process.env.BELOK_TEST_MODE === '1' ? '.next-test' : '.next',
   env: {
     // Public Mapbox token (pk.). Stored as MAPBOX_API_KEY so the same value
