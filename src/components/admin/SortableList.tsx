@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { type ReactNode } from 'react';
+import { type ReactNode } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -10,34 +10,48 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   SortableContext,
   arrayMove,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
 
 type SortableListProps<T extends { id: string }> = {
   items: T[];
   onReorder: (next: T[]) => void;
   renderItem: (item: T) => ReactNode;
   disabled?: boolean;
+  handlePlacement?: "outside" | "overlay";
+  getItemLabel?: (item: T) => string;
 };
 
 function SortableRow({
   id,
   disabled,
+  handlePlacement,
+  label,
   children,
 }: {
   id: string;
   disabled?: boolean;
+  handlePlacement?: "outside" | "overlay";
+  label?: string;
   children: ReactNode;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id,
     disabled,
   });
@@ -49,12 +63,13 @@ function SortableRow({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={`flex items-stretch gap-2 ${isDragging ? 'z-10 opacity-80' : ''}`}
+      className={`flex items-stretch gap-2 ${handlePlacement === "overlay" ? "sortable-row-overlay" : ""} ${isDragging ? "z-10 opacity-80" : ""}`}
     >
       <button
         type="button"
-        className="mt-1 flex size-9 shrink-0 cursor-grab items-center justify-center rounded-xl text-(--lg-text-muted) active:cursor-grabbing touch-none disabled:cursor-default disabled:opacity-40"
-        aria-label="Перетащить"
+        ref={setActivatorNodeRef}
+        className={`mt-1 flex size-9 shrink-0 cursor-grab items-center justify-center rounded-xl text-(--lg-text-muted) active:cursor-grabbing touch-none disabled:cursor-default disabled:opacity-40 ${handlePlacement === "overlay" ? "sortable-row-overlay-handle" : ""}`}
+        aria-label={label ? `Перетащить: ${label}` : "Перетащить"}
         disabled={disabled}
         {...attributes}
         {...listeners}
@@ -71,11 +86,17 @@ export default function SortableList<T extends { id: string }>({
   onReorder,
   renderItem,
   disabled,
+  handlePlacement = "outside",
+  getItemLabel,
 }: SortableListProps<T>) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -88,11 +109,24 @@ export default function SortableList<T extends { id: string }>({
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={items.map((item) => item.id)}
+        strategy={verticalListSortingStrategy}
+      >
         <div className="space-y-2">
           {items.map((item) => (
-            <SortableRow key={item.id} id={item.id} disabled={disabled}>
+            <SortableRow
+              key={item.id}
+              id={item.id}
+              disabled={disabled}
+              handlePlacement={handlePlacement}
+              label={getItemLabel?.(item)}
+            >
               {renderItem(item)}
             </SortableRow>
           ))}
