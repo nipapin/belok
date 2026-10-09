@@ -1,13 +1,12 @@
 "use client";
 
-import { LoaderCircle, LockKeyhole, Search, Sparkles, X } from "lucide-react";
+import { LoaderCircle, Search, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { resolveVariant } from "@/lib/productOptions";
 import { useAuthStore } from "@/store/authStore";
-import { useAuthModalStore } from "@/store/authModalStore";
 
 interface Nutrition {
   calories: number | null;
@@ -39,10 +38,10 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   const user = useAuthStore((s) => s.user);
   const authLoading = useAuthStore((s) => s.isLoading);
   const setUser = useAuthStore((s) => s.setUser);
-  const openAuth = useAuthModalStore((s) => s.openAuth);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
-  const [aiMode, setAiMode] = useState(false);
+  const [aiModeRequested, setAiMode] = useState(false);
+  const aiMode = aiModeRequested && !!user && !authLoading;
   const [mounted, setMounted] = useState(false);
   const [selection, setSelection] = useState<SearchMatch[] | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -66,7 +65,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           (p.variants ?? []).some((variant) => variant.name.toLowerCase().includes(trimmed)),
       )
     : allProducts;
-  const results: SearchMatch[] = aiMode ? user ? selection ?? [] : [] : literalResults.map((product) => ({
+  const results: SearchMatch[] = aiMode ? selection ?? [] : literalResults.map((product) => ({
     product,
     variantId: trimmed
       ? (product.variants ?? []).find((variant) => variant.name.toLowerCase().includes(trimmed))?.id ?? null
@@ -104,6 +103,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       const data = await response.json();
       if (response.status === 401 && searchRequest.current === controller && !controller.signal.aborted) {
         setUser(null);
+        setAiMode(false);
         setSelection(null);
         return;
       }
@@ -197,7 +197,6 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
               ref={inputRef}
               type="search"
               value={query}
-              disabled={aiMode && (!user || authLoading)}
               onChange={(e) => changeQuery(e.target.value)}
               placeholder={aiMode ? "Например, сытный обед…" : "Найти в меню…"}
               className="min-w-0 flex-1 bg-transparent py-1.5 text-base text-[var(--lg-text)] outline-none placeholder:text-[var(--lg-text-muted)]"
@@ -221,7 +220,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
               </button>
             )}
           </div>
-          <button
+          {user && !authLoading && <button
             type="button"
             onClick={() => changeMode(!aiMode)}
             aria-label="AI-подбор"
@@ -231,7 +230,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           >
             <Sparkles className="size-4" strokeWidth={1.75} aria-hidden="true" />
             AI
-          </button>
+          </button>}
           <button
             type="button"
             onClick={onClose}
@@ -248,20 +247,9 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
               <span className="font-semibold text-[var(--lg-text)]">AI-подбор</span>
               <button type="button" onClick={() => changeMode(false)} className="rounded-full px-2 py-1 underline underline-offset-4">По словам</button>
             </div>
-            {user && <p>Опишите, чего хочется — подберём подходящие блюда из меню.</p>}
+            <p>Опишите, чего хочется — подберём подходящие блюда из меню.</p>
           </> : <p>Поиск по названию, описанию и категории. Результаты появляются сразу.</p>}
-          {aiMode && !user && <div className="glass-panel mt-3 rounded-2xl p-5 text-center">
-            {authLoading ? <p role="status">Проверяем вход…</p> : <>
-              <LockKeyhole className="mx-auto mb-3 size-6 text-violet-400" aria-hidden="true" />
-              <p className="font-semibold text-[var(--lg-text)]">AI-подбор доступен после входа</p>
-              <p className="mt-2">Войдите в аккаунт, чтобы подбирать блюда по вашим пожеланиям.</p>
-              <button type="button" className="lg-button-primary mt-4 min-h-11 px-5 py-2.5 text-sm font-semibold" onClick={() => {
-                onClose();
-                openAuth();
-              }}>Войти в аккаунт</button>
-            </>}
-          </div>}
-          {aiMode && user && !trimmed && <div className="mt-3 flex flex-wrap gap-2">
+          {aiMode && !trimmed && <div className="mt-3 flex flex-wrap gap-2">
             {["Сытный обед", "Лёгкий перекус", "Вегетарианский обед"].map((example) => (
               <button key={example} type="button" className="lg-button-outline px-3 py-1.5 text-xs" onClick={() => {
                 changeQuery(example);
@@ -269,7 +257,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
               }}>{example}</button>
             ))}
           </div>}
-          {aiMode && user && <button
+          {aiMode && <button
             type="button"
             onClick={() => void selectProducts(query)}
             disabled={authLoading || query.trim().length < 3 || isSelecting}
@@ -285,7 +273,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         </div>
 
         <div className="mt-4 flex-1 overflow-y-auto scrollbar-hide pb-4">
-          {aiMode && !user ? null : isLoading || (isSelecting && results.length === 0) ? (
+          {isLoading || (aiMode && isSelecting && results.length === 0) ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="glass-tight h-[180px] animate-pulse" />
@@ -298,7 +286,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
               </p>
               <p className="mt-2 text-sm text-[var(--lg-text-muted)]">
                 {trimmed
-                  ? aiMode ? "Попробуйте изменить условия подбора" : "Попробуйте другое слово или включите AI-подбор"
+                  ? aiMode ? "Попробуйте изменить условия подбора" : user ? "Попробуйте другое слово или включите AI-подбор" : "Попробуйте другое слово"
                   : "Поиск по названию, описанию и категории"}
               </p>
             </div>
