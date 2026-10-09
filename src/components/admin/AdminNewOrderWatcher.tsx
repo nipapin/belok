@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
 import type { NotificationSettings } from '@/lib/notificationSettings';
+import { fetchAdminOrders } from '@/lib/adminDashboard';
 
 const STORAGE_KEY = 'admin-last-seen-order-id';
 
@@ -45,7 +46,7 @@ export default function AdminNewOrderWatcher() {
 
   const { data } = useQuery({
     queryKey: ['admin-orders'],
-    queryFn: () => fetch('/api/admin/orders').then((r) => r.json()),
+    queryFn: fetchAdminOrders,
     refetchInterval: 10_000,
   });
 

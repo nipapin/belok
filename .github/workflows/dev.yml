@@ -36,7 +36,7 @@ jobs:
           node-version: '24.21.0'
           cache: npm
       - run: npm ci --no-fund --no-audit
-      - run: npm run test:menu-search && npm run test:product-options
+      - run: npm run test:menu-search && npm run test:product-options && npm run test:admin-dashboard
       - run: python3 scripts/deploy/test-deploy.py
       - run: npx eslint src/components/layout/SearchModal.tsx src/lib/menuSearch.server.ts src/app/api/products/search/route.ts scripts/test-menu-search.mts scripts/package-release.mjs
       - run: npm run build

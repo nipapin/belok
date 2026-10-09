@@ -13,6 +13,7 @@
     "push:keys": "tsx scripts/generate-vapid-keys.ts",
     "deploy": "git push origin dev",
     "test:smoke": "node scripts/smoke-puppeteer.mjs",
+    "test:admin-dashboard": "tsx --test scripts/test-admin-dashboard.mts",
     "test:product-options": "tsx --test scripts/test-product-options.mts",
     "test:menu-search": "tsx --test scripts/test-menu-search.mts",
     "test:product-options:integration": "node scripts/test-product-options-integration.mjs"
