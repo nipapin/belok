@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getCurrentUser } from '@/lib/auth';
 import { fetchProductsWithRelations } from '@/lib/queries/products';
 import { clientIpFromHeaders, rateLimit } from '@/lib/rateLimit';
 import { menuSearchQuery, searchMenu, searchableMenu, validateSelections } from '@/lib/menuSearch.server';
@@ -9,6 +10,16 @@ const schema = z.object({ query: menuSearchQuery }).strict();
 const headers = { 'Cache-Control': 'no-store' };
 
 export async function POST(request: NextRequest) {
+  try {
+    if (!await getCurrentUser()) return NextResponse.json(
+      { error: 'Войдите в аккаунт, чтобы пользоваться AI-подбором.', code: 'AUTH_REQUIRED' },
+      { status: 401, headers },
+    );
+  } catch {
+    return NextResponse.json(
+      { error: 'Не удалось проверить вход. Попробуйте ещё раз.' }, { status: 503, headers },
+    );
+  }
   const limit = rateLimit(`menu-search:${clientIpFromHeaders(request.headers)}`, 10, 60);
   if (!limit.allowed) return NextResponse.json(
     { error: 'Слишком много запросов. Попробуйте через минуту.' },
