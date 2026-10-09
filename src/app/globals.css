@@ -670,6 +670,12 @@ html[data-theme="light"] {
     background-color: #eff3fb;
   }
 
+  .search-modal-backdrop input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
+  }
+
   .search-modal-backdrop :is(.glass-tight, .glass-panel, .lg-bar, .lg-button-primary, .lg-button-outline, .lg-button-icon) {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
