@@ -5,16 +5,24 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { resolveVariant } from "@/lib/productOptions";
 
-interface Product {
+interface Nutrition {
+  calories: number | null;
+  proteins: number | null;
+  fats: number | null;
+  carbs: number | null;
+  fiber: number | null;
+}
+
+interface Product extends Nutrition {
   id: string;
   name: string;
   description: string | null;
   price: number;
   image: string | null;
-  calories: number | null;
   category: { id: string; name: string };
-  variants?: { id: string; name: string; image: string | null; price?: number | null; calories?: number | null }[];
+  variants?: (Partial<Nutrition> & { id: string; name: string; image: string | null; price?: number | null })[];
 }
 
 interface SearchMatch { product: Product; variantId: string | null }
@@ -246,7 +254,14 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
               {results.map(({ product: p, variantId }) => {
                 const variant = (p.variants ?? []).find((item) => item.id === variantId);
                 const image = variant?.image ?? p.image;
-                const calories = variant?.calories ?? p.calories;
+                const display = resolveVariant(p, variant);
+                const nutrition = [
+                  { name: "Калорийность", label: "", value: display.calories, unit: "ккал" },
+                  { name: "Белки", label: "Б", value: display.proteins, unit: "г" },
+                  { name: "Жиры", label: "Ж", value: display.fats, unit: "г" },
+                  { name: "Углеводы", label: "У", value: display.carbs, unit: "г" },
+                  { name: "Клетчатка", label: "К", value: display.fiber, unit: "г" },
+                ].filter((item) => item.value != null);
                 return (
                 <li key={p.id}>
                   <button
@@ -269,10 +284,18 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                       {variant && <p className="truncate text-xs text-[var(--lg-text-muted)]">{variant.name}</p>}
                       <p className="truncate text-xs text-[var(--lg-text-muted)]">
                         {p.category.name}
-                        {calories != null && <span> · {calories} ккал</span>}
                       </p>
+                      {nutrition.length > 0 && (
+                        <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs leading-relaxed text-[var(--lg-text-muted)]" aria-label="Пищевая ценность">
+                          {nutrition.map((item) => (
+                            <span key={item.name} className="whitespace-nowrap" title={item.name} aria-label={`${item.name}: ${item.value} ${item.unit}`}>
+                              {item.label && `${item.label} `}{item.value} {item.unit}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <span className="shrink-0 text-base font-bold text-[var(--lg-text)]">{variant?.price ?? p.price} ₽</span>
+                    <span className="shrink-0 text-base font-bold text-[var(--lg-text)]">{display.price} ₽</span>
                   </button>
                 </li>
               ); })}
