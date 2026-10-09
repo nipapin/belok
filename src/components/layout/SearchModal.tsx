@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, Search, X } from "lucide-react";
+import { LoaderCircle, Search, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -36,6 +36,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
+  const [aiMode, setAiMode] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [selection, setSelection] = useState<SearchMatch[] | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -59,7 +60,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           (p.variants ?? []).some((variant) => variant.name.toLowerCase().includes(trimmed)),
       )
     : allProducts;
-  const results: SearchMatch[] = selection ?? literalResults.map((product) => ({
+  const results: SearchMatch[] = aiMode ? selection ?? [] : literalResults.map((product) => ({
     product,
     variantId: trimmed
       ? (product.variants ?? []).find((variant) => variant.name.toLowerCase().includes(trimmed))?.id ?? null
@@ -73,6 +74,12 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     setSelection(null);
     setIsSelecting(false);
     setSearchError(null);
+  }
+
+  function changeMode(enabled: boolean) {
+    changeQuery(query);
+    setAiMode(enabled);
+    inputRef.current?.focus();
   }
 
   async function selectProducts(value: string) {
@@ -131,6 +138,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       const t = setTimeout(() => {
         setMounted(false);
         setQuery("");
+        setAiMode(false);
         setSelection(null);
         setIsSelecting(false);
         setSearchError(null);
@@ -164,19 +172,22 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       <div className="mx-auto flex h-full w-full max-w-2xl flex-col px-2 pb-4 pt-3">
         <form className="mt-2 flex items-center gap-2" onSubmit={(event) => {
           event.preventDefault();
-          void selectProducts(query);
+          if (aiMode) void selectProducts(query);
         }}>
           <div className="lg-bar relative flex min-w-0 flex-1 items-center px-2 py-1.5">
-            <Search
+            {aiMode ? <Sparkles
+              className="pointer-events-none mr-3 size-[18px] shrink-0 text-violet-400"
+              strokeWidth={1.75}
+            /> : <Search
               className="pointer-events-none mr-3 size-[18px] shrink-0 text-[var(--lg-text-muted)]"
               strokeWidth={1.75}
-            />
+            />}
             <input
               ref={inputRef}
               type="search"
               value={query}
               onChange={(e) => changeQuery(e.target.value)}
-              placeholder="Блюдо или желание…"
+              placeholder={aiMode ? "Например, сытный обед…" : "Найти в меню…"}
               className="min-w-0 flex-1 bg-transparent py-1.5 text-base text-[var(--lg-text)] outline-none placeholder:text-[var(--lg-text-muted)]"
               aria-label="Поиск по меню"
               autoComplete="off"
@@ -199,11 +210,15 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
             )}
           </div>
           <button
-            type="submit"
-            disabled={query.trim().length < 3 || isSelecting}
-            className="lg-button-primary shrink-0 px-3 py-2.5 text-sm font-semibold disabled:opacity-50"
+            type="button"
+            onClick={() => changeMode(!aiMode)}
+            aria-label="AI-подбор"
+            aria-pressed={aiMode}
+            title={aiMode ? "Вернуться к поиску по словам" : "Подобрать блюда с AI"}
+            className="search-ai-toggle flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold"
           >
-            {isSelecting ? <LoaderCircle className="size-5 animate-spin" aria-label="Подбираем" /> : "Подобрать"}
+            <Sparkles className="size-4" strokeWidth={1.75} aria-hidden="true" />
+            AI
           </button>
           <button
             type="button"
@@ -216,8 +231,14 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         </form>
 
         <div className="mt-3 px-1 text-sm text-[var(--lg-text-muted)]">
-          <p>Название найдётся сразу. Опишите, чего хочется, и нажмите «Подобрать».</p>
-          {!trimmed && <div className="mt-2 flex flex-wrap gap-2">
+          {aiMode ? <>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="font-semibold text-[var(--lg-text)]">AI-подбор</span>
+              <button type="button" onClick={() => changeMode(false)} className="rounded-full px-2 py-1 underline underline-offset-4">По словам</button>
+            </div>
+            <p>Опишите, чего хочется — подберём подходящие блюда из меню.</p>
+          </> : <p>Поиск по названию, описанию и категории. Результаты появляются сразу.</p>}
+          {aiMode && !trimmed && <div className="mt-3 flex flex-wrap gap-2">
             {["Сытный обед", "Лёгкий перекус", "Вегетарианский обед"].map((example) => (
               <button key={example} type="button" className="lg-button-outline px-3 py-1.5 text-xs" onClick={() => {
                 changeQuery(example);
@@ -225,8 +246,17 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
               }}>{example}</button>
             ))}
           </div>}
-          <p className="mt-2" role="status" aria-live="polite">
-            {isSelecting ? "Подбираем товары из меню…" : selection !== null ? `Подобрано по запросу: ${selection.length}` : ""}
+          {aiMode && <button
+            type="button"
+            onClick={() => void selectProducts(query)}
+            disabled={query.trim().length < 3 || isSelecting}
+            className="lg-button-primary mt-3 flex min-h-11 w-full items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+          >
+            {isSelecting ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Sparkles className="size-4" aria-hidden="true" />}
+            {isSelecting ? "Подбираем…" : "Подобрать блюда"}
+          </button>}
+          <p className="mt-2" role="status" aria-live="polite" aria-atomic="true">
+            {isSelecting ? "Подбираем товары из меню…" : aiMode && selection !== null ? `Подобрано с AI: ${selection.length}` : !aiMode && trimmed ? `Найдено по словам: ${results.length}` : ""}
           </p>
           {searchError && <p className="mt-2" role="alert">{searchError}</p>}
         </div>
@@ -238,14 +268,14 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                 <div key={i} className="glass-tight h-[180px] animate-pulse" />
               ))}
             </div>
-          ) : results.length === 0 ? (
+          ) : aiMode && selection === null && !searchError ? null : results.length === 0 ? (
             <div className="glass-panel mt-8 px-6 py-12 text-center">
               <p className="text-lg font-semibold text-[var(--lg-text)]">
                 {trimmed ? "Ничего не найдено" : "Начните вводить запрос"}
               </p>
               <p className="mt-2 text-sm text-[var(--lg-text-muted)]">
                 {trimmed
-                  ? "Попробуйте изменить запрос или условия подбора"
+                  ? aiMode ? "Попробуйте изменить условия подбора" : "Попробуйте другое слово или включите AI-подбор"
                   : "Поиск по названию, описанию и категории"}
               </p>
             </div>

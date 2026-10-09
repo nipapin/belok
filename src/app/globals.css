@@ -675,6 +675,30 @@ html[data-theme="light"] {
     backdrop-filter: none;
   }
 
+  .search-ai-toggle {
+    color: var(--lg-text);
+    border: 1.5px solid transparent;
+    background: linear-gradient(#292d3a, #292d3a) padding-box,
+      linear-gradient(125deg, #67e8f9, #a78bfa 50%, #f0abfc) border-box;
+    box-shadow: 0 0 14px rgb(167 139 250 / 22%);
+    transition: box-shadow 180ms ease, background 180ms ease;
+  }
+
+  .search-ai-toggle:hover,
+  .search-ai-toggle[aria-pressed="true"] {
+    box-shadow: 0 0 20px rgb(167 139 250 / 40%), inset 0 0 12px rgb(167 139 250 / 12%);
+  }
+
+  .search-ai-toggle:focus-visible {
+    outline: 2px solid #a78bfa;
+    outline-offset: 3px;
+  }
+
+  html[data-theme="light"] .search-ai-toggle {
+    background: linear-gradient(#f8f7ff, #f8f7ff) padding-box,
+      linear-gradient(125deg, #22d3ee, #8b5cf6 50%, #e879f9) border-box;
+  }
+
   /* Food card image overlay chips */
   .lg-chip-float {
     @apply pointer-events-none rounded-full px-2.5 py-1 text-xs font-bold tabular-nums;
