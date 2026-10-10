@@ -17,6 +17,7 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
+  rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
@@ -28,6 +29,7 @@ type SortableListProps<T extends { id: string }> = {
   disabled?: boolean;
   handlePlacement?: "outside" | "overlay";
   getItemLabel?: (item: T) => string;
+  gridLayout?: boolean;
 };
 
 function SortableRow({
@@ -88,6 +90,7 @@ export default function SortableList<T extends { id: string }>({
   disabled,
   handlePlacement = "outside",
   getItemLabel,
+  gridLayout = false,
 }: SortableListProps<T>) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -116,9 +119,9 @@ export default function SortableList<T extends { id: string }>({
     >
       <SortableContext
         items={items.map((item) => item.id)}
-        strategy={verticalListSortingStrategy}
+        strategy={gridLayout ? rectSortingStrategy : verticalListSortingStrategy}
       >
-        <div className="space-y-2">
+        <div className={gridLayout ? "admin-products-sortable-grid" : "space-y-2"}>
           {items.map((item) => (
             <SortableRow
               key={item.id}
