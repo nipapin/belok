@@ -15,6 +15,7 @@ interface CreateProductBody {
   image?: string | null;
   categoryId: string;
   isAvailable?: boolean;
+  isCombo?: boolean;
   calories?: string | number | null;
   proteins?: string | number | null;
   fats?: string | number | null;
@@ -64,8 +65,8 @@ export async function POST(request: NextRequest) {
       await client.query(
         `INSERT INTO "products"
           (id, name, description, price, image, "categoryId", "isAvailable",
-           calories, proteins, fats, carbs, fiber, "weightGrams", "sortOrder", "spicinessLevel")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+           calories, proteins, fats, carbs, fiber, "weightGrams", "sortOrder", "spicinessLevel", "isCombo")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [
           id,
           body.name,
@@ -82,6 +83,7 @@ export async function POST(request: NextRequest) {
           toNum(body.weightGrams),
           nextSort,
           body.spicinessLevel ?? 0,
+          body.isCombo === true,
         ]
       );
 
