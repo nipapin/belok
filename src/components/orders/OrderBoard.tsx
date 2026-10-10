@@ -65,7 +65,7 @@ function OrderCard({ order, fresh, now, acknowledge, advance, markItem, busy }: 
           return <li key={item.id} data-item-id={item.id} className={remaining === 0 ? 'board-item-done' : ''}>
             <div className="board-item-row">
               <button type="button" className="board-item" disabled={busy || remaining === 0} aria-label={`${item.name}: осталось ${remaining} из ${item.quantity}. Отметить одну порцию`} onClick={() => markItem(item, 'prepare')}>
-                <strong>{item.name}</strong><strong className="board-quantity">{remaining ? `×${remaining}` : <Check size={24} aria-label="Готово" />}</strong>
+                <span><strong>{item.name}</strong>{item.comboSnapshot?.groups?.map((group,j)=><small key={j} className="block text-xs opacity-75">{group.name}: {group.products.map(p=>p.name).join(", ")}</small>)}</span><strong className="board-quantity">{remaining ? `×${remaining}` : <Check size={24} aria-label="Готово" />}</strong>
               </button>
               {prepared > 0 && <button className="board-item-undo" type="button" disabled={busy} aria-label={`Вернуть одну порцию: ${item.name}`} title="Вернуть одну порцию" onClick={() => markItem(item, 'undo')}><Undo2 size={16} /></button>}
             </div>
