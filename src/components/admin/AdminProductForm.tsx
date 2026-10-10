@@ -5,7 +5,7 @@ import { ImagePlus, Plus, Save, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminProductImageField from '@/components/admin/AdminProductImageField';
-import RecipeEditor from '@/components/admin/RecipeEditor';
+import ProductAccountingEditor from '@/components/admin/ProductAccountingEditor';
 import SortableList from '@/components/admin/SortableList';
 import Switch from '@/components/ui/Switch';
 import { SpicinessBadge } from '@/components/product/SpicinessBadge';
@@ -654,7 +654,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
       </div>
 
       {mode==='new' && <section className="mx-auto w-full max-w-2xl mb-6 glass-panel p-4 space-y-2"><h2 className="font-semibold">Технологическая карта</h2><p className="text-sm text-(--lg-text-muted)">Сначала сохрани новый товар. Затем здесь же откроется его состав, где можно выбрать сырьё и заготовки, указать граммы, миллилитры или штуки и описать приготовление.</p></section>}
-      {mode==='edit' && productId && <div className="mx-auto w-full max-w-2xl mb-8"><RecipeEditor ownerKind="PRODUCT" ownerId={productId} outputUnit="pcs" /></div>}
+      {mode==='edit' && productId && <div className="mx-auto w-full max-w-2xl mb-8"><ProductAccountingEditor productId={productId} /></div>}
 
       <div className="admin-form-action-bar fixed inset-x-0 bottom-0 z-30 px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
         <div className="mx-auto flex w-full max-w-2xl items-center gap-2">
