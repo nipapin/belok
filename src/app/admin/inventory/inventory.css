@@ -1,0 +1,46 @@
+/* Inventory-only controls: soft accessible focus, no browser-native dropdown menu. */
+.inventory-field {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--lg-ring);
+  border-radius: 14px;
+  padding: 9px 14px;
+  color: var(--lg-text);
+  background: var(--lg-fill);
+  box-shadow: none;
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms, background 150ms;
+}
+.inventory-field:hover { border-color: color-mix(in srgb, var(--lg-text) 23%, var(--lg-ring)); }
+.inventory-field:focus { border-color: var(--lg-ring); box-shadow: none; outline: none; }
+.inventory-field:focus-visible {
+  border-color: color-mix(in srgb, var(--lg-text) 28%, var(--lg-ring));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--lg-text) 9%, transparent);
+  outline: none;
+}
+.inventory-select-trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.inventory-select-menu {
+  max-height: 240px;
+  border: 1px solid var(--lg-ring);
+  background: var(--lg-fill);
+  color: var(--lg-text);
+  backdrop-filter: blur(18px);
+}
+.inventory-select-option { color: var(--lg-text); cursor: pointer; }
+.inventory-select-option:hover,
+.inventory-select-option:focus-visible {
+  background: color-mix(in srgb, var(--lg-text) 7%, transparent);
+  outline: none;
+}
+.inventory-select-option[aria-selected="true"] {
+  background: color-mix(in srgb, var(--lg-text) 9%, transparent);
+  font-weight: 600;
+}
