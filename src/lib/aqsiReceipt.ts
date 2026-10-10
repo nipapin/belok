@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 
 // Tag 1192 is limited to 16 characters on the terminal. Keep a deterministic
-// ASCII reference here; the human-readable order ID belongs in tag 1084.
+// ASCII reference here; the human-readable order number belongs in tag 1084.
 export function receiptOrderReference(orderId: string): string {
   return 'B'+createHash('sha256').update(orderId).digest('base64url').slice(0,15);
 }

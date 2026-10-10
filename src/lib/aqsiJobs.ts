@@ -48,7 +48,7 @@ async function buildReceipt(job: AqsiJob) {
   return { deviceId:job.deviceId,typeId:1,ttlMillis:86_400_000,ignoreItemCodeCheck:false,skipPrinting:false,
     roundAmountDownToExponent:0,
     info:{taxSystemCode:config.taxSystemCode,isOnline:false,additionalAttribute:receiptOrderReference(job.orderId),
-      additionalUserAttribute:{name:'Заказ',value:`#${order.dailyNumber} ${job.orderId}`},
+      additionalUserAttribute:{name:'Заказ',value:`#${order.dailyNumber}`},
       ...(order.email ? {customerInfo:{emailOrPhone:order.email}} : {}),
       ...(config.cashierName ? {cashierInfo:{positionAndSurname:config.cashierName}} : {})},
     positions,payments:[{type:1,amount:Math.round(order.total*100),...(card?.result ? {slip:card.result} : {})}],
