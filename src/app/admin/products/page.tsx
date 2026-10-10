@@ -27,6 +27,7 @@ interface ProductIngredient {
 interface Product {
   id: string;
   name: string;
+  isCombo?: boolean;
   description: string | null;
   price: number;
   image: string | null;
@@ -202,13 +203,7 @@ export default function AdminProductsPage() {
             Перетащите блюда внутри категории — так они будут стоять в меню.
           </p>
         </div>
-        <Link
-          href="/admin/products/new"
-          className="btn-primary admin-product-add inline-flex items-center gap-2 py-2.5 text-sm"
-        >
-          <Plus className="size-4" />
-          Добавить
-        </Link>
+        <div className="flex flex-wrap gap-2"><Link href="/admin/products/new" className="btn-primary admin-product-add inline-flex items-center gap-2 py-2.5 text-sm"><Plus className="size-4"/> Позиция</Link><Link href="/admin/combos/new" className="btn-outline inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"><Plus className="size-4"/> Комбо</Link></div>
       </div>
 
       {loadingProducts && (
@@ -273,7 +268,7 @@ export default function AdminProductsPage() {
                   </div>
                   <div className="admin-product-content">
                     <h3 className="admin-product-name" title={product.name}>
-                      {product.name}
+                      {product.name} {product.isCombo && <span className="text-xs font-normal text-(--lg-text-muted)">· Комбо</span>}
                     </h3>
                     <div className="admin-product-details">
                       <p className="admin-product-price">
@@ -314,7 +309,7 @@ export default function AdminProductsPage() {
                     </div>
                     <div className="admin-product-actions">
                       <Link
-                        href={`/admin/products/${product.id}/edit`}
+                        href={product.isCombo ? `/admin/combos/${product.id}/edit` : `/admin/products/${product.id}/edit`}
                         className="admin-product-edit"
                         aria-label={`Изменить товар: ${product.name}`}
                       >
