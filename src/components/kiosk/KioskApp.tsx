@@ -17,7 +17,7 @@ import { fetchKioskCatalog, kioskCatalogRefresh } from '@/lib/kioskCatalog';
 type KioskTile = FoodCardModel & { key: string; categoryName: string };
 
 function kioskTiles(product: Product, categoryName: string): KioskTile[] {
-  return [{ ...product, key: product.id, categoryName, variants: product.variants ?? [], hasOptions: product.ingredients.some((link) => link.isExtra && link.ingredient.isAvailable !== false) }];
+  return [{ ...product, key: product.id, categoryName, variants: product.variants ?? [], hasOptions: product.isCombo || product.ingredients.some((link) => link.isExtra && link.ingredient.isAvailable !== false) }];
 }
 
 type Step = 'menu' | 'checkout' | 'pay' | 'success';
