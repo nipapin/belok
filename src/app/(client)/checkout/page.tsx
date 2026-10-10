@@ -111,6 +111,7 @@ export default function CheckoutPage() {
     try {
       const orderItems = items.map((item) => ({
         productId: item.productId,
+        comboSelections:item.comboSelections,
         variantId: item.variantId ?? null,
         quantity: item.quantity,
         customizations: item.customizations.map((c) => ({
@@ -186,7 +187,7 @@ export default function CheckoutPage() {
         {items.map((item) => (
           <div key={item.id} className="flex justify-between gap-2 py-1.5 text-sm">
             <span className="text-(--lg-text)">
-              {item.name} ×{item.quantity}
+              {item.name} ×{item.quantity}{item.comboLabel ? <small className="block text-(--lg-text-muted)">{item.comboLabel}</small> : null}
             </span>
             <span className="shrink-0 font-semibold tabular-nums text-(--lg-text)">{getItemPrice(item)} ₽</span>
           </div>
