@@ -51,7 +51,7 @@ export default function CartPage() {
               <div className="flex min-h-22 min-w-0 flex-1 flex-col justify-between gap-2 py-3 pl-3.5 pr-3">
                 <div className="min-w-0 space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 text-[0.9375rem] font-semibold leading-snug text-(--lg-text)">{item.name}</p>
+                    <div className="min-w-0"><p className="text-[0.9375rem] font-semibold leading-snug text-(--lg-text)">{item.name}</p>{item.comboLabel && <p className="mt-1 text-xs text-(--lg-text-muted)">{item.comboLabel}</p>}</div>
                     <button
                       type="button"
                       className="btn-icon size-8 min-h-8 min-w-8 shrink-0"
