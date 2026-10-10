@@ -13,6 +13,7 @@ import { NutritionChip } from '@/components/product/NutritionChip';
 import { isNewProduct } from '@/lib/productFlags';
 import { useKioskCartStore } from '@/store/kioskCartStore';
 import type { Product } from '@/types';
+import { fetchKioskCatalog, kioskCatalogRefresh } from '@/lib/kioskCatalog';
 import '@/components/product/food-card.css';
 
 type KioskProductModalProps = {
@@ -29,11 +30,12 @@ export default function KioskProductModal({ productId, variantId = null, onClose
   const [addedExtras, setAddedExtras] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useQuery({
-    queryKey: ['product', productId],
-    queryFn: () => fetch(`/api/products/${productId}`).then((r) => r.json()),
+    queryKey: ['kiosk', 'product', productId],
+    queryFn: ({ signal }) => fetchKioskCatalog<{ product: Product | null }>(`/api/products/${productId}`, signal, { product: null }),
+    ...kioskCatalogRefresh,
   });
 
-  const product: Product | undefined = data?.product;
+  const product = data?.product;
   const variant = product?.variants?.find((item) => item.id === pickedVariantId) ?? product?.variants?.[0] ?? null;
   const display = product ? resolveVariant(product, variant) : null;
   const displayName = product
@@ -47,7 +49,7 @@ export default function KioskProductModal({ productId, variantId = null, onClose
   const chips = display ? nutritionChips(display) : [];
 
   function handleAdd() {
-    if (!product) return;
+    if (!product || product.isAvailable === false) return;
     addItem({
       productId: product.id,
       variantId: variant?.id ?? null,
@@ -141,8 +143,8 @@ export default function KioskProductModal({ productId, variantId = null, onClose
                 <Plus className="size-5" />
               </button>
             </div>
-            <button type="button" className="btn-primary min-h-14 flex-1 text-lg" onClick={handleAdd}>
-              В заказ · {linePrice} ₽
+            <button type="button" className="btn-primary min-h-14 flex-1 text-lg" disabled={product.isAvailable === false} onClick={handleAdd}>
+              {product.isAvailable === false ? 'Блюдо сейчас недоступно' : `В заказ · ${linePrice} ₽`}
             </button>
           </div>
         ) : null}

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       categoryId,
     });
 
-    return NextResponse.json({ products });
+    return NextResponse.json({ products }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Get products error:', error);
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });

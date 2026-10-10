@@ -31,7 +31,7 @@ export async function GET() {
       _count: { products: Number(r.product_count) },
     }));
 
-    return NextResponse.json({ categories });
+    return NextResponse.json({ categories }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Get categories error:', error);
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });

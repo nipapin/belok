@@ -12,6 +12,7 @@ import SbpPayPanel from '@/components/order/SbpPayPanel';
 import TerminalPayPanel, { KioskReceiptStatus } from '@/components/kiosk/TerminalPayPanel';
 import { useKioskCartStore } from '@/store/kioskCartStore';
 import type { Category, Product } from '@/types';
+import { fetchKioskCatalog, kioskCatalogRefresh } from '@/lib/kioskCatalog';
 
 type KioskTile = FoodCardModel & { key: string; categoryName: string };
 
@@ -147,13 +148,15 @@ export default function KioskApp() {
   const bonusAfterOrder = (loyalty?.bonusBalance ?? 0) - bonusUsed + bonusToEarn;
 
   const { data: categoriesData, isLoading: loadingCats } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => fetch('/api/products/categories').then((r) => r.json()),
+    queryKey: ['kiosk', 'categories'],
+    queryFn: ({ signal }) => fetchKioskCatalog<{ categories: Category[] }>('/api/products/categories', signal),
+    ...kioskCatalogRefresh,
     enabled: Boolean(session?.unlocked),
   });
   const { data: productsData, isLoading: loadingProducts } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => fetch('/api/products').then((r) => r.json()),
+    queryKey: ['kiosk', 'products'],
+    queryFn: ({ signal }) => fetchKioskCatalog<{ products: Product[] }>('/api/products', signal),
+    ...kioskCatalogRefresh,
     enabled: Boolean(session?.unlocked),
   });
 
