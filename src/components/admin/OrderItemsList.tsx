@@ -19,6 +19,7 @@ export interface OrderItemView {
   product: { name: string } | null;
   variantName?: string | null;
   quantity: number;
+  comboSnapshot?: import("@/lib/combos").ComboSnapshot | null;
   unitPrice: number;
   customizations: OrderCustomizationView[];
 }
@@ -39,6 +40,7 @@ export function OrderItemsList({ items }: { items: OrderItemView[] }) {
               {formatVariantTitle(item.product?.name ?? 'Товар', item.variantName)} ×{item.quantity}
             </span>
             <span className="ml-1 tabular-nums">· {item.unitPrice} ₽</span>
+            {item.comboSnapshot?.groups?.map((group, j) => <span key={`combo-${j}`} className="mt-0.5 block">+ {group.name}: {group.products.map(p=>p.name).join(", ")}</span>)}
             {adds.map((c, j) => (
               <span key={`a-${j}`} className="mt-0.5 block text-emerald-700">
                 + {c.ingredient?.name ?? 'добавка'}
