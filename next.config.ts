@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import { execFileSync } from "node:child_process";
+
+function buildRevision() {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA;
+  try { return execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(); }
+  catch { return 'local'; }
+}
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -60,6 +67,10 @@ const nextConfig: NextConfig = {
   generateBuildId: async () => process.env.GITHUB_SHA || null,
   distDir: process.env.BELOK_TEST_MODE === '1' ? '.next-test' : '.next',
   env: {
+    // Public release metadata only. Both server and browser receive the same
+    // values fixed at compilation, regardless of runtime environment files.
+    NEXT_PUBLIC_BUILD_REVISION: buildRevision(),
+    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
     // Public Mapbox token (pk.). Stored as MAPBOX_API_KEY so the same value
     // stays server-side for geocoding and is inlined for the map tiles.
     NEXT_PUBLIC_MAPBOX_API_KEY: process.env.MAPBOX_API_KEY ?? "",

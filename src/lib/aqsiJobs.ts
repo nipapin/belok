@@ -137,7 +137,7 @@ export async function processAqsiJobs() {
         if (job.kind === 'CARD' && (order?.paymentStatus !== 'PENDING' || order.status === 'CANCELLED')) {
           await setJob(job,'FAILED','Заказ отменён до отправки'); continue;
         }
-        await query(`UPDATE aqsi_jobs SET state='SUBMITTING',payload=$2,error=NULL,"updatedAt"=NOW() WHERE id=$1`,[job.id,JSON.stringify(payload)]);
+        await query(`UPDATE aqsi_jobs SET state='SUBMITTING',payload=$2,error=NULL,"submittedAt"=NOW(),"updatedAt"=NOW() WHERE id=$1`,[job.id,JSON.stringify(payload)]);
         sentDevices.add(job.deviceId);
         try {
           const response = await aqsiRequest<{operationId:string}>(job.kind === 'CARD' ? '/v4/Slips/process/purchase' : '/v4/Receipts/process','POST',payload);
@@ -170,7 +170,7 @@ export async function retryAqsiReceipt(jobId: string): Promise<boolean> {
     // rebuild the receipt from the paid order and the current saved settings.
     await client.query('SELECT pg_advisory_xact_lock(784146,20)');
     const updated=await client.query(`UPDATE aqsi_jobs SET state='QUEUED',payload=NULL,result=NULL,
-      "operationId"=NULL,error=NULL,"updatedAt"=NOW()
+      "operationId"=NULL,"submittedAt"=NULL,error=NULL,"updatedAt"=NOW()
       WHERE id=$1 AND kind='RECEIPT' AND state='FAILED' RETURNING id`,[jobId]);
     return updated.rowCount===1;
   });

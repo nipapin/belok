@@ -27,6 +27,7 @@ import { useAuthStore } from "@/store/authStore";
 import { brandMark } from "@/lib/brand";
 import { fetchAdminOrders } from "@/lib/adminDashboard";
 import AdminNewOrderWatcher from "@/components/admin/AdminNewOrderWatcher";
+import AdminBuildVersion from "@/components/admin/AdminBuildVersion";
 import "@/app/admin/admin-ux.css";
 
 const menuGroups = [
@@ -251,6 +252,7 @@ export default function AdminShell({
         inert={mobileOpen || undefined}
       >
         <AdminNewOrderWatcher />
+        <AdminBuildVersion />
         {children}
       </main>
       {!editingProduct && (

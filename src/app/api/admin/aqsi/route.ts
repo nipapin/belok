@@ -20,7 +20,7 @@ export async function GET() {
   try {
     await requireAdmin();
     const [config,jobs,catalog]=await Promise.all([getAqsiConfig(),
-      query(`SELECT j.id,j."orderId",j.kind,j.state,j."operationId",j.error,j."createdAt",o."dailyNumber" FROM aqsi_jobs j LEFT JOIN orders o ON o.id=j."orderId" ORDER BY j."createdAt" DESC LIMIT 50`),
+      query(`SELECT j.id,j."orderId",j.kind,j.state,j."operationId",j.error,j.payload,j."submittedAt",j."createdAt",o."dailyNumber" FROM aqsi_jobs j LEFT JOIN orders o ON o.id=j."orderId" ORDER BY j."createdAt" DESC LIMIT 50`),
       queryOne(`SELECT revision,"syncedRevision",phase,"taskId",error,"updatedAt" FROM aqsi_catalog_sync WHERE id=1`)]);
     return NextResponse.json({config,keyConfigured:Boolean(process.env.AQSI_API_KEY?.trim()),jobs,catalog},{headers:{'Cache-Control':'private, no-store'}});
   } catch(error) {return failure(error)}

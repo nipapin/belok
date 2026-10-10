@@ -18,6 +18,15 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     url.searchParams.set('options',`-c search_path=${schema}`);
     process.env.DATABASE_URL=url.toString();process.env.AQSI_API_KEY='test-only';process.env.AQSI_DEVICE_ID='784146';
     db=await import('../src/lib/db');
+    // PostgreSQL advisory locks are shared across schemas. Give test locks a
+    // separate namespace so a live worker cannot skip a mocked test tick.
+    const lockNamespace=1+parseInt(schema.slice(-7),16);
+    db.pool.on('connect',client=>{
+      const originalQuery=client.query;
+      client.query=((text:unknown,...args:unknown[])=>Reflect.apply(originalQuery,client,[
+        typeof text==='string' ? text.replaceAll('(784146,',`(${lockNamespace},`) : text,...args,
+      ])) as typeof client.query;
+    });
     for(const name of readdirSync('migrations').filter(n=>n.endsWith('.sql')).sort()) await db.query(readFileSync(`migrations/${name}`,'utf8').replaceAll("'public'",`'${schema}'`).replaceAll('public.',`"${schema}".`));
     await db.query(`INSERT INTO app_settings (key,value) VALUES ('aqsi',$1),('notification_settings',$2) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[
       JSON.stringify({enabled:true,deviceId:784146,receiptsEnabled:true,catalogEnabled:false,taxSystemCode:1,taxRateId:6,calculationTypeId:4,calculationSubjectId:1,cashierName:''}),JSON.stringify({adminNewOrdersPush:false,autoPushLoyalty:false})]);
@@ -56,7 +65,8 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     const receiptInfo=payloads[1].info as {additionalAttribute:string;additionalUserAttribute:{name:string;value:string}};
     assert.equal(Buffer.byteLength(receiptInfo.additionalAttribute,'utf8'),16);
     assert.equal(receiptInfo.additionalUserAttribute.value,'#1 paid-card');
-    const receipt=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='paid-card' AND kind='RECEIPT'`);assert.ok(receipt);
+    const receipt=await db.queryOne<{operationId:string;submittedAt:Date}>(`SELECT "operationId","submittedAt" FROM aqsi_jobs WHERE "orderId"='paid-card' AND kind='RECEIPT'`);assert.ok(receipt);
+    assert.ok(receipt.submittedAt instanceof Date,'record actual submission attempt time');
     operations.set(receipt.operationId,{type:'receipt.process',status:'Completed',result:JSON.stringify({id:'receipt',isNonFiscal:false,info:{typeId:1,sum:1000,additionalAttribute:(payloads[1].info as {additionalAttribute:string}).additionalAttribute}})});
     await processAqsiJobs();await processAqsiJobs();assert.equal(posts,2);
     await order('sbp','SBP');
@@ -68,6 +78,7 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     assert.match((await db.queryOne<{error:string}>('SELECT error FROM aqsi_jobs WHERE id=$1',[sbpReceipt.id]))!.error,/Указана недопустимая СНО/);
     await db.query(`UPDATE app_settings SET value=jsonb_set(value,'{taxSystemCode}','2') WHERE key='aqsi'`);
     assert.equal(await retryAqsiReceipt(sbpReceipt.id),true);
+    assert.equal((await db.queryOne<{submittedAt:Date|null}>(`SELECT "submittedAt" FROM aqsi_jobs WHERE id=$1`,[sbpReceipt.id]))?.submittedAt,null);
     const retryBefore=posts;
     await processAqsiJobs();await processAqsiJobs();assert.equal(posts,retryBefore+1);
     assert.equal((payloads.at(-1)!.info as {taxSystemCode:number}).taxSystemCode,2,'retry must rebuild using corrected fiscal settings');
