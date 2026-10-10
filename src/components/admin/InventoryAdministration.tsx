@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {History,ShieldCheck,X} from 'lucide-react';
+import AdminSelect from '@/components/admin/AdminSelect';
 type Event={id:number;action:string;at:string;actorName:string|null;actorEmail:string|null;before:Record<string,unknown>|null;after:Record<string,unknown>|null};
 type User={id:string;email:string;name:string|null;role:string|null};
 const roles=[{value:'SUPERADMIN',label:'Суперадмин'},{value:'MANAGER',label:'Управляющий'},{value:'STOCK',label:'Склад'},{value:'VIEWER',label:'Просмотр'}];
@@ -35,9 +36,7 @@ export default function InventoryAdministration({itemId,itemName,onClose}:{itemI
   <div className="space-y-2">
    {users.map(u=><div className="flex items-center justify-between gap-3 border-b border-(--lg-ring) py-2" key={u.id}>
     <div className="min-w-0"><p className="text-sm font-medium truncate">{u.name||u.email}</p><p className="text-xs text-(--lg-text-muted) truncate">{u.email}</p></div>
-    <select aria-label={'Права '+u.email} className="select-pill max-w-[170px]" disabled={busy} value={u.role??'MANAGER'} onChange={e=>void update(u.id,e.target.value)}>
-      {roles.map(r=><option value={r.value} key={r.value}>{r.label}</option>)}
-    </select>
+    <div className="w-[170px] shrink-0"><AdminSelect ariaLabel={'Права '+u.email} value={u.role??'MANAGER'} onChange={v=>{if(!busy)void update(u.id,v)}} options={roles}/></div>
    </div>)}
   </div>}
  </section>;
