@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { replaceProductIngredients, type IngredientLinkWrite } from '@/lib/productIngredients';
 import { withTransaction } from '@/lib/db';
+import { ensureComboCategory } from '@/lib/comboCategory';
 import { requireAdmin } from '@/lib/adminAuth';
 import { fetchProductById, fetchProductsWithRelations } from '@/lib/queries/products';
 import { replaceProductVariants, type VariantWrite } from '@/lib/productVariants';
@@ -56,9 +57,10 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
 
     await withTransaction(async (client) => {
+      const categoryId = body.isCombo ? await ensureComboCategory(client) : body.categoryId;
       const maxRow = await client.query<{ max: number | string | null }>(
         `SELECT MAX("sortOrder") AS max FROM "products" WHERE "categoryId" = $1`,
-        [body.categoryId]
+        [categoryId]
       );
       const nextSort = Number(maxRow.rows[0]?.max ?? -1) + 1;
 
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
           body.description ?? null,
           toNum(body.price) ?? 0,
           body.image ?? null,
-          body.categoryId,
+          categoryId,
           body.isAvailable ?? true,
           toNum(body.calories),
           toNum(body.proteins),
