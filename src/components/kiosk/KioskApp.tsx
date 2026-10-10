@@ -448,6 +448,7 @@ export default function KioskApp() {
           bonusUsed,
           items: items.map((item) => ({
             productId: item.productId,
+            comboSelections: item.comboSelections,
             variantId: item.variantId ?? null,
             quantity: item.quantity,
             customizations: item.customizations.map((c) => ({
