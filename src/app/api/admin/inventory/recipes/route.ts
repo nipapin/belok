@@ -11,10 +11,10 @@ export async function GET(req:NextRequest){
   const ownerId=req.nextUrl.searchParams.get('ownerId');
   if(ownerKind!=='PRODUCT'&&ownerKind!=='PREPARED')return NextResponse.json({error:'Invalid ownerKind'},{status:400});
   if(!ownerId)return NextResponse.json({error:'Invalid ownerId'},{status:400});
-  const rows=await query<{id:string;outputQuantity:string;outputUnit:string;itemId:string|null;quantity:string|null}>(`SELECT r.id,r.output_quantity::text AS "outputQuantity",r.output_unit AS "outputUnit",l.item_id::text AS "itemId",l.quantity::text AS quantity
+  const rows=await query<{id:string;outputQuantity:string;outputUnit:string;itemId:string|null;quantity:string|null;instructions:string}>(`SELECT r.id,r.output_quantity::text AS "outputQuantity",r.output_unit AS "outputUnit",r.instructions,l.item_id::text AS "itemId",l.quantity::text AS quantity
  FROM inventory_recipes r LEFT JOIN inventory_recipe_lines l ON l.recipe_id=r.id WHERE r.owner_kind=$1 AND r.owner_id=$2 ORDER BY l.id`,[ownerKind,ownerId]);
   if(!rows.length)return NextResponse.json({recipe:null});
-  return NextResponse.json({recipe:{outputQuantity:Number(rows[0].outputQuantity),outputUnit:rows[0].outputUnit,lines:rows.filter(x=>x.itemId).map(x=>({itemId:x.itemId,quantity:Number(x.quantity)}))}});
+  return NextResponse.json({recipe:{outputQuantity:Number(rows[0].outputQuantity),outputUnit:rows[0].outputUnit,instructions:rows[0].instructions,lines:rows.filter(x=>x.itemId).map(x=>({itemId:x.itemId,quantity:Number(x.quantity)}))}});
  }catch(e){return error(e);}
 }
 export async function PUT(req:NextRequest){
