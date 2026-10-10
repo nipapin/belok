@@ -1,0 +1,75 @@
+.order-board { --lg-text: #f1f5f3; --lg-text-muted: #a9bab2; color-scheme: dark; display: flex; flex-direction: column; width: 100%; height: 100dvh; overflow: hidden; background: #101915; color: #f1f5f3; padding: max(12px, env(safe-area-inset-top)) 28px max(14px, env(safe-area-inset-bottom)); }
+.order-board button, .board-file-button { cursor: pointer; transition: background .15s; }
+.order-board button:focus-visible, .board-file-button:focus-within { outline: 3px solid #b8ed6e; outline-offset: 4px; }
+.order-board button:disabled { cursor: wait; opacity: .5; }
+.board-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid #ffffff18; }
+.board-brand { font-size: 24px; font-weight: 750; letter-spacing: -1px; line-height: 1.1; }
+.board-connection { display: grid; grid-template-columns: 18px auto; column-gap: 7px; align-items: center; color: #b8ed6e; font-size: 12px; }
+.board-connection small { grid-column: 2; color: #a9bab2; font-size: 10px; margin-top: 2px; }
+.board-disconnected { color: #ffae83; }
+.board-controls { display: flex; gap: 6px; flex-wrap: wrap; }
+.board-controls button, .board-settings button, .board-file-button { display: inline-flex; gap: 8px; align-items: center; justify-content: center; padding: 12px 14px; border-radius: 12px; border: 1px solid #ffffff20; background: #202d26; font-size: 12px; font-weight: 550; }
+.board-controls button { min-height: 34px; padding: 7px 10px; border-radius: 9px; gap: 6px; font-size: 11px; }
+.board-controls button:hover, .board-settings button:hover, .board-file-button:hover { background: #33453a; }
+.board-controls .board-sound-active { color: #b8ed6e; border-color: #b8ed6e50; }
+.board-controls .board-sound-off { background: #b8ed6e; color: #172213; }
+.board-notice { flex-shrink: 0; display: flex; align-items: center; gap: 10px; background: #273522; color: #dfebc8; padding: 12px 16px; margin-top: 14px; border-radius: 12px; font-size: 13px; }
+.board-notice button { margin-left: auto; flex-shrink: 0; text-decoration: underline; }
+.board-notice-error { background: #512e20; color: #ffdbbc; }
+.board-settings { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid #ffffff18; font-size: 13px; }
+.board-settings p { color: #a9bab2; font-size: 12px; margin-top: 5px; overflow-wrap: anywhere; }
+.board-settings > div { max-width: 300px; }
+.board-file-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.board-volume { display: flex; gap: 10px; align-items: center; }
+.board-volume input { accent-color: #b8ed6e; width: 110px; }
+.board-summary { display: flex; align-items: center; gap: 18px; padding: 14px 0; }
+.board-summary h1 { display: flex; align-items: center; gap: 10px; font-size: 25px; font-weight: 650; }
+.board-summary h1 span { font-size: 16px; color: #b8ed6e; background: #b8ed6e18; padding: 4px 10px; border-radius: 10px; }
+.board-summary > div { color: #a9bab2; font-size: 12px; }
+.board-summary time { margin-left: auto; font-size: 30px; font-weight: 550; font-variant-numeric: tabular-nums; }
+.board-new-banner { color: #b8ed6e; text-align: left; }
+.board-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; flex: 1; min-height: 0; }
+.board-column { display: flex; flex-direction: column; min-height: 0; border: 1px solid #ffffff16; border-radius: 20px; background: #17221c; overflow: hidden; --column-color: #b8ed6e; }
+.board-column-cooking { --column-color: #ffd37b; }
+.board-column-ready { --column-color: #78d9ca; }
+.board-column-heading { display: flex; align-items: center; gap: 12px; padding: 20px; border-top: 4px solid var(--column-color); color: var(--column-color); }
+.board-column-heading h2 { color: #f1f5f3; font-size: 23px; font-weight: 650; }
+.board-column-heading p { color: #a9bab2; font-size: 11px; margin-top: 3px; }
+.board-column-heading > strong { margin-left: auto; font-size: 27px; font-variant-numeric: tabular-nums; }
+.board-column-scroll { overflow-y: auto; flex: 1; min-height: 0; padding: 0 12px 12px; scrollbar-width: thin; scrollbar-color: #526358 transparent; }
+.board-card { margin-bottom: 12px; border: 2px solid transparent; border-radius: 14px; padding: 18px; background: #f3f4ed; color: #17241d; }
+.board-card:last-child { margin-bottom: 0; }
+.board-card-fresh { border-color: #b8ed6e; box-shadow: 0 0 0 3px #b8ed6e30; }
+.board-card-heading { display: flex; gap: 8px; justify-content: space-between; align-items: center; }
+.board-ticket { font-size: clamp(32px, 2.7vw, 50px); line-height: 1.05; letter-spacing: -1.5px; overflow-wrap: anywhere; }
+.board-age { display: flex; flex-shrink: 0; gap: 5px; align-items: center; color: #56685b; font-size: 12px; font-variant-numeric: tabular-nums; }
+.board-age-late { background: #ffe4d5; color: #a63815; padding: 5px 7px; border-radius: 8px; }
+.board-tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0 18px; }
+.board-tags span { font-size: 10px; font-weight: 550; background: #e3e9df; color: #50614f; padding: 4px 8px; border-radius: 5px; }
+.board-items { list-style: none; padding: 0; margin: 0; }
+.board-items li + li { margin-top: 16px; padding-top: 16px; border-top: 1px solid #17241d18; }
+.board-item { display: flex; gap: 10px; align-items: baseline; font-size: clamp(20px, 1.65vw, 28px); line-height: 1.25; overflow-wrap: anywhere; }
+.board-item strong { font-weight: 650; }
+.board-quantity { flex-shrink: 0; color: #608137; min-width: 34px; }
+.board-customization { margin-top: 7px; margin-left: 44px; font-size: 15px; line-height: 1.4; font-weight: 550; }
+.board-remove { color: #b5442d; }
+.board-add { color: #42752a; }
+.board-comment { margin-top: 18px; padding: 12px; background: #fff0c7; border-left: 3px solid #cf9b39; border-radius: 4px 8px 8px 4px; font-size: 17px; font-weight: 550; white-space: pre-wrap; overflow-wrap: anywhere; }
+.board-delivery { margin-top: 14px; color: #53624e; font-size: 13px; }
+.board-delivery p + p { margin-top: 5px; }
+.board-card-footer { display: flex; gap: 10px; justify-content: space-between; flex-wrap: wrap; margin-top: 18px; padding-top: 12px; border-top: 1px solid #17241d18; color: #67725e; font-size: 11px; }
+.board-card-footer button { color: #365823; font-weight: 650; }
+.board-order-action { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 42px; margin-top: 14px; border-radius: 9px; background: #2b4b27; color: #fff; font-size: 14px; font-weight: 650; }
+.board-order-action:hover { background: #3c6536; }
+.board-order-action-preparing { background: #775b23; }
+.board-order-action-preparing:hover { background: #92702a; }
+.board-order-action-ready { background: #26685c; }
+.board-order-action-ready:hover { background: #348576; }
+.board-empty { display: flex; align-items: center; justify-content: center; flex-direction: column; min-height: 200px; height: 100%; color: #728578; gap: 15px; font-size: 14px; }
+.board-bottom { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; margin-top: 14px; color: #859a8c; font-size: 10px; }
+.board-login { align-items: center; padding-top: 45px; }
+.board-login .board-brand { text-align: center; }
+.board-loading { display: flex; align-items: center; gap: 12px; margin: auto; }
+@media (min-width: 1800px) { .board-item { font-size: 32px; } .board-customization { font-size: 20px; } .board-comment { font-size: 22px; } .board-card { padding: 24px; } }
+@media (max-width: 1000px) { .order-board { padding: 12px 16px; } .board-header { gap: 12px; } .board-connection { display: none; } .board-columns { gap: 10px; } .board-column-heading { padding: 14px; gap: 8px; } .board-column-heading h2 { font-size: 18px; } .board-card { padding: 12px; } .board-age { font-size: 10px; } .board-summary > div { max-width: 240px; } }
+@media (max-width: 700px) { .order-board { overflow-y: auto; } .board-header { flex-shrink: 0; } .board-brand { font-size: 24px; } .board-summary { flex-wrap: wrap; } .board-summary > div { order: 3; width: 100%; max-width: none; } .board-columns { display: flex; flex-direction: column; flex: none; } .board-column { min-height: 180px; flex-shrink: 0; } .board-column-scroll { overflow: visible; } .board-bottom { padding-bottom: 10px; } .board-login { overflow-y: auto; } }

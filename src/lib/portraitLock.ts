@@ -26,6 +26,7 @@ export function isPortraitLockApiAvailable(): boolean {
  */
 export async function lockPortraitOrientation(): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  if (window.location.pathname === '/order-board' || ['orders.belok.pro', 'orders.localhost'].includes(window.location.hostname)) return false;
 
   const orientation = getOrientableScreen();
   const lock = orientation?.lock;
