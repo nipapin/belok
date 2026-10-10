@@ -44,6 +44,12 @@ function OrderCard({ order, fresh, now, acknowledge, advance, markItem, busy }: 
   const minutes = Math.max(0, Math.floor((now - new Date(order.createdAt).getTime()) / 60_000));
   const ageLabel = minutes < 60 ? `${minutes} мин` : `${Math.floor(minutes / 60)} ч ${minutes % 60} мин`;
   const action = order.status in actions ? actions[order.status as keyof typeof actions] : null;
+  if (order.status === 'PENDING') return <article data-order-id={order.id} className={`board-card board-new-card ${fresh ? 'board-card-fresh' : ''}`}>
+    <button className="board-order-action board-accept" type="button" disabled={busy} onClick={() => advance('PREPARING')}>
+      <strong className="board-ticket">Заказ {orderTicket(order).replace('#', '№')}</strong>
+      <span>{busy ? <Loader2 size={18} className="animate-spin" /> : 'Принять'}</span>
+    </button>
+  </article>;
   return (
     <article data-order-id={order.id} className={`board-card ${fresh ? 'board-card-fresh' : ''}`}>
       <div className="board-card-heading">
@@ -324,13 +330,14 @@ export default function OrderBoard() {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, preparedQuantity: item.preparedQuantity ?? 0 }), signal: controller.signal,
       });
-      const data = await response.json() as { item?: { id: string; preparedQuantity: number }; error?: string };
-      if (!response.ok || !data.item) {
+      const data = await response.json() as { item?: { id: string; preparedQuantity: number }; order?: { status: BoardOrder['status'] }; error?: string };
+      if (!response.ok || !data.item || !data.order) {
         if (response.status === 401) { newQueue.current.clear(); playback.current?.stop(); soundConfig.current.enabled = false; setSoundEnabled(false); setSession({ configured: true, unlocked: false }); setOrders([]); }
         throw new Error(data.error || 'Не удалось отметить позицию');
       }
       const preparedQuantity = data.item.preparedQuantity;
-      setOrders((current) => current.map((entry) => entry.id === order.id ? { ...entry, items: entry.items.map((position) => position.id === item.id ? { ...position, preparedQuantity } : position) } : entry));
+      const status = data.order.status;
+      setOrders((current) => current.map((entry) => entry.id === order.id ? { ...entry, status, items: entry.items.map((position) => position.id === item.id ? { ...position, preparedQuantity } : position) } : entry));
       setMessage('');
     } catch (error) {
       setMessage(controller.signal.aborted ? 'Сервер не ответил вовремя. Проверяем отметку позиции…' : error instanceof Error ? error.message : 'Не удалось отметить позицию');

@@ -74,6 +74,10 @@
 .board-order-action-preparing:hover { background: #92702a; }
 .board-order-action-ready { background: #26685c; }
 .board-order-action-ready:hover { background: #348576; }
+.board-card.board-new-card { padding: 0; overflow: hidden; }
+.board-accept { margin-top: 0; min-height: 56px; padding: 12px 14px; justify-content: space-between; gap: 12px; border-radius: 11px; }
+.board-accept .board-ticket { font-size: 22px; letter-spacing: -.4px; }
+.board-accept > span { flex-shrink: 0; color: #b8ed6e; }
 .board-empty { display: flex; align-items: center; justify-content: center; flex-direction: column; min-height: 200px; height: 100%; color: #728578; gap: 15px; font-size: 14px; }
 .board-login { align-items: center; padding-top: 45px; }
 .board-login .board-brand { text-align: center; }

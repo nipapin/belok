@@ -53,33 +53,43 @@ try {
       const orderId = `board-test-${randomUUID()}`;
       const otherOrderId = `board-test-${randomUUID()}`;
       const itemId = `board-test-${randomUUID()}`;
+      const secondItemId = `board-test-${randomUUID()}`;
       const product = (await pool.query('SELECT id FROM products LIMIT 1')).rows[0];
       assert.ok(product, 'A product is needed for the isolated progress fixture');
       try {
         await pool.query(`INSERT INTO orders (id, total, source, "paymentMethod") VALUES ($1, 0, 'KIOSK', 'CASH'), ($2, 0, 'KIOSK', 'CASH')`, [orderId, otherOrderId]);
         await pool.query(`INSERT INTO order_items (id, "orderId", "productId", quantity, "unitPrice") VALUES ($1, $2, $3, 2, 0)`, [itemId, orderId, product.id]);
-        const mark = (action, preparedQuantity, targetOrderId = orderId) => fetch(`${base}/api/order-board/${targetOrderId}/items/${itemId}`, {
+        await pool.query(`INSERT INTO order_items (id, "orderId", "productId", quantity, "unitPrice") VALUES ($1, $2, $3, 1, 0)`, [secondItemId, orderId, product.id]);
+        const mark = (action, preparedQuantity, targetOrderId = orderId, targetItemId = itemId) => fetch(`${base}/api/order-board/${targetOrderId}/items/${targetItemId}`, {
           method: 'PATCH', headers: { cookie: `belok_kiosk=${cookie}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action, preparedQuantity }),
         });
         assert.equal((await mark('invalid', 0)).status, 400);
         assert.equal((await mark('prepare', 0.5)).status, 400);
         assert.equal((await mark('prepare', -1)).status, 400);
         assert.equal((await mark('prepare', Number.MAX_SAFE_INTEGER)).status, 400);
+        assert.equal((await mark('prepare', 0)).status, 409, 'New orders must be accepted before item preparation');
+        await pool.query(`UPDATE orders SET status='PREPARING' WHERE id=$1`, [orderId]);
         assert.equal((await mark('prepare', 0, otherOrderId)).status, 409, 'Items cannot be marked through another order');
         const simultaneous = await Promise.all([mark('prepare', 0), mark('prepare', 0)]);
         assert.deepEqual(simultaneous.map((response) => response.status).sort(), [200, 409], 'Concurrent clicks/retries mark only one unit');
         const currentBoard = await fetch(`${base}/api/order-board`, { headers: { cookie: `belok_kiosk=${cookie}` } });
-        assert.equal((await currentBoard.json()).orders.find((order) => order.id === orderId).items[0].preparedQuantity, 1);
+        assert.equal((await currentBoard.json()).orders.find((order) => order.id === orderId).items.find((item) => item.id === itemId).preparedQuantity, 1);
         assert.equal((await mark('prepare', 1)).status, 200);
+        assert.equal((await pool.query('SELECT status FROM orders WHERE id=$1', [orderId])).rows[0].status, 'PREPARING', 'All positions must be complete before Ready');
+        const lastPosition = await mark('prepare', 0, orderId, secondItemId);
+        assert.equal(lastPosition.status, 200);
+        assert.equal((await lastPosition.json()).order.status, 'READY', 'Last unit must atomically move the order to Ready');
+        assert.equal((await pool.query('SELECT status FROM orders WHERE id=$1', [orderId])).rows[0].status, 'READY');
         assert.equal((await mark('prepare', 2)).status, 409, 'Cannot exceed ordered quantity');
         assert.equal((await mark('undo', 2)).status, 200);
+        assert.equal((await pool.query('SELECT status FROM orders WHERE id=$1', [orderId])).rows[0].status, 'PREPARING', 'Undo must return the order to Cooking');
         assert.equal((await mark('undo', 1)).status, 200);
         assert.equal((await mark('undo', 0)).status, 409, 'Cannot undo below zero');
         for (const status of ['COMPLETED', 'CANCELLED']) {
           await pool.query('UPDATE orders SET status=$2 WHERE id=$1', [orderId, status]);
           assert.equal((await mark('prepare', 0)).status, 409, 'Closed orders cannot be marked');
         }
-        await pool.query(`UPDATE orders SET status='PENDING', "createdAt"=(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '2 days' WHERE id=$1`, [orderId]);
+        await pool.query(`UPDATE orders SET status='PREPARING', "createdAt"=(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '2 days' WHERE id=$1`, [orderId]);
         assert.equal((await mark('prepare', 0)).status, 409, 'Historical orders cannot be marked');
         await pool.query(`UPDATE orders SET "createdAt"=CURRENT_TIMESTAMP AT TIME ZONE 'UTC', "paymentMethod"='CARD' WHERE id=$1`, [orderId]);
         assert.equal((await mark('prepare', 0)).status, 409, 'Unpaid online orders cannot be marked');
@@ -144,7 +154,9 @@ try {
       const next = (item?.preparedQuantity ?? 0) + (body.action === 'prepare' ? 1 : -1);
       if (!item || item.preparedQuantity !== body.preparedQuantity || next < 0 || next > item.quantity) return void respond({ error: 'Позиция уже изменена' }, 409);
       item.preparedQuantity = next;
-      return void respond({ item: { id: item.id, preparedQuantity: next } });
+      if (body.action === 'prepare' && order.items.every((item) => item.preparedQuantity === item.quantity)) order.status = 'READY';
+      else if (body.action === 'undo' && order.status === 'READY') order.status = 'PREPARING';
+      return void respond({ item: { id: item.id, preparedQuantity: next }, order: { id: order.id, status: order.status } });
     }
     const statusPath = path.match(/^\/api\/order-board\/([^/]+)\/status$/);
     if (statusPath) {
@@ -174,26 +186,30 @@ try {
   assert.equal(await page.$('.board-summary'), null);
   assert.equal(await page.$('.board-bottom'), null);
   assert.ok(await page.$('.board-header time'), 'Clock must be in the header');
-  const position = '[data-order-id="101"] [data-item-id="item-101"]';
+  assert.equal(await page.$('.board-column-new .board-items'), null, 'New orders must show only compact accept buttons');
+  assert.equal(await page.$eval('.board-column-new .board-accept', (button) => button.innerText.replace(/\s+/g, ' ')), 'Заказ №101 Принять');
+  const position = '[data-order-id="102"] [data-item-id="item-102"]';
   itemFailure = true;
   await page.click(`${position} .board-item`);
   await page.waitForFunction(() => document.body.innerText.includes('Не удалось отметить позицию'));
   assert.equal(await page.$eval(`${position} .board-quantity`, (element) => element.innerText), '×2');
   itemFailure = false;
   await page.click(`${position} .board-item`);
-  await page.waitForFunction(() => document.querySelector('[data-item-id="item-101"] .board-quantity').innerText === '×1');
+  await page.waitForFunction(() => document.querySelector('[data-item-id="item-102"] .board-quantity').innerText === '×1');
   await page.click(`${position} .board-item-undo`);
-  await page.waitForFunction(() => document.querySelector('[data-item-id="item-101"] .board-quantity').innerText === '×2');
+  await page.waitForFunction(() => document.querySelector('[data-item-id="item-102"] .board-quantity').innerText === '×2');
   for (let prepared = 1; prepared <= 2; prepared++) {
     await page.click(`${position} .board-item`);
-    await page.waitForFunction((prepared) => document.querySelector('[data-item-id="item-101"] .board-item').disabled === (prepared === 2) && (prepared === 2 || document.querySelector('[data-item-id="item-101"] .board-quantity').innerText === '×1'), {}, prepared);
+    await page.waitForFunction((prepared) => document.querySelector('[data-item-id="item-102"] .board-item').disabled === (prepared === 2) && (prepared === 2 || document.querySelector('[data-item-id="item-102"] .board-quantity').innerText === '×1'), {}, prepared);
   }
   assert.ok(await page.$(`${position}.board-item-done`));
+  assert.ok(await page.$('.board-column-ready [data-order-id="102"]'), 'Last unit must immediately move the card to Ready');
   await page.reload({ waitUntil: 'networkidle2' });
   await page.waitForSelector(`${position}.board-item-done`);
   assert.equal(await page.$eval(`${position} .board-item`, (button) => button.disabled), true);
   await page.click(`${position} .board-item-undo`);
-  await page.waitForFunction(() => document.querySelector('[data-item-id="item-101"] .board-quantity').innerText === '×1');
+  await page.waitForFunction(() => document.querySelector('[data-item-id="item-102"] .board-quantity').innerText === '×1');
+  assert.ok(await page.$('.board-column-cooking [data-order-id="102"]'), 'Undo returns the card to Cooking');
   const quantityIsRight = await page.$eval(`${position} .board-item`, (button) => button.firstElementChild.getBoundingClientRect().right <= button.lastElementChild.getBoundingClientRect().left);
   assert.ok(quantityIsRight, 'Quantity must be aligned to the right of the item name');
   console.log('PASS: item quantities decrement one at a time, completed items disable, undo/reload work, failed mutations retain counts');
@@ -203,11 +219,10 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.board-card').length === 7);
   assert.equal(await page.evaluate(() => window.__boardSounds), 5, 'Five queued orders must share one alarm, without per-order sounds');
   assert.equal(await page.$$eval('.board-card-fresh', (elements) => elements.length), 5);
-  assert.deepEqual(await page.$$eval('.board-column-new .board-ticket', (elements) => elements.slice(0, 2).map((element) => element.innerText)), ['#107', '#106'], 'Newest orders must be visible at the top of the column');
-  for (const id of ['107', '106', '105', '104', '101']) await page.click(`[data-order-id="${id}"] .board-card-footer button`);
+  assert.deepEqual(await page.$$eval('.board-column-new .board-ticket', (elements) => elements.slice(0, 2).map((element) => element.innerText)), ['Заказ №107', 'Заказ №106'], 'Newest orders must be visible at the top of the column');
   await page.waitForFunction(() => window.__boardSounds === 10, { timeout: 25_000 });
-  assert.equal(await page.$$eval('.board-card-fresh', (elements) => elements.length), 0, 'Acknowledgment removes highlight');
-  assert.deepEqual(await page.$$eval('.board-column-new .board-ticket', (elements) => elements.slice(0, 2).map((element) => element.innerText)), ['#107', '#106'], 'Acknowledgment must not change chronological order or silence the queue');
+  assert.equal(await page.$$eval('.board-card-fresh', (elements) => elements.length), 5, 'Pending orders stay highlighted until accepted');
+  assert.deepEqual(await page.$$eval('.board-column-new .board-ticket', (elements) => elements.slice(0, 2).map((element) => element.innerText)), ['Заказ №107', 'Заказ №106'], 'Repeating sound must not change chronological order');
   await new Promise((resolve) => setTimeout(resolve, 3500));
   assert.equal(await page.evaluate(() => window.__boardSounds), 10, 'Polling must not produce extra alarms');
   statusFailure = true;
