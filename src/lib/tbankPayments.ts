@@ -1,6 +1,7 @@
 import { query, queryOne, withTransaction } from '@/lib/db';
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import { notifyKitchenNewOrder } from '@/lib/orderNotify';
+import { enqueueReceipt } from '@/lib/aqsiJobs';
 import type { OrderRow, PaymentStatus } from '@/lib/types';
 import {
   assertTbankSuccess,
@@ -87,11 +88,14 @@ export async function applyTbankPaymentStatus(
         [orderId]
       );
       const order = result.rows[0];
-      if (!order || order.paymentStatus !== 'PENDING') return;
+      if (!order) return;
+      if (order.paymentStatus === 'SUCCEEDED') { await enqueueReceipt(client,orderId); return; }
+      if (order.paymentStatus !== 'PENDING') return;
       await client.query(`UPDATE "orders" SET "paymentStatus" = 'SUCCEEDED' WHERE id = $1`, [
         orderId,
       ]);
       shouldNotify = true;
+      await enqueueReceipt(client,orderId);
     });
     if (shouldNotify) {
       await notifyKitchenNewOrder(orderId).catch((err) => {

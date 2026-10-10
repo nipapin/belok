@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Banknote, Loader2, Minus, Plus, QrCode, Trash2 } from 'lucide-react';
+import { ArrowLeft, Banknote, CreditCard, Loader2, Minus, Plus, QrCode, Trash2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { brandMark } from '@/lib/brand';
 import { FoodCardSkeleton, type FoodCardModel } from '@/components/product/FoodCard';
@@ -9,6 +9,7 @@ import { KioskProductCard } from '@/components/kiosk/KioskProductCard';
 import KioskPinPad from '@/components/kiosk/KioskPinPad';
 import KioskProductModal from '@/components/kiosk/KioskProductModal';
 import SbpPayPanel from '@/components/order/SbpPayPanel';
+import TerminalPayPanel, { KioskReceiptStatus } from '@/components/kiosk/TerminalPayPanel';
 import { useKioskCartStore } from '@/store/kioskCartStore';
 import type { Category, Product } from '@/types';
 
@@ -20,9 +21,10 @@ function kioskTiles(product: Product, categoryName: string): KioskTile[] {
 
 type Step = 'menu' | 'checkout' | 'pay' | 'success';
 
-type KioskPayMethod = 'CASH' | 'SBP';
+type KioskPayMethod = 'CASH' | 'SBP' | 'CARD';
 
 type PlacedOrder = {
+  orderId: string;
   displayNumber: string;
   inviteSent: boolean;
   guest: boolean;
@@ -38,6 +40,8 @@ type PayOrder = PlacedOrder & {
 };
 
 const SUCCESS_RESET_MS = 8000;
+const PAYMENT_STORAGE = 'belok:kiosk:payment';
+const REQUEST_STORAGE = 'belok:kiosk:request';
 
 function emailLooksValid(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -79,17 +83,24 @@ function RollingPrice({ value }: { value: number }) {
   );
 }
 
-function bonusPointsLabel(count: number) {
+function bonusWord(count: number) {
   const n = Math.abs(count) % 100;
   const last = n % 10;
-  if (n > 10 && n < 20) return `${count} баллов`;
-  if (last === 1) return `${count} балл`;
-  if (last >= 2 && last <= 4) return `${count} балла`;
-  return `${count} баллов`;
+  if (n > 10 && n < 20) return 'баллов';
+  if (last === 1) return 'балл';
+  if (last >= 2 && last <= 4) return 'балла';
+  return 'баллов';
 }
 
+type KioskLoyalty = {
+  bonusBalance: number;
+  cashbackPercent: number;
+  discountPercent: number;
+  levelName: string | null;
+};
+
 export default function KioskApp() {
-  const [session, setSession] = useState<{ configured: boolean; unlocked: boolean } | null>(null);
+  const [session, setSession] = useState<{ configured: boolean; unlocked: boolean; cardEnabled?:boolean } | null>(null);
   const [step, setStep] = useState<Step>('menu');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [tailPad, setTailPad] = useState(0);
@@ -101,18 +112,20 @@ export default function KioskApp() {
   const scrollGenRef = useRef(0);
   const suppressTimerRef = useRef<number | undefined>(undefined);
   const scrollRafRef = useRef<number | undefined>(undefined);
-  selectedCategoryRef.current = selectedCategory;
+  useLayoutEffect(()=>{selectedCategoryRef.current = selectedCategory},[selectedCategory]);
   const [openProduct, setOpenProduct] = useState<{ productId: string; variantId: string | null } | null>(null);
   const [email, setEmail] = useState('');
-  const [bonusBalance, setBonusBalance] = useState<number | null>(null);
+  const [loyalty, setLoyalty] = useState<KioskLoyalty | null>(null);
+  const [redeemBonuses, setRedeemBonuses] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<KioskPayMethod>('SBP');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [recoveringOrder,setRecoveringOrder]=useState(false);
   const [payOrder, setPayOrder] = useState<PayOrder | null>(null);
   const [payFailed, setPayFailed] = useState(false);
   const payOrderRef = useRef<PayOrder | null>(null);
   const [success, setSuccess] = useState<PlacedOrder | null>(null);
-  payOrderRef.current = payOrder;
+  useLayoutEffect(()=>{payOrderRef.current = payOrder},[payOrder]);
 
   const items = useKioskCartStore((s) => s.items);
   const clearCart = useKioskCartStore((s) => s.clearCart);
@@ -121,6 +134,17 @@ export default function KioskApp() {
   const getItemPrice = useKioskCartStore((s) => s.getItemPrice);
   const totalItems = useKioskCartStore((s) => s.getTotalItems());
   const totalPrice = useKioskCartStore((s) => s.getTotalPrice());
+
+  const discountPercent = loyalty?.discountPercent ?? 0;
+  const discountAmount = Math.round(totalPrice * (discountPercent / 100));
+  const afterDiscount = totalPrice - discountAmount;
+  const maxBonus = loyalty ? Math.min(afterDiscount, loyalty.bonusBalance) : 0;
+  const bonusUsed = redeemBonuses ? maxBonus : 0;
+  const payableTotal = afterDiscount - bonusUsed;
+  const cashbackPercent = loyalty?.cashbackPercent ?? 0;
+  const bonusToEarn =
+    loyalty && cashbackPercent > 0 ? Math.round(payableTotal * (cashbackPercent / 100)) : 0;
+  const bonusAfterOrder = (loyalty?.bonusBalance ?? 0) - bonusUsed + bonusToEarn;
 
   const { data: categoriesData, isLoading: loadingCats } = useQuery({
     queryKey: ['categories'],
@@ -164,12 +188,18 @@ export default function KioskApp() {
     let cancelled = false;
     fetch('/api/kiosk/session')
       .then((r) => r.json())
-      .then((json: { configured?: boolean; unlocked?: boolean }) => {
+      .then((json: { configured?: boolean; unlocked?: boolean; cardEnabled?:boolean }) => {
         if (cancelled) return;
         setSession({
           configured: Boolean(json.configured),
           unlocked: Boolean(json.unlocked),
+          cardEnabled:Boolean(json.cardEnabled),
         });
+        try {
+          const saved=sessionStorage.getItem(PAYMENT_STORAGE);
+          if(saved) {const pending=JSON.parse(saved) as PayOrder;if(pending.orderId){setPayOrder(pending);setStep('pay')}}
+          else if(sessionStorage.getItem(REQUEST_STORAGE)) setRecoveringOrder(true);
+        } catch { /* A malformed snapshot must not send another payment. */ }
       })
       .catch(() => {
         if (!cancelled) setSession({ configured: false, unlocked: false });
@@ -287,9 +317,12 @@ export default function KioskApp() {
   useEffect(() => {
     if (step !== 'success') return;
     const t = window.setTimeout(() => {
+      sessionStorage.removeItem(PAYMENT_STORAGE);
+      sessionStorage.removeItem(REQUEST_STORAGE);
       useKioskCartStore.getState().clearCart();
       setEmail('');
-      setBonusBalance(null);
+      setLoyalty(null);
+      setRedeemBonuses(false);
       setPaymentMethod('SBP');
       setSubmitError('');
       setPayOrder(null);
@@ -305,28 +338,57 @@ export default function KioskApp() {
     if (step !== 'checkout') return;
     const trimmed = email.trim();
     if (!trimmed || !emailLooksValid(trimmed)) {
-      setBonusBalance(null);
+      setLoyalty(null);
+      setRedeemBonuses(false);
       return;
     }
     let cancelled = false;
     fetch(`/api/kiosk/loyalty?email=${encodeURIComponent(trimmed)}`)
       .then((response) => response.json())
-      .then((json: { found?: boolean; bonusBalance?: number }) => {
-        if (cancelled) return;
-        setBonusBalance(json.found ? Math.floor(json.bonusBalance ?? 0) : null);
-      })
+      .then(
+        (json: {
+          found?: boolean;
+          bonusBalance?: number;
+          cashbackPercent?: number;
+          discountPercent?: number;
+          levelName?: string | null;
+        }) => {
+          if (cancelled) return;
+          if (!json.found) {
+            setLoyalty(null);
+            setRedeemBonuses(false);
+            return;
+          }
+          setLoyalty({
+            bonusBalance: Math.floor(json.bonusBalance ?? 0),
+            cashbackPercent: Number(json.cashbackPercent) || 0,
+            discountPercent: Number(json.discountPercent) || 0,
+            levelName: json.levelName ?? null,
+          });
+        }
+      )
       .catch(() => {
-        if (!cancelled) setBonusBalance(null);
+        if (!cancelled) {
+          setLoyalty(null);
+          setRedeemBonuses(false);
+        }
       });
     return () => {
       cancelled = true;
     };
   }, [step, email]);
 
+  useEffect(() => {
+    if (!loyalty || maxBonus <= 0) setRedeemBonuses(false);
+  }, [loyalty, maxBonus]);
+
   function resetGuest() {
+    sessionStorage.removeItem(PAYMENT_STORAGE);
+    sessionStorage.removeItem(REQUEST_STORAGE);
     clearCart();
     setEmail('');
-    setBonusBalance(null);
+    setLoyalty(null);
+    setRedeemBonuses(false);
     setPaymentMethod('SBP');
     setSubmitError('');
     setPayOrder(null);
@@ -349,6 +411,7 @@ export default function KioskApp() {
       if (!current) return;
       payOrderRef.current = null;
       setSuccess({
+        orderId:current.orderId,
         displayNumber: current.displayNumber,
         inviteSent: current.inviteSent,
         guest: current.guest,
@@ -357,6 +420,8 @@ export default function KioskApp() {
         paymentMethod: current.paymentMethod,
       });
       clearCart();
+      sessionStorage.removeItem(PAYMENT_STORAGE);
+      sessionStorage.removeItem(REQUEST_STORAGE);
       setPayOrder(null);
       setStep('success');
     },
@@ -364,7 +429,7 @@ export default function KioskApp() {
   );
 
   async function placeOrder() {
-    if (items.length === 0 || submitting) return;
+    if ((items.length === 0 && !sessionStorage.getItem(REQUEST_STORAGE)) || submitting) return;
     const trimmed = email.trim();
     if (trimmed && !emailLooksValid(trimmed)) {
       setSubmitError('Некорректный email');
@@ -373,12 +438,11 @@ export default function KioskApp() {
     setSubmitting(true);
     setSubmitError('');
     try {
-      const res = await fetch('/api/kiosk/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const requestBody = sessionStorage.getItem(REQUEST_STORAGE) || JSON.stringify({
+          requestId:crypto.randomUUID(),
           email: trimmed || null,
-          paymentMethod: totalPrice > 0 ? paymentMethod : 'BONUS',
+          paymentMethod: payableTotal > 0 ? paymentMethod : 'BONUS',
+          bonusUsed,
           items: items.map((item) => ({
             productId: item.productId,
             variantId: item.variantId ?? null,
@@ -389,45 +453,60 @@ export default function KioskApp() {
               priceDelta: c.priceDelta,
             })),
           })),
-        }),
+        });
+      sessionStorage.setItem(REQUEST_STORAGE,requestBody);
+      const res = await fetch('/api/kiosk/orders', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body:requestBody,
       });
       const json = (await res.json()) as {
         error?: string;
-        order?: { id: string; total: number };
+        cancelled?: boolean;
+        notCreated?: boolean;
+        order?: { id: string; total: number;paymentMethod?:KioskPayMethod|'BONUS' };
         inviteSent?: boolean;
         guest?: boolean;
         displayNumber?: string;
-        payment?: { paymentUrl?: string | null; payload?: string | null; image?: string | null } | null;
+        payment?: { method?:KioskPayMethod;paymentUrl?: string | null; payload?: string | null; image?: string | null } | null;
       };
       if (!res.ok) {
+        if(res.status===400 || json.cancelled || json.notCreated) {sessionStorage.removeItem(REQUEST_STORAGE);setRecoveringOrder(false)}
+        else setRecoveringOrder(true);
         setSubmitError(json.error || 'Не удалось отправить заказ');
         return;
       }
       const id = json.order?.id ?? '';
       const placed: PlacedOrder = {
+        orderId:id,
         displayNumber: json.displayNumber || id.slice(0, 8),
         inviteSent: Boolean(json.inviteSent),
         guest: Boolean(json.guest),
-        total: json.order?.total ?? totalPrice,
-        email: trimmed || undefined,
-        paymentMethod: json.payment ? 'SBP' : paymentMethod || 'BONUS',
+        total: json.order?.total ?? payableTotal,
+        email: (JSON.parse(requestBody) as {email?:string}).email || undefined,
+        paymentMethod: json.order?.paymentMethod ?? json.payment?.method ?? paymentMethod,
       };
       if (json.payment) {
-        setPayOrder({
+        const pending:PayOrder = {
           ...placed,
           orderId: id,
           payload: json.payment.payload ?? null,
           image: json.payment.image ?? null,
-        });
+        };
+        sessionStorage.setItem(PAYMENT_STORAGE,JSON.stringify(pending));
+        sessionStorage.removeItem(REQUEST_STORAGE);
+        setPayOrder(pending);
+        setRecoveringOrder(false);
         setPayFailed(false);
         setStep('pay');
         return;
       }
       clearCart();
+      sessionStorage.removeItem(REQUEST_STORAGE);
+      setRecoveringOrder(false);
       setSuccess(placed);
       setStep('success');
     } catch {
-      setSubmitError('Нет соединения');
+      setRecoveringOrder(true);
+      setSubmitError('Нет подтверждения от сервера. Повторите отправку — будет восстановлен тот же заказ.');
     } finally {
       setSubmitting(false);
     }
@@ -445,10 +524,12 @@ export default function KioskApp() {
     return (
       <KioskPinPad
         configured={session.configured}
-        onUnlocked={() => setSession({ configured: true, unlocked: true })}
+        onUnlocked={() => { setSession({ configured: true, unlocked: true }); void fetch('/api/kiosk/session').then(r=>r.json()).then(setSession); }}
       />
     );
   }
+
+  if(recoveringOrder) return <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center"><h1 className="text-2xl font-semibold">Уточняем состояние заказа</h1><p>Запрос уже отправлен. Восстановите тот же заказ перед следующей оплатой.</p>{submitError ? <p role="alert">{submitError}</p> : null}<button className="btn-primary" disabled={submitting} onClick={placeOrder}>{submitting ? 'Проверяем…' : 'Восстановить заказ'}</button></div>;
 
   const activeCategory =
     categoriesWithProducts.find((category) => category.id === selectedCategory) ??
@@ -466,6 +547,7 @@ export default function KioskApp() {
         <p className="mt-1 text-sm font-medium text-(--lg-text-muted)">
           {success.paymentMethod === 'CASH' ? 'Оплата наличными' : 'Оплачено'}
         </p>
+        {['CARD','SBP'].includes(success.paymentMethod) ? <KioskReceiptStatus orderId={success.orderId} /> : null}
         {success.inviteSent ? (
           <p className="mt-4 max-w-md text-base text-(--lg-text-muted)">
             На {success.email} отправили ссылку для создания аккаунта — баллы и история появятся после регистрации.
@@ -501,7 +583,7 @@ export default function KioskApp() {
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-4">
           <div className="mx-auto w-full max-w-md">
-            <SbpPayPanel
+            {payOrder.paymentMethod === 'CARD' ? <TerminalPayPanel orderId={payOrder.orderId} onStatus={handlePayStatus} /> : <SbpPayPanel
               orderId={payOrder.orderId}
               statusUrl={`/api/kiosk/orders/${payOrder.orderId}/payment`}
               initialPayload={payOrder.payload}
@@ -511,7 +593,7 @@ export default function KioskApp() {
               qrPx={352}
               hint="Отсканируйте QR в приложении банка. Статус обновится сам."
               cancelledMessage="Оплата не прошла или время QR истекло. Заказ отменён."
-            />
+            />}
           </div>
         </div>
         <div className="space-y-3 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -522,15 +604,16 @@ export default function KioskApp() {
               onClick={() => {
                 setPayFailed(false);
                 setPayOrder(null);
+                sessionStorage.removeItem(PAYMENT_STORAGE);
                 setStep('checkout');
               }}
             >
               Вернуться к заказу
             </button>
           ) : null}
-          <button type="button" className="btn-ghost min-h-14 w-full text-lg" onClick={resetGuest}>
+          {payOrder.paymentMethod !== 'CARD' || payFailed ? <button type="button" className="btn-ghost min-h-14 w-full text-lg" onClick={resetGuest}>
             Новый гость
-          </button>
+          </button> : null}
         </div>
       </div>
     );
@@ -603,8 +686,20 @@ export default function KioskApp() {
           <div className="shrink-0 px-4 pt-1 text-center">
             <p className="text-sm font-medium uppercase tracking-wide text-[#18181b]">Итого</p>
             <p className="mt-1 text-[clamp(3.25rem,10vw,5.5rem)] leading-none font-bold text-[#18181b] tabular-nums">
-              <RollingPrice key={totalPrice} value={totalPrice} />
+              <RollingPrice key={payableTotal} value={payableTotal} />
             </p>
+            {discountAmount > 0 || bonusUsed > 0 ? (
+              <p className="mt-2 text-sm font-medium text-(--lg-text-muted)">
+                {discountAmount > 0 ? (
+                  <span>
+                    Скидка {discountPercent}%
+                    {loyalty?.levelName ? ` · ${loyalty.levelName}` : ''}: −{discountAmount} ₽
+                  </span>
+                ) : null}
+                {discountAmount > 0 && bonusUsed > 0 ? <span> · </span> : null}
+                {bonusUsed > 0 ? <span>Бонусы: −{bonusUsed} ₽</span> : null}
+              </p>
+            ) : null}
             <input
               className="input-pill mt-3 min-h-14 w-full text-lg"
               type="email"
@@ -620,10 +715,29 @@ export default function KioskApp() {
               }}
             />
             {submitError ? <p className="mt-2 text-sm font-medium text-red-200">{submitError}</p> : null}
-            {email.trim() && bonusBalance != null ? (
-              <p className="kiosk-rise mt-2 text-2xl font-semibold text-[#18181b] tabular-nums">
-                {bonusPointsLabel(bonusBalance)}
-              </p>
+            {loyalty ? (
+              <div className="kiosk-rise mt-3 space-y-2">
+                <p className="text-2xl font-semibold text-[#18181b] tabular-nums">
+                  {loyalty.bonusBalance - bonusUsed} + {bonusToEarn} {bonusWord(bonusToEarn)}
+                </p>
+                <p className="text-sm text-(--lg-text-muted)">
+                  {bonusUsed > 0
+                    ? `Спишем ${bonusUsed} · после заказа останется ${bonusAfterOrder}`
+                    : `На счёте ${loyalty.bonusBalance} · после заказа ${bonusAfterOrder}`}
+                </p>
+                {maxBonus > 0 ? (
+                  <button
+                    type="button"
+                    className={`${redeemBonuses ? 'btn-primary' : 'btn-outline'} mx-auto min-h-12 px-6 text-base`}
+                    onClick={() => {
+                      setRedeemBonuses((prev) => !prev);
+                      setSubmitError('');
+                    }}
+                  >
+                    {redeemBonuses ? 'Отменить списание' : `Списать ${maxBonus} ${bonusWord(maxBonus)}`}
+                  </button>
+                ) : null}
+              </div>
             ) : null}
           </div>
           <div
@@ -632,8 +746,9 @@ export default function KioskApp() {
           >
             {orderList}
           </div>
-          {totalPrice > 0 ? (
-            <div className="mt-3 grid shrink-0 grid-cols-2 gap-3 px-3">
+          {payableTotal > 0 ? (
+            <div className={`mt-3 grid shrink-0 ${session.cardEnabled ? 'grid-cols-3' : 'grid-cols-2'} gap-3 px-3`}>
+              {session.cardEnabled ? <button type="button" className={`${paymentMethod === 'CARD' ? 'btn-primary' : 'btn-outline'} aspect-square w-full flex-col gap-4 !rounded-3xl text-2xl`} onClick={()=>{setPaymentMethod('CARD');setSubmitError('')}}><CreditCard className="size-16" strokeWidth={1.75}/><span>Картой</span></button> : null}
               <button
                 type="button"
                 className={`kiosk-rise ${paymentMethod === 'CASH' ? 'btn-primary' : 'btn-outline'} aspect-square w-full flex-col gap-4 !rounded-3xl text-3xl`}
