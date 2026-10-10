@@ -23,9 +23,10 @@ export async function PUT(request:NextRequest){
   if(selected.includes(body.productId))return fail('Комбо не может содержать себя');
   const rows=await query<{id:string;isCombo:boolean}>(`SELECT id,"isCombo" FROM products WHERE id=ANY($1::text[])`,[[body.productId,...selected]]);
   if(!rows.some(p=>p.id===body.productId&&p.isCombo)||selected.some(id=>!rows.some(p=>p.id===id&&!p.isCombo)))return fail('Выберите существующие обычные товары');
+  const validGroups=body.groups;
   await withTransaction(async client=>{
    await client.query('DELETE FROM combo_groups WHERE "comboId"=$1',[body.productId]);
-   for(const [order,group] of body.groups.entries()){
+   for(const [order,group] of validGroups.entries()){
     const groupId=randomUUID();
     await client.query(`INSERT INTO combo_groups(id,"comboId",name,"minSelect","maxSelect","sortOrder") VALUES($1,$2,$3,$4,$5,$6)`,[groupId,body.productId,group.name.trim(),group.minSelect,group.maxSelect,order]);
     for(const [index,option] of group.options.entries()){
