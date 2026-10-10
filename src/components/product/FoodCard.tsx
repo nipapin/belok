@@ -32,6 +32,7 @@ export type FoodCardModel = {
   variantId?: string | null;
   variants?: FoodCardVariant[];
   hasOptions?: boolean;
+  isCombo?: boolean;
   spicinessLevel?: number;
 } & FoodCardNutrition;
 
