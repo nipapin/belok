@@ -7,6 +7,7 @@ import { useHaptic } from "@/hooks/useHaptic";
 import { formatVariantTitle } from "@/lib/productTitle";
 import { resolveVariant } from '@/lib/productOptions';
 import { FoodCard, type FoodCardModel } from "./FoodCard";
+import ComboModal from "./ComboModal";
 
 export type ProductCardModel = FoodCardModel;
 
@@ -29,6 +30,7 @@ function sameProductCard(prev: ProductCardProps, next: ProductCardProps) {
     a.name === b.name &&
     a.price === b.price &&
     a.hasOptions === b.hasOptions &&
+    a.isCombo === b.isCombo &&
     a.calories === b.calories &&
     a.proteins === b.proteins &&
     a.fats === b.fats &&
@@ -54,6 +56,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
   const plainLineId = useCartStore((s) => s.getPlainLineId(product.id, active?.id ?? null));
   const haptic = useHaptic();
   const [busy, setBusy] = useState(false);
+  const [comboOpen,setComboOpen]=useState(false);
   const busyTimer = useRef<number | undefined>(undefined);
   const choosable = variants.length > 1;
   const display = resolveVariant(product, active);
@@ -64,6 +67,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
 
   function handleAdd(e: React.MouseEvent) {
     e.stopPropagation();
+    if(product.isCombo){setComboOpen(true);return;}
     if (product.hasOptions) {
       const query = active ? `?v=${encodeURIComponent(active.id)}` : '';
       router.push(`/menu/${product.id}${query}`);
@@ -109,7 +113,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
   }
 
   return (
-    <FoodCard
+    <><FoodCard
       product={{ ...display, image }}
       flavor={flavor}
       quantity={quantity}
@@ -117,6 +121,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
       eager={eager}
       onOpen={() => {
         const query = active ? `?v=${encodeURIComponent(active.id)}` : "";
+        if(product.isCombo){setComboOpen(true);return;}
         router.push(`/menu/${product.id}${query}`);
       }}
       onAdd={handleAdd}
@@ -130,6 +135,6 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
       onNextFlavor={
         choosable ? () => setIndex((current) => (current + 1) % variants.length) : undefined
       }
-    />
+    />{comboOpen&&<ComboModal productId={product.id} onClose={()=>setComboOpen(false)}/>}</>
   );
 }, sameProductCard);
