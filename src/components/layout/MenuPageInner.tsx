@@ -165,7 +165,8 @@ export function MenuPageInner() {
                         categoryName: category.name,
                         createdAt: product.createdAt,
                         variants: product.variants ?? [],
-                        hasOptions: product.ingredients?.some((link) => link.isExtra && link.ingredient.isAvailable !== false),
+                        hasOptions: product.isCombo || product.ingredients?.some((link) => link.isExtra && link.ingredient.isAvailable !== false),
+                        isCombo: product.isCombo,
                       }}
                     />
                   </div>
@@ -196,7 +197,8 @@ export function MenuPageInner() {
                     categoryName: product.category?.name,
                     createdAt: product.createdAt,
                     variants: product.variants ?? [],
-                    hasOptions: product.ingredients?.some((link) => link.isExtra && link.ingredient.isAvailable !== false),
+                    hasOptions: product.isCombo || product.ingredients?.some((link) => link.isExtra && link.ingredient.isAvailable !== false),
+                        isCombo: product.isCombo,
                   }}
                 />
               </div>
