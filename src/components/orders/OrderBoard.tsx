@@ -13,6 +13,13 @@ const columns = [
   { id: 'ready', title: 'Готовы', hint: 'Можно выдавать', statuses: ['READY'], icon: CheckCheck },
 ];
 const ACKNOWLEDGED_KEY = 'belok-board-acknowledged';
+const REPEAT_SECONDS_KEY = 'belok-board-repeat-seconds';
+const DEFAULT_REPEAT_SECONDS = 20;
+const MIN_REPEAT_SECONDS = 5;
+const MAX_REPEAT_SECONDS = 600;
+function validRepeatSeconds(value: number) {
+  return Number.isInteger(value) && value >= MIN_REPEAT_SECONDS && value <= MAX_REPEAT_SECONDS;
+}
 const actions = {
   PENDING: { label: 'Начать готовить', status: 'PREPARING' },
   CONFIRMED: { label: 'Начать готовить', status: 'PREPARING' },
@@ -67,6 +74,8 @@ export default function OrderBoard() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [soundName, setSoundName] = useState('Сигнал бело́к');
   const [volume, setVolume] = useState(0.8);
+  const [repeatSeconds, setRepeatSeconds] = useState(DEFAULT_REPEAT_SECONDS);
+  const [repeatInput, setRepeatInput] = useState(String(DEFAULT_REPEAT_SECONDS));
   const [soundBusy, setSoundBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
@@ -82,7 +91,7 @@ export default function OrderBoard() {
   const context = useRef<AudioContext | null>(null);
   const sound = useRef<AudioBuffer | null>(null);
   const soundData = useRef<ArrayBuffer | null>(null);
-  const soundConfig = useRef({ enabled: false, volume: 0.8 });
+  const soundConfig = useRef({ enabled: false, volume: 0.8, repeatSeconds: DEFAULT_REPEAT_SECONDS });
 
   const startSignal = useCallback((ctx: AudioContext, buffer: AudioBuffer | null, level: number, alarm: boolean) => {
     if (alarm && playback.current && Date.now() < playback.current.until) return;
@@ -118,6 +127,13 @@ export default function OrderBoard() {
   }, []);
 
   useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem(REPEAT_SECONDS_KEY));
+      if (validRepeatSeconds(saved)) {
+        soundConfig.current.repeatSeconds = saved;
+        setRepeatSeconds(saved); setRepeatInput(String(saved));
+      }
+    } catch { /* Use the default interval when browser storage is unavailable. */ }
     void checkSession();
     void loadBoardSound().then((saved) => {
       if (saved) { soundData.current = saved.data; setSoundName(saved.name); }
@@ -130,7 +146,7 @@ export default function OrderBoard() {
     if (!session?.unlocked) return;
     const timer = window.setInterval(() => {
       if (newQueue.current.size && soundConfig.current.enabled && Date.now() >= repeatAfter.current) {
-        playNotification(); repeatAfter.current = Date.now() + 20_000;
+        playNotification(); repeatAfter.current = Date.now() + soundConfig.current.repeatSeconds * 1000;
       }
     }, 1000);
     return () => window.clearInterval(timer);
@@ -172,7 +188,7 @@ export default function OrderBoard() {
         setOrders(incoming); setLastSync(Date.now()); setError('');
         // New arrivals join one queue alarm. They never start extra sounds
         // while the queue is already waiting for staff.
-        if (queueWasEmpty && pending.length && !firstLoad) { playNotification(); repeatAfter.current = Date.now() + 20_000; }
+        if (queueWasEmpty && pending.length && !firstLoad) { playNotification(); repeatAfter.current = Date.now() + soundConfig.current.repeatSeconds * 1000; }
         if (!pending.length && playback.current?.alarm) playback.current.stop();
       } catch {
         if (!stopped) setError('Нет связи с сервером. Показаны последние полученные заказы; повторяем подключение…');
@@ -196,7 +212,7 @@ export default function OrderBoard() {
       if (soundData.current && !sound.current) sound.current = await context.current.decodeAudioData(soundData.current.slice(0));
       startSignal(context.current, sound.current, volume, false);
       soundConfig.current.enabled = true; setSoundEnabled(true); setMessage('');
-      repeatAfter.current = Date.now() + 20_000;
+      repeatAfter.current = Date.now() + soundConfig.current.repeatSeconds * 1000;
     } catch { setMessage('Не удалось включить звук. Проверьте настройки браузера или выберите другой файл.'); }
   }
 
@@ -211,7 +227,7 @@ export default function OrderBoard() {
       sound.current = buffer; soundData.current = data; setSoundName(file.name);
       startSignal(context.current, buffer, volume, false);
       soundConfig.current.enabled = true; setSoundEnabled(true);
-      repeatAfter.current = Date.now() + 20_000;
+      repeatAfter.current = Date.now() + soundConfig.current.repeatSeconds * 1000;
       try { await saveBoardSound({ name: file.name, data }); setMessage('Звук сохранён в этом браузере. Воспроизводятся первые 15 секунд.'); }
       catch { setMessage('Звук работает, но браузер не сохранил файл. После перезагрузки выберите его снова.'); }
     } catch (e) { setMessage(e instanceof Error && e.message.includes('10 МБ') ? e.message : 'Не удалось прочитать аудио. Выберите MP3, WAV или OGG.'); }
@@ -223,6 +239,18 @@ export default function OrderBoard() {
     try { await saveBoardSound(null); setMessage(''); }
     catch { setMessage('Не удалось удалить сохранённый файл из браузера.'); }
     playNotification();
+  }
+
+  function changeRepeatInterval(value: string) {
+    setRepeatInput(value);
+    const seconds = Number(value);
+    if (!validRepeatSeconds(seconds) || seconds === soundConfig.current.repeatSeconds) return;
+    soundConfig.current.repeatSeconds = seconds;
+    setRepeatSeconds(seconds);
+    // Apply immediately, starting a new countdown without an extra sound.
+    repeatAfter.current = Date.now() + seconds * 1000;
+    try { localStorage.setItem(REPEAT_SECONDS_KEY, String(seconds)); }
+    catch { setMessage('Интервал изменён, но браузер не сохранил его. После перезагрузки установите его снова.'); }
   }
 
   async function fullscreen() {
@@ -294,6 +322,7 @@ export default function OrderBoard() {
       <label className="board-file-button">{soundBusy ? 'Загружаем…' : 'Выбрать свой звук'}<input type="file" accept="audio/*,.mp3,.wav,.ogg" disabled={soundBusy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void chooseSound(file); event.target.value = ''; }} /></label>
       <button onClick={() => void enableSound()}>Проверить звук</button><button onClick={() => void resetSound()}>Стандартный</button>
       <label className="board-volume">Громкость {Math.round(volume * 100)}%<input aria-label="Громкость" type="range" min="0.1" max="1" step="0.1" value={volume} onChange={(event) => { const value = Number(event.target.value); soundConfig.current.volume = value; setVolume(value); }} /></label>
+      <div><label className="board-repeat">Повтор каждые <input aria-label="Период повтора в секундах" type="number" min={MIN_REPEAT_SECONDS} max={MAX_REPEAT_SECONDS} step="1" value={repeatInput} onChange={(event) => changeRepeatInterval(event.target.value)} onBlur={() => setRepeatInput(String(repeatSeconds))} /> сек.</label><p>От 5 до 600 секунд · сохраняется автоматически</p></div>
     </section>}
     {!soundEnabled && <div className="board-notice"><VolumeX size={19} />Нажмите «Включить звук», чтобы слышать новые заказы. После перезагрузки включите его снова.</div>}
     {message && <div className="board-notice" role="status">{message}<button onClick={() => setMessage('')}>Закрыть</button></div>}
@@ -314,6 +343,6 @@ export default function OrderBoard() {
         </section>;
       })}
     </div>
-    <footer className="board-bottom">Заказы за сегодня · Калининград · автообновление каждые 3 секунды<span>Один сигнал каждые 20 секунд, пока есть новые заказы</span></footer>
+    <footer className="board-bottom">Заказы за сегодня · Калининград · автообновление каждые 3 секунды<span>Один сигнал каждые {repeatSeconds} сек., пока есть новые заказы</span></footer>
   </main>;
 }

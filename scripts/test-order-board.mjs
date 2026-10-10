@@ -170,13 +170,35 @@ try {
   const soundInput = await page.$('input[type="file"]');
   await soundInput.uploadFile('artifacts/order-board/test-sound.wav');
   await page.waitForFunction(() => document.body.innerText.includes('Звук сохранён'));
+  const setRepeat = async (value) => {
+    await page.$eval('input[aria-label="Период повтора в секундах"]', (input, value) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }, value);
+  };
+  assert.equal(await page.$eval('input[type="number"]', (input) => input.value), '20');
+  await setRepeat('5');
+  await page.waitForFunction(() => document.querySelector('.board-bottom').innerText.includes('каждые 5 сек.'));
+  const beforeRepeat = await page.evaluate(() => window.__boardSounds);
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  assert.equal(await page.evaluate(() => window.__boardSounds), beforeRepeat, 'Changing interval must not trigger an immediate extra sound');
+  await page.waitForFunction((count) => window.__boardSounds === count + 1, { timeout: 6000 }, beforeRepeat);
+  await setRepeat('0');
+  await page.focus('input[type="number"]');
+  await page.focus('input[type="range"]');
+  assert.equal(await page.$eval('input[type="number"]', (input) => input.value), '5', 'Invalid interval must revert to the last valid value');
+  assert.equal(await page.evaluate(() => localStorage.getItem('belok-board-repeat-seconds')), '5');
   await page.reload({ waitUntil: 'networkidle2' });
   await page.waitForFunction(() => document.querySelectorAll('.board-card').length === 7);
   assert.equal(await page.evaluate(() => window.__boardSounds), 0, 'Reload must require a new gesture for audio');
   await clickText('Настройки звука');
   await page.waitForFunction(() => document.body.innerText.includes('test-sound.wav'));
+  assert.equal(await page.$eval('input[type="number"]', (input) => input.value), '5', 'Repeat interval must survive reload');
   await clickText('Включить звук');
   await page.waitForFunction(() => window.__boardSounds === 1);
+  await page.waitForFunction(() => window.__boardSounds === 2, { timeout: 8000 });
+  console.log('PASS: configurable repeat interval applies to active alarms, validates input and persists after reload');
   await clickText('Настройки звука');
   await page.setViewport({ width: 390, height: 844 });
   await page.screenshot({ path: 'artifacts/order-board/mobile.png', fullPage: true });
