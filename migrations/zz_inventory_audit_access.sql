@@ -44,3 +44,34 @@ END $$;
 DROP TRIGGER IF EXISTS inventory_movement_audit_trigger ON inventory_movements;
 CREATE TRIGGER inventory_movement_audit_trigger AFTER INSERT ON inventory_movements
 FOR EACH ROW EXECUTE FUNCTION inventory_audit_movement();
+
+-- Trace assignment changes, so changes in permissions are accountable.
+CREATE OR REPLACE FUNCTION inventory_audit_access_change() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+ INSERT INTO inventory_audit_events(item_id,actor_user_id,action,before_state,after_state)
+ VALUES(NULL,COALESCE(NEW.granted_by,OLD.granted_by),'ACCESS_'||TG_OP,
+ CASE WHEN TG_OP='INSERT' THEN NULL ELSE to_jsonb(OLD) END,
+ CASE WHEN TG_OP='DELETE' THEN NULL ELSE to_jsonb(NEW) END);
+ RETURN COALESCE(NEW,OLD);
+END $$;
+DROP TRIGGER IF EXISTS inventory_access_audit_trigger ON inventory_access;
+CREATE TRIGGER inventory_access_audit_trigger AFTER INSERT OR UPDATE OR DELETE ON inventory_access
+FOR EACH ROW EXECUTE FUNCTION inventory_audit_access_change();
+
+-- Track composition edits using the session actor set in the recipes API.
+CREATE OR REPLACE FUNCTION inventory_audit_recipe_change() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE changed RECORD;
+BEGIN
+ IF TG_OP='DELETE' THEN changed:=OLD; ELSE changed:=NEW; END IF;
+ INSERT INTO inventory_audit_events(item_id,actor_user_id,action,before_state,after_state)
+ VALUES(NULL,NULLIF(current_setting('belok.actor_user_id',true),''),'RECIPE_'||TG_OP,
+ CASE WHEN TG_OP='INSERT' THEN NULL ELSE to_jsonb(OLD) END,
+ CASE WHEN TG_OP='DELETE' THEN NULL ELSE to_jsonb(NEW) END);
+ RETURN COALESCE(NEW,OLD);
+END $$;
+DROP TRIGGER IF EXISTS inventory_recipe_audit_trigger ON inventory_recipes;
+CREATE TRIGGER inventory_recipe_audit_trigger AFTER INSERT OR UPDATE OR DELETE ON inventory_recipes
+FOR EACH ROW EXECUTE FUNCTION inventory_audit_recipe_change();
+DROP TRIGGER IF EXISTS inventory_recipe_line_audit_trigger ON inventory_recipe_lines;
+CREATE TRIGGER inventory_recipe_line_audit_trigger AFTER INSERT OR UPDATE OR DELETE ON inventory_recipe_lines
+FOR EACH ROW EXECUTE FUNCTION inventory_audit_recipe_change();
