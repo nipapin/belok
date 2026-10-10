@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 
 export type RecipeOwner = 'PRODUCT' | 'PREPARED';
 export type RecipeLine = { itemId: string; quantity: number };
-export type RecipeInput = { ownerKind: RecipeOwner; ownerId: string; outputQuantity: number; outputUnit: 'g'|'ml'|'pcs'; lines: RecipeLine[] };
+export type RecipeInput = { ownerKind: RecipeOwner; ownerId: string; outputQuantity: number; outputUnit: 'g'|'ml'|'pcs'; lines: RecipeLine[]; instructions?: string };
 const positive = (n: number) => Number.isFinite(n) && n > 0 && Math.round(n * 1000) === n * 1000 && n <= 999999999;
 
 export function validateRecipe(input: RecipeInput): void {
@@ -15,6 +15,7 @@ export function validateRecipe(input: RecipeInput): void {
 
 export async function saveRecipe(client: PoolClient, input: RecipeInput): Promise<void> {
  validateRecipe(input);
+ if(typeof input.instructions !== 'undefined' && (typeof input.instructions !== 'string'||input.instructions.length>15000))throw new Error('RECIPE_INVALID');
  // Serialise recipe graph edits to guarantee absence of cycles under concurrent writes.
  await client.query('SELECT pg_advisory_xact_lock($1)', [77134811]);
  if (input.ownerKind === 'PRODUCT') {
@@ -41,10 +42,10 @@ export async function saveRecipe(client: PoolClient, input: RecipeInput): Promis
   };
   if(walk(input.ownerId))throw new Error('RECIPE_CYCLE');
  }
- const r=await client.query<{id:string}>(`INSERT INTO inventory_recipes(id,owner_kind,owner_id,output_quantity,output_unit)
- VALUES($1,$2,$3,$4,$5)
- ON CONFLICT(owner_kind,owner_id) DO UPDATE SET output_quantity=EXCLUDED.output_quantity,output_unit=EXCLUDED.output_unit,updated_at=NOW() RETURNING id`,
- [randomUUID(),input.ownerKind,input.ownerId,input.outputQuantity,input.outputUnit]);
+ const r=await client.query<{id:string}>(`INSERT INTO inventory_recipes(id,owner_kind,owner_id,output_quantity,output_unit,instructions)
+ VALUES($1,$2,$3,$4,$5,$6)
+ ON CONFLICT(owner_kind,owner_id) DO UPDATE SET output_quantity=EXCLUDED.output_quantity,output_unit=EXCLUDED.output_unit,instructions=EXCLUDED.instructions,updated_at=NOW() RETURNING id`,
+ [randomUUID(),input.ownerKind,input.ownerId,input.outputQuantity,input.outputUnit,input.instructions??'']);
  await client.query('DELETE FROM inventory_recipe_lines WHERE recipe_id=$1',[r.rows[0].id]);
  for(const line of input.lines)await client.query(`INSERT INTO inventory_recipe_lines(id,recipe_id,item_id,quantity) VALUES($1,$2,$3,$4)`,[randomUUID(),r.rows[0].id,line.itemId,line.quantity]);
 }
