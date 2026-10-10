@@ -39,7 +39,7 @@ export function cartVariantId(item: { variantId?: string | null }): string | nul
 
 export function isSameCartLine(
   a: Pick<CartItem, 'productId' | 'variantId' | 'customizations' | 'comboSelections'>,
-  b: Pick<CartItem, 'productId' | 'variantId' | 'customizations'>
+  b: Pick<CartItem, 'productId' | 'variantId' | 'customizations' | 'comboSelections'>
 ): boolean {
   return (
     JSON.stringify(a.comboSelections ?? []) === JSON.stringify(b.comboSelections ?? []) &&
