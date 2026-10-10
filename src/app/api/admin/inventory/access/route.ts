@@ -17,13 +17,20 @@ export async function PUT(request:NextRequest){
   const body=await request.json() as {userId?:string;role?:string};
   if(!body.userId||!roles.includes(body.role as typeof roles[number]))return NextResponse.json({error:'Некорректные данные'},{status:400});
   await withTransaction(async client=>{
+   await client.query('SELECT pg_advisory_xact_lock($1)',[77134812]);
    const target=await client.query(`SELECT id FROM users WHERE id=$1 AND role='ADMIN'`,[body.userId]);
    if(!target.rowCount)throw Error('USER_NOT_ADMIN');
+   const current=await client.query<{access_role:string}>(`SELECT access_role FROM inventory_access WHERE user_id=$1`,[body.userId]);
+   if(current.rows[0]?.access_role==='SUPERADMIN'&&body.role!=='SUPERADMIN'){
+    const count=await client.query<{count:string}>(`SELECT COUNT(*)::text AS count FROM inventory_access WHERE access_role='SUPERADMIN'`);
+    if(Number(count.rows[0]?.count)<=1)throw Error('LAST_SUPERADMIN');
+   }
    await client.query(`INSERT INTO inventory_access(user_id,access_role,granted_by) VALUES($1,$2,$3)
     ON CONFLICT(user_id) DO UPDATE SET access_role=EXCLUDED.access_role,granted_by=EXCLUDED.granted_by,granted_at=NOW()`,[body.userId,body.role,actor.id]);
   });
   return NextResponse.json({ok:true});
  }catch(e){
+  if((e as Error).message==='LAST_SUPERADMIN')return NextResponse.json({error:'Нельзя снять права последнего суперадминистратора'},{status:409});
   if((e as Error).message==='USER_NOT_ADMIN')return NextResponse.json({error:'Сначала назначьте пользователя администратором'},{status:400});
   if(['FORBIDDEN','UNAUTHORIZED'].includes((e as Error).message))return NextResponse.json({error:'Недостаточно прав'},{status:403});
   console.error('Inventory access',e);return NextResponse.json({error:'Ошибка сохранения'},{status:500});
