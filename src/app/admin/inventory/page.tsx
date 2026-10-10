@@ -95,13 +95,13 @@ export default function InventoryPage(){
       <div className="md:hidden min-w-0 flex-1">
         <AdminSelect ariaLabel="Фильтр складских позиций" value={filter} onChange={v=>setFilter(v as typeof filter)} options={filters.map(o=>({value:o.value,label:`${o.label} · ${counts[o.value]}`}))}/>
       </div>
-      <label className="hidden md:flex shrink-0 w-[min(28vw,320px)] min-h-11 items-center gap-2 rounded-2xl border border-[#dce4df] bg-white px-3 text-[#52625c] focus-within:ring-2 focus-within:ring-[#195d40]/15">
+      <label className="inventory-search hidden md:flex shrink-0 w-[min(28vw,320px)] min-h-11 items-center gap-2 rounded-2xl border border-[#dce4df] bg-white px-3 text-[#52625c] focus-within:ring-2 focus-within:ring-[#195d40]/15">
         <Search size={18} aria-hidden="true"/>
         <input aria-label="Поиск по складу" className="min-w-0 flex-1 bg-transparent outline-none text-sm text-[#202b28]" placeholder="Поиск по складу" value={search} onChange={e=>setSearch(e.target.value)}/>
         {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
       </label>
     </div>
-    {mobileSearch&&<label className="flex md:hidden w-full min-h-11 items-center gap-2 rounded-2xl border border-[#dce4df] bg-white px-3 text-[#52625c]">
+    {mobileSearch&&<label className="inventory-search inventory-search-mobile flex md:hidden w-full min-h-11 items-center gap-2 rounded-2xl border border-[#dce4df] bg-white px-3 text-[#52625c]">
       <Search size={18} aria-hidden="true"/>
       <input autoFocus aria-label="Поиск по складу" placeholder="Поиск по складу" value={search} onChange={e=>setSearch(e.target.value)}/>
       {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
