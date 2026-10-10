@@ -1,4 +1,12 @@
 // Pure builders shared by the server and protocol tests. All money is kopecks.
+import { createHash } from 'node:crypto';
+
+// Tag 1192 is limited to 16 characters on the terminal. Keep a deterministic
+// ASCII reference here; the human-readable order ID belongs in tag 1084.
+export function receiptOrderReference(orderId: string): string {
+  return 'B'+createHash('sha256').update(orderId).digest('base64url').slice(0,15);
+}
+
 export interface FiscalItem { productId: string; variantId?: string | null; name: string; quantity: number; unitPrice: number }
 export interface FiscalOptions { taxSystemCode: number; taxRateId: number; calculationTypeId: number; calculationSubjectId: number; cashierName?: string }
 

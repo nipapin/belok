@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { receiptPositions,parsePurchaseResult,parseReceiptResult } from '../src/lib/aqsiReceipt';
+import { receiptPositions,receiptOrderReference,parsePurchaseResult,parseReceiptResult } from '../src/lib/aqsiReceipt';
 const options={taxSystemCode:1,taxRateId:6,calculationTypeId:4,calculationSubjectId:1};
+
+test('receipt reference fits the 16-byte terminal field and distinguishes orders',()=>{
+  const orderId='42c6c91d-4164-47c5-baf6-0905700a42c4';
+  const reference=receiptOrderReference(orderId);
+  assert.equal(Buffer.byteLength(reference,'utf8'),16);
+  assert.match(reference,/^B[A-Za-z0-9_-]{15}$/);
+  assert.equal(receiptOrderReference(orderId),reference);
+  assert.notEqual(receiptOrderReference('42c6c91d-4164-47c5-baf6-0905700a42c5'),reference);
+});
 
 test('receipt matches paid total exactly after discounts and bonus rounding',()=>{
   for(let total=1;total<=13001;total+=137) {

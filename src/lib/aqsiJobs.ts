@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 import { pool, query, queryOne, withTransaction } from '@/lib/db';
 import { aqsiRequest, AqsiRequestError, type AqsiOperation } from '@/lib/aqsi';
 import { aqsiConfigured, fiscalConfigured, getAqsiConfig } from '@/lib/aqsiConfig';
-import { receiptPositions, parsePurchaseResult, parseReceiptResult, type FiscalItem } from '@/lib/aqsiReceipt';
+import { receiptPositions, receiptOrderReference, parsePurchaseResult, parseReceiptResult, type FiscalItem } from '@/lib/aqsiReceipt';
 import { notifyKitchenNewOrder } from '@/lib/orderNotify';
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 
@@ -47,7 +47,8 @@ async function buildReceipt(job: AqsiJob) {
   const card = await queryOne<AqsiJob>(`SELECT * FROM aqsi_jobs WHERE "orderId"=$1 AND kind='CARD' AND state='SUCCEEDED'`,[job.orderId]);
   return { deviceId:job.deviceId,typeId:1,ttlMillis:86_400_000,ignoreItemCodeCheck:false,skipPrinting:false,
     roundAmountDownToExponent:0,
-    info:{taxSystemCode:config.taxSystemCode,isOnline:false,additionalAttribute:`Заказ #${order.dailyNumber} ${job.orderId}`,
+    info:{taxSystemCode:config.taxSystemCode,isOnline:false,additionalAttribute:receiptOrderReference(job.orderId),
+      additionalUserAttribute:{name:'Заказ',value:`#${order.dailyNumber} ${job.orderId}`},
       ...(order.email ? {customerInfo:{emailOrPhone:order.email}} : {}),
       ...(config.cashierName ? {cashierInfo:{positionAndSurname:config.cashierName}} : {})},
     positions,payments:[{type:1,amount:Math.round(order.total*100),...(card?.result ? {slip:card.result} : {})}],

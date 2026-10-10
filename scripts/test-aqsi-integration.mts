@@ -53,6 +53,9 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     await processAqsiJobs();assert.equal(posts,2);
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='paid-card'`))?.paymentStatus,'SUCCEEDED');
     assert.equal((payloads[1].positions as {info:{name:string}}[])[0].info.name,'Сохранённое имя');
+    const receiptInfo=payloads[1].info as {additionalAttribute:string;additionalUserAttribute:{name:string;value:string}};
+    assert.equal(Buffer.byteLength(receiptInfo.additionalAttribute,'utf8'),16);
+    assert.equal(receiptInfo.additionalUserAttribute.value,'#1 paid-card');
     const receipt=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='paid-card' AND kind='RECEIPT'`);assert.ok(receipt);
     operations.set(receipt.operationId,{type:'receipt.process',status:'Completed',result:JSON.stringify({id:'receipt',isNonFiscal:false,info:{typeId:1,sum:1000,additionalAttribute:(payloads[1].info as {additionalAttribute:string}).additionalAttribute}})});
     await processAqsiJobs();await processAqsiJobs();assert.equal(posts,2);
