@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { getHitsConfig } from '@/lib/hits';
 
 export async function GET() {
