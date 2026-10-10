@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PackagePlus, Search, Save, Plus, Pencil, Trash2, ImagePlus, X } from 'lucide-react';
+import { PackagePlus, Search, Save, Plus, Pencil, Trash2, ImagePlus, X, Boxes, AlertTriangle } from 'lucide-react';
 import RecipeEditor from '@/components/admin/RecipeEditor';
 import AdminSelect from '@/components/admin/AdminSelect';
 import './inventory.css';
@@ -18,6 +18,8 @@ async function api(method:'GET'|'POST'|'PATCH'|'PUT', body?:unknown):Promise<{it
 export default function InventoryPage(){
   const qc=useQueryClient();
   const [search,setSearch]=useState('');
+  const [filter,setFilter]=useState<'ALL'|Item['kind']>('ALL');
+  const [mobileSearch,setMobileSearch]=useState(false);
   const [recipeItem,setRecipeItem]=useState<Item|null>(null);
   const [batchItem,setBatchItem]=useState<Item|null>(null);
   const [batchAmount,setBatchAmount]=useState('1');
@@ -37,7 +39,10 @@ export default function InventoryPage(){
   const [deleteTarget,setDeleteTarget]=useState<Item|null>(null);
   const {data,isLoading,isError}=useQuery({queryKey:['admin-inventory'],queryFn:()=>api('GET')});
   const items=data?.items||[];
-  const filtered=useMemo(()=>items.filter(x=>x.name.toLocaleLowerCase('ru').includes(search.toLocaleLowerCase('ru'))),[items,search]);
+  const counts=useMemo(()=>({ALL:items.length,RAW:items.filter(i=>i.kind==='RAW').length,PREPARED:items.filter(i=>i.kind==='PREPARED').length,PACKAGING:items.filter(i=>i.kind==='PACKAGING').length}),[items]);
+  const lowCount=items.filter(x=>Number(x.quantity)<=Number(x.minQuantity)).length;
+  const filters=[{value:'ALL',label:'Все'},{value:'RAW',label:'Сырьё'},{value:'PREPARED',label:'Полуфабрикаты'},{value:'PACKAGING',label:'Упаковка'}] as const;
+  const filtered=useMemo(()=>items.filter(x=>(filter==='ALL'||x.kind===filter)&&x.name.toLocaleLowerCase('ru').includes(search.toLocaleLowerCase('ru'))),[items,search,filter]);
   const resetForm=()=>{setShowForm(false);setEditing(null);setName('');setKind('RAW');setUnit('g');setQuantity('0');setMinQuantity('0');setImage('');setError('')};
   const openCreate=()=>{resetForm();setShowForm(true)};
   const openEdit=(item:Item)=>{setEditing(item);setName(item.name);setKind(item.kind);setUnit(item.unit);setQuantity(item.quantity);setMinQuantity(item.minQuantity);setImage(item.image??'');setShowForm(true);setError('');window.scrollTo({top:0,behavior:'smooth'})};
@@ -47,11 +52,27 @@ export default function InventoryPage(){
   const recount=useMutation({mutationFn:(payload:unknown)=>api('PATCH',payload),onSuccess:()=>{void qc.invalidateQueries({queryKey:['admin-inventory']});setDrafts({});setError('');},onError:(e:Error)=>setError(e.message)});
   const valid=(s:string)=>s.trim()!=='' && Number.isFinite(Number(s)) && Number(s)>=0 && Math.round(Number(s)*1000)===Number(s)*1000;
   return <div className="space-y-5">
-    <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="heading-section m-0">Склад</h1><p className="text-sm text-(--lg-text-muted) mt-1">Первичная ревизия · фактические остатки</p></div><button className="btn-primary inline-flex items-center gap-2 px-4 py-2" onClick={openCreate}><Plus size={17}/>Добавить позицию</button></header>
+    <header className="flex items-center justify-between gap-3">
+      <h1 className="heading-section m-0">Склад</h1>
+      <button type="button" className="btn-primary hidden sm:inline-flex items-center gap-2 px-4 py-2" onClick={openCreate}><Plus size={17}/>Добавить позицию</button>
+      <div className="flex sm:hidden items-center gap-2">
+        <button type="button" className="inventory-icon-button" aria-label={mobileSearch?'Закрыть поиск':'Поиск'} aria-expanded={mobileSearch} onClick={()=>{setMobileSearch(v=>!v);if(mobileSearch)setSearch('')}}>{mobileSearch?<X size={20}/>:<Search size={20}/>}</button>
+        <button type="button" className="inventory-icon-button inventory-mobile-add" aria-label="Добавить позицию" onClick={openCreate}><Plus size={21}/></button>
+      </div>
+    </header>
     {recipeItem&&<div className="space-y-3"><div className="flex items-center justify-between"><h2 className="font-semibold">Рецептура: {recipeItem.name}</h2><button className="btn-outline px-3 py-2" onClick={()=>setRecipeItem(null)}>Закрыть</button></div><RecipeEditor key={recipeItem.id} ownerKind="PREPARED" ownerId={recipeItem.id} outputUnit={recipeItem.unit}/></div>}
     {batchItem&&<form className="glass-panel p-4 space-y-3" onSubmit={async e=>{e.preventDefault();setBatchBusy(true);setBatchMessage('');try{const r=await fetch('/api/admin/inventory/batches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({preparedItemId:batchItem.id,quantity:Number(batchAmount)})});const data=await r.json();if(!r.ok)throw Error(data.error??'Ошибка');setBatchMessage('Партия выпущена, остатки обновлены');void qc.invalidateQueries({queryKey:['admin-inventory']});setBatchItem(null)}catch(err){setBatchMessage(err instanceof Error?err.message:'Ошибка')}finally{setBatchBusy(false)}}}><div className="flex justify-between"><h2 className="font-semibold">Выпуск: {batchItem.name}</h2><button type="button" className="btn-ghost" onClick={()=>setBatchItem(null)}>Закрыть</button></div><label className="block text-sm">Объём, {unitLabels[batchItem.unit]}<input className="inventory-field mt-1 w-full" type="number" min=".001" step=".001" value={batchAmount} onChange={e=>setBatchAmount(e.target.value)}/></label><button type="submit" className="btn-primary px-5 py-2" disabled={batchBusy||!valid(batchAmount)||Number(batchAmount)===0}>Подтвердить выпуск и списать компоненты</button></form>}
     {batchMessage&&<p role="status" className="text-sm">{batchMessage}</p>}
-    <div className="glass-panel p-4"><div className="flex flex-wrap gap-4 text-sm"><span>Позиций: <b>{items.length}</b></span><span>Ниже минимума: <b>{items.filter(x=>Number(x.quantity)<=Number(x.minQuantity)).length}</b></span></div></div>
+    <div className="grid grid-cols-2 gap-3 sm:max-w-2xl">
+      <div className="inventory-kpi inventory-kpi-primary">
+        <div className="flex items-start justify-between gap-2"><span className="text-sm font-medium">Позиции</span><Boxes size={19} aria-hidden="true"/></div>
+        <strong className="inventory-kpi-value">{items.length}</strong>
+      </div>
+      <div className="inventory-kpi">
+        <div className="flex items-start justify-between gap-2"><span className="text-sm font-medium">Ниже минимума</span><AlertTriangle size={19} aria-hidden="true"/></div>
+        <strong className="inventory-kpi-value">{lowCount}</strong>
+      </div>
+    </div>
     {showForm&&<form className="glass-panel p-4 space-y-3" onSubmit={e=>{e.preventDefault();setError('');save.mutate({id:editing?.id,name,kind,unit,quantity:Number(quantity),minQuantity:Number(minQuantity),image});}}>
       <div className="flex justify-between items-center"><h2 className="font-semibold">{editing?"Изменить позицию":"Новая складская позиция"}</h2><button type="button" aria-label="Закрыть" onClick={resetForm}><X size={18}/></button></div>
       <label className="block text-sm">Название<input className="inventory-field mt-1 w-full" required maxLength={160} value={name} onChange={e=>setName(e.target.value)} placeholder="Например, мука пшеничная"/></label>
@@ -65,9 +86,28 @@ export default function InventoryPage(){
       <button disabled={save.isPending||uploading||!name.trim()||!valid(quantity)||!valid(minQuantity)} className="btn-primary px-5 py-2" type="submit">{save.isPending?'Сохраняем…':editing?'Сохранить изменения':'Создать позицию'}</button>
     </form>}
     {error&&<p role="alert" className="text-rose-600 text-sm">{error}</p>}
-    <label className="flex items-center gap-2 glass-panel px-3 py-2"><Search size={17}/><input aria-label="Поиск по складу" className="bg-transparent outline-none flex-1 min-w-0" placeholder="Найти ингредиент…" value={search} onChange={e=>setSearch(e.target.value)}/></label>
+    <div className="inventory-toolbar">
+      <div className="inventory-filter-pills hidden md:flex" role="group" aria-label="Тип складской позиции">
+        {filters.map(option=><button type="button" key={option.value} aria-pressed={filter===option.value} className="inventory-filter-pill" onClick={()=>setFilter(option.value)}>
+          <span>{option.label}</span><span className="inventory-filter-count">{counts[option.value]}</span>
+        </button>)}
+      </div>
+      <div className="md:hidden min-w-0 flex-1">
+        <AdminSelect ariaLabel="Фильтр складских позиций" value={filter} onChange={v=>setFilter(v as typeof filter)} options={filters.map(o=>({value:o.value,label:`${o.label} · ${counts[o.value]}`}))}/>
+      </div>
+      <label className="inventory-search hidden md:flex">
+        <Search size={18} aria-hidden="true"/>
+        <input aria-label="Поиск по складу" placeholder="Поиск по складу" value={search} onChange={e=>setSearch(e.target.value)}/>
+        {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
+      </label>
+    </div>
+    {mobileSearch&&<label className="inventory-search inventory-search-mobile flex md:hidden">
+      <Search size={18} aria-hidden="true"/>
+      <input autoFocus aria-label="Поиск по складу" placeholder="Поиск по складу" value={search} onChange={e=>setSearch(e.target.value)}/>
+      {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
+    </label>}
     {deleteTarget&&<div className="glass-panel p-4 space-y-3"><p>Удалить «{deleteTarget.name}»? Позиции, используемые в движениях или рецептах, удалить нельзя.</p><div className="flex gap-2"><button className="btn-outline px-4 py-2" onClick={()=>setDeleteTarget(null)}>Отмена</button><button className="px-4 py-2 rounded-xl bg-red-600 text-white" disabled={remove.isPending} onClick={()=>remove.mutate(deleteTarget.id)}>Удалить</button></div></div>}
-    {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="glass-panel p-8 text-center"><PackagePlus className="mx-auto mb-3" size={30}/><p>{search?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
+    {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="glass-panel p-8 text-center"><PackagePlus className="mx-auto mb-3" size={30}/><p>{search||filter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {filtered.map(item=><article key={item.id} className="glass-panel min-w-0 overflow-hidden flex flex-col">
         <div className="relative h-36 bg-(--lg-fill) overflow-hidden">
