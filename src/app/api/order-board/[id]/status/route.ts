@@ -5,7 +5,6 @@ import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 import { getPublicAppOrigin, tryNotifyUser } from '@/lib/push';
 import type { OrderStatus } from '@/lib/types';
-import { cashOrderCancellationBlocked } from '@/lib/aqsiCashOrders';
 
 const transitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
   PREPARING: ['PENDING', 'CONFIRMED'],
@@ -27,20 +26,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (status !== 'PREPARING' && status !== 'READY' && status !== 'COMPLETED') {
       return NextResponse.json({ error: 'Недопустимый статус' }, { status: 400 });
     }
-    if(status==='COMPLETED' && await cashOrderCancellationBlocked(id)) {
-      const payment=await queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id=$1`,[id]);
-      if(payment?.paymentStatus!=='SUCCEEDED') return NextResponse.json({error:'Дождитесь оплаты и чека на aQsi'},{status:409});
-    }
     // The conditional update prevents two screens from moving the same order
     // twice or resurrecting a cancelled/completed order.
-    const rows = await query<{ id: string; status: OrderStatus; userId: string | null }>(
+    const rows = await query<{ id: string; status: OrderStatus; userId: string | null; paymentStatus: string }>(
       `UPDATE "orders" SET status = $1, "updatedAt" = CURRENT_TIMESTAMP
        WHERE id = $2 AND status::text = ANY($3::text[])
          AND (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Kaliningrad')::date
              = (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Kaliningrad')::date
-         AND ("paymentStatus" = 'SUCCEEDED' OR ("paymentStatus" = 'PENDING'
+         AND ($1 = 'COMPLETED' OR "paymentStatus" = 'SUCCEEDED' OR ("paymentStatus" = 'PENDING'
               AND ("paymentMethod" IN ('CASH', 'BONUS') OR "paymentMethod" IS NULL)))
-       RETURNING id, status, "userId"`, [status, id, transitions[status]]
+       RETURNING id, status, "userId", "paymentStatus"`, [status, id, transitions[status]]
     );
     const order = rows[0];
     if (!order) {
@@ -48,7 +43,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: current ? 'Заказ уже изменён на другом экране. Обновляем список.' : 'Заказ не найден' }, { status: current ? 409 : 404 });
     }
     let warning: string | undefined;
-    try { await settleOrderLoyalty(id, status); }
+    // Dispatching an order never proves payment; do not mark unpaid orders paid or award cashback.
+    try { if (status !== 'COMPLETED' || order.paymentStatus === 'SUCCEEDED') await settleOrderLoyalty(id, status); }
     catch (error) {
       console.error('Kitchen order loyalty error:', error);
       warning = 'Статус изменён, но начисление бонусов не завершилось. Проверьте заказ в админке.';
