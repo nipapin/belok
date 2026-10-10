@@ -1,3 +1,4 @@
+import type { ComboSelection } from '@/lib/combos';
 'use client';
 
 import { create } from 'zustand';
@@ -14,6 +15,8 @@ export interface CartItem {
   id: string;
   productId: string;
   variantId?: string | null;
+  comboSelections?: ComboSelection[];
+  comboLabel?: string;
   variantName?: string | null;
   name: string;
   image: string | null;
@@ -39,6 +42,7 @@ export function isSameCartLine(
   b: Pick<CartItem, 'productId' | 'variantId' | 'customizations'>
 ): boolean {
   return (
+    JSON.stringify(a.comboSelections ?? []) === JSON.stringify(b.comboSelections ?? []) &&
     a.productId === b.productId &&
     cartVariantId(a) === cartVariantId(b) &&
     customizationKey(a.customizations) === customizationKey(b.customizations)
@@ -49,7 +53,7 @@ function isPlainLine(item: CartItem, productId: string, variantId?: string | nul
   return (
     item.productId === productId &&
     cartVariantId(item) === (variantId ?? null) &&
-    item.customizations.length === 0
+    item.customizations.length === 0 && !item.comboSelections?.length
   );
 }
 
