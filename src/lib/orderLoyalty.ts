@@ -49,6 +49,8 @@ export async function settleOrderLoyalty(orderId: string, nextStatus: OrderStatu
     userId = order.userId;
 
     if (nextStatus === 'COMPLETED') {
+      // Completion by staff is not proof of payment for a deferred aQsi order.
+      if(order.paymentStatus!=='SUCCEEDED' && (await client.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"=$1`,[orderId])).rowCount) return;
       await client.query(`UPDATE "orders" SET "paymentStatus" = 'SUCCEEDED' WHERE id = $1`, [
         orderId,
       ]);

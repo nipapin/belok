@@ -8,6 +8,7 @@ import { fetchAdminOrderById } from '@/lib/queries/adminOrders';
 import { isTbankAlreadyVoided, tbankCancel, TbankError } from '@/lib/tbank';
 import type { OrderStatus, PaymentStatus } from '@/lib/types';
 import { cancelAqsiCard } from '@/lib/aqsiJobs';
+import { cashOrderCancellationBlocked } from '@/lib/aqsiCashOrders';
 
 // Texts shown to the customer when their order changes status.
 // Map only the events that are interesting to the user — PENDING is the
@@ -93,6 +94,9 @@ export async function PUT(
       source:string;
     }>(`SELECT status, "userId", "tbankPaymentId", "paymentStatus", "paymentMethod",source FROM "orders" WHERE id = $1`, [id]);
 
+    if(before?.source==='KIOSK' && before.paymentMethod==='CASH' && (status==='CANCELLED' || (status==='COMPLETED' && before.paymentStatus!=='SUCCEEDED')) && await cashOrderCancellationBlocked(id,status==='CANCELLED')) {
+      return NextResponse.json({error:status==='CANCELLED' ? 'Сначала отмените неоплаченный заказ на aQsi. Для оплаченного заказа оформите возврат на кассе.' : 'Дождитесь наличной оплаты и подтверждения чека от aQsi'},{status:409});
+    }
     if (before?.source==='KIOSK' && before.paymentMethod==='CARD') {
       if (before.paymentStatus==='PENDING') {
         if(status==='CANCELLED') await cancelAqsiCard(id);

@@ -5,6 +5,7 @@ import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 import { getPublicAppOrigin, tryNotifyUser } from '@/lib/push';
 import type { OrderStatus } from '@/lib/types';
+import { cashOrderCancellationBlocked } from '@/lib/aqsiCashOrders';
 
 const transitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
   PREPARING: ['PENDING', 'CONFIRMED'],
@@ -25,6 +26,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const status = body?.status;
     if (status !== 'PREPARING' && status !== 'READY' && status !== 'COMPLETED') {
       return NextResponse.json({ error: 'Недопустимый статус' }, { status: 400 });
+    }
+    if(status==='COMPLETED' && await cashOrderCancellationBlocked(id)) {
+      const payment=await queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id=$1`,[id]);
+      if(payment?.paymentStatus!=='SUCCEEDED') return NextResponse.json({error:'Дождитесь оплаты и чека на aQsi'},{status:409});
     }
     // The conditional update prevents two screens from moving the same order
     // twice or resurrecting a cancelled/completed order.

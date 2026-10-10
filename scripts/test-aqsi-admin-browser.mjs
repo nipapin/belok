@@ -15,7 +15,7 @@ try {
   const sessionId='aqsi-browser-test-nonexistent-session';
   const signature=createHmac('sha256',process.env.SESSION_SECRET||process.env.JWT_SECRET).update(sessionId).digest('hex');
   await browser.setCookie({name:'belok_session',value:sessionId+'.'+signature,url:base});
-  let config={enabled:true,deviceId:784146,receiptsEnabled:true,catalogEnabled:false,taxSystemCode:1,taxRateId:6,calculationTypeId:4,calculationSubjectId:1,cashierName:''};
+  let config={enabled:true,deviceId:784146,receiptsEnabled:true,catalogEnabled:false,cashOrdersEnabled:true,taxSystemCode:1,taxRateId:6,calculationTypeId:4,calculationSubjectId:1,cashierName:''};
   const actions=[];
   const serverVersion={revision:'new-server-release',builtAt:'2026-10-10T14:00:00Z'};
   await page.setRequestInterception(true);
@@ -27,13 +27,17 @@ try {
     if(path==='/api/admin/aqsi') {
       if(request.method()==='PUT'){config=JSON.parse(request.postData());return void respond({config})}
       if(request.method()==='POST'){actions.push(JSON.parse(request.postData()));return void respond({ok:true})}
-      return void respond({config,keyConfigured:true,catalog:null,jobs:[{id:'failed-receipt',orderId:'order',dailyNumber:663,kind:'RECEIPT',state:'FAILED',operationId:'provider-operation',error:'Указана недопустимая СНО',submittedAt:'2026-10-10T14:43:41Z',payload:{deviceId:784146,info:{taxSystemCode:1},payments:[{type:1,amount:62500}]}}]});
+      return void respond({config,keyConfigured:true,catalog:null,jobs:[{id:'failed-receipt',orderId:'order',dailyNumber:663,kind:'RECEIPT',state:'FAILED',operationId:'provider-operation',error:'Указана недопустимая СНО',submittedAt:'2026-10-10T14:43:41Z',payload:{deviceId:784146,info:{taxSystemCode:1},payments:[{type:1,amount:62500}]}},{id:'cash-order',orderId:'cash',dailyNumber:664,kind:'CASH_ORDER',state:'WAITING',operationId:'cash-provider',submittedAt:'2026-10-10T14:43:41Z',payload:{id:'belok:cash',status:'Отложен',content:{checkClose:{taxationSystem:1},positions:[{text:'Кофе',quantity:1,price:100,tax:6}]}}}]});
     }
     if(path.startsWith('/api/'))return void respond({orders:[],notifications:[],settings:{},configured:true});
     void request.continue();
   });
   await page.goto(base+'/admin/settings',{waitUntil:'networkidle2'});
   await page.waitForSelector('::-p-text(Касса aQsi)');
+  assert.equal(await page.$eval('[data-aqsi-history]',element=>element.open),false,'history is collapsed by default');
+  const history=await page.waitForSelector('[data-aqsi-history] > summary');await history.click();
+  await page.waitForSelector('::-p-text(На кассе, ожидает оплаты)');
+  assert.equal(await page.evaluate(()=>[...document.querySelectorAll('label')].find(e=>e.textContent.includes('Отправлять наличные заказы')).querySelector('input').checked),true);
   await page.waitForSelector('button::-p-text(Обновить админку)');
   assert.ok(await page.$eval('[data-admin-build-version]',element=>element.textContent.includes('На сервере другая сборка')));
   await page.evaluate(()=>{
@@ -43,7 +47,7 @@ try {
   const click=async text=>{const button=await page.waitForSelector(`button::-p-text(${text})`);await button.click()};
   const value=()=>page.$eval('#test-aqsi-sno',select=>select.value);
   const requestDetails=await page.waitForSelector('summary::-p-text(Последний запрос в aQsi)');await requestDetails.click();
-  const requestJson=await page.$eval('details pre',element=>JSON.parse(element.textContent));
+  const requestJson=await page.$eval('[data-aqsi-history] details pre',element=>JSON.parse(element.textContent));
   assert.equal(requestJson.info.taxSystemCode,1,'request must show the saved sent payload');
   assert.equal(requestJson.payments[0].amount,62500);
   assert.equal(await page.$eval('details',element=>element.textContent.includes('/v4/Receipts/process')),true);

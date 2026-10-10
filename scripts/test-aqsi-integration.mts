@@ -105,6 +105,60 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     const next=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='next-card'`);assert.ok(next);
     operations.set(next.operationId,{type:'acquiring.purchase',status:'Timeout',result:null});await processAqsiJobs();
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='next-card'`))?.paymentStatus,'CANCELLED');
+    const {enqueueCashOrder,processAqsiCashOrders,cashOrderCancellationBlocked}=await import('../src/lib/aqsiCashOrders');
+    const {receiptOrderReference}=await import('../src/lib/aqsiReceipt');
+    const cashRemote=new Map<string,Record<string,unknown>>();
+    const cashPayloads:Record<string,unknown>[]=[];
+    let loseCashResponse=false;
+    globalThis.fetch=async(input,init)=>{
+      const path=new URL(String(input)).pathname;
+      assert.ok(path.includes('/v2/Orders/simple'),'cash flow must never call acquiring or receipt creation');
+      if(init?.method==='POST') {
+        const payload=JSON.parse(String(init.body));cashPayloads.push(payload);
+        const id=randomUUID();cashRemote.set(payload.id,{device:784146,status:'Отложен',content:payload.content,receipts:[],uid:id});
+        if(loseCashResponse) throw new Error('cash response lost after creating order');
+        return Response.json({guid:id});
+      }
+      const remote=cashRemote.get(decodeURIComponent(path.split('/').pop()!));
+      assert.ok(remote);return Response.json(remote);
+    };
+    async function cashOrder(id:string) {
+      await order(id,'CASH');
+      await db!.withTransaction(async client=>{await enqueueCashOrder(client,id,784146);await enqueueCashOrder(client,id,784146)});
+    }
+    await cashOrder('cash-paid');
+    await Promise.all([processAqsiCashOrders(),processAqsiCashOrders()]);
+    assert.equal(cashPayloads.length,1,'parallel workers and duplicate enqueue create only one deferred order');
+    const cashContent=cashPayloads[0].content as {checkClose:{taxationSystem:number;payments?:unknown};positions:{price:number;quantity:number;id?:string}[]};
+    assert.equal(cashContent.checkClose.taxationSystem,1,'USN revenue uses 1 in Orders V2, 2 in Receipts V4');
+    assert.equal(cashContent.checkClose.payments,undefined,'cash order must not be marked prepaid');
+    assert.equal(cashContent.positions[0].price,10,'Orders V2 prices are rubles');
+    assert.equal(cashContent.positions[0].id,undefined,'inline positions do not require catalog synchronization');
+    assert.equal(await cashOrderCancellationBlocked('cash-paid',true),true,'sent order must be cancelled on terminal first');
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cash-paid'`))?.paymentStatus,'PENDING');
+    const paidRemote=cashRemote.get('belok:cash-paid')!;
+    paidRemote.status='Оплачен';paidRemote.receipts=[{id:randomUUID(),isNonFiscal:false,amount:10,fp:'12345',documentNumber:5,content:{type:1,additionalAttribute:receiptOrderReference('cash-paid')}}];
+    await db.query(`UPDATE aqsi_cash_orders SET "checkedAt"=NULL`);
+    await processAqsiCashOrders();await processAqsiCashOrders();
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cash-paid'`))?.paymentStatus,'SUCCEEDED');
+    assert.equal((await db.query(`SELECT id FROM aqsi_jobs WHERE "orderId"='cash-paid'`)).length,0,'cashier receipt must never enqueue duplicate fiscalization');
+    await cashOrder('cash-uncertain');loseCashResponse=true;
+    await processAqsiCashOrders();
+    assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_cash_orders WHERE "orderId"='cash-uncertain'`))?.state,'UNKNOWN');
+    await processAqsiCashOrders();
+    assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_cash_orders WHERE "orderId"='cash-uncertain'`))?.state,'WAITING','recover a lost POST response with GET only');
+    assert.equal(cashPayloads.length,2,'lost response must not resubmit');
+    cashRemote.get('belok:cash-uncertain')!.status='Отменен';
+    await db.query(`UPDATE aqsi_cash_orders SET "checkedAt"=NULL`);await processAqsiCashOrders();
+    assert.equal((await db.queryOne<{status:string}>(`SELECT status FROM orders WHERE id='cash-uncertain'`))?.status,'CANCELLED');
+    await cashOrder('cash-unsent');assert.equal(await cashOrderCancellationBlocked('cash-unsent',true),false);
+    await processAqsiCashOrders();assert.equal(cashPayloads.length,2,'unsent cancelled order is never delivered');
+    loseCashResponse=false;await cashOrder('cash-wrong-receipt');await processAqsiCashOrders();
+    const wrongRemote=cashRemote.get('belok:cash-wrong-receipt')!;
+    wrongRemote.status='Оплачен';wrongRemote.receipts=[{id:randomUUID(),isNonFiscal:false,amount:11,fp:'12345',documentNumber:6,content:{type:1,additionalAttribute:receiptOrderReference('cash-wrong-receipt')}}];
+    await db.query(`UPDATE aqsi_cash_orders SET "checkedAt"=NULL`);await processAqsiCashOrders();
+    assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_cash_orders WHERE "orderId"='cash-wrong-receipt'`))?.state,'UNKNOWN');
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cash-wrong-receipt'`))?.paymentStatus,'PENDING');
     const oldRevision=(await db.queryOne<{revision:string}>('SELECT revision FROM aqsi_catalog_sync'))?.revision;
     await db.query(`UPDATE products SET price=11 WHERE id='p'`);
     assert.notEqual((await db.queryOne<{revision:string}>('SELECT revision FROM aqsi_catalog_sync'))?.revision,oldRevision);

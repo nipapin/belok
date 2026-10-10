@@ -2,7 +2,7 @@ import 'server-only';
 import { getAppSetting } from '@/lib/appSettings';
 
 export interface AqsiConfig {
-  enabled: boolean; deviceId: number; receiptsEnabled: boolean; catalogEnabled: boolean;
+  enabled: boolean; deviceId: number; receiptsEnabled: boolean; catalogEnabled: boolean; cashOrdersEnabled:boolean;
   taxSystemCode: number; taxRateId: number | null; calculationTypeId: number | null;
   calculationSubjectId: number; cashierName: string;
 }
@@ -11,7 +11,7 @@ export async function getAqsiConfig(): Promise<AqsiConfig> {
   const stored = await getAppSetting<Partial<AqsiConfig>>('aqsi');
   return {
     enabled: false, deviceId: Number(process.env.AQSI_DEVICE_ID) || 0,
-    receiptsEnabled: false, catalogEnabled: false,
+    receiptsEnabled: false, catalogEnabled: false, cashOrdersEnabled:true,
     taxSystemCode: 2, taxRateId: null, calculationTypeId: null,
     calculationSubjectId: 1, cashierName: '', ...stored,
   };

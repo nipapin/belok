@@ -15,6 +15,7 @@ import { startTbankPayment } from '@/lib/tbankPayments';
 import { syncSbpPayment } from '@/lib/tbankPayments';
 import { aqsiConfigured, fiscalConfigured, getAqsiConfig } from '@/lib/aqsiConfig';
 import { enqueueCard, processAqsiJobs } from '@/lib/aqsiJobs';
+import { enqueueCashOrder, processAqsiCashOrders } from '@/lib/aqsiCashOrders';
 import { isValidEmail, normalizeEmail } from '@/lib/verificationCode';
 import { priceOrderItems } from '@/lib/orderPricing';
 import { VariantOrderError } from '@/lib/productVariants';
@@ -167,6 +168,7 @@ export async function POST(request: NextRequest) {
     const needsBank = total > 0 && requestedMethod === 'SBP';
     const needsTerminal = total > 0 && requestedMethod === 'CARD';
     const aqsi = await getAqsiConfig();
+    const needsCashOrder=total>0 && requestedMethod==='CASH' && aqsiConfigured(aqsi) && aqsi.cashOrdersEnabled;
     if (needsTerminal && (!aqsiConfigured(aqsi) || !aqsi.receiptsEnabled || !fiscalConfigured(aqsi))) {
       return NextResponse.json({error:'Оплата картой на терминале пока не настроена',notCreated:true},{status:503});
     }
@@ -246,11 +248,13 @@ export async function POST(request: NextRequest) {
         );
       }
       if (needsTerminal) await enqueueCard(client,orderId,total,aqsi.deviceId);
+      if (needsCashOrder) await enqueueCashOrder(client,orderId,aqsi.deviceId);
       return ticket;
     });
 
     if (replay) return replayResponse(replay);
     if (needsTerminal) after(() => processAqsiJobs());
+    if (needsCashOrder) after(() => processAqsiCashOrders());
 
     let paymentUrl: string | null = null;
     let paymentPayload: string | null = null;
