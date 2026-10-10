@@ -131,7 +131,7 @@ export default function InventoryPage(){
       <input autoFocus aria-label="Поиск по складу" placeholder="Поиск по складу" value={search} onChange={e=>setSearch(e.target.value)}/>
       {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
     </label>}
-    {deleteTarget&&<div className="glass-panel p-4 space-y-3"><p>Удалить «{deleteTarget.name}»? Позиции, используемые в движениях или рецептах, удалить нельзя.</p><div className="flex gap-2"><button className="btn-outline px-4 py-2" onClick={()=>setDeleteTarget(null)}>Отмена</button><button className="px-4 py-2 rounded-xl bg-red-600 text-white" disabled={remove.isPending} onClick={()=>remove.mutate(deleteTarget.id)}>Удалить</button></div></div>}
+    
     {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="glass-panel p-8 text-center"><PackagePlus className="mx-auto mb-3" size={30}/><p>{search||filter!=='ALL'||statusFilter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {filtered.map(item=><article key={item.id} className={`glass-panel inventory-status-card inventory-card-${stockStatus(item)} min-w-0 overflow-hidden flex flex-col`}>
@@ -149,9 +149,18 @@ export default function InventoryPage(){
             <button className="btn-primary p-2.5" type="submit" aria-label={`Сохранить остаток: ${item.name}`} disabled={recount.isPending||drafts[item.id]===undefined||!valid(drafts[item.id])||Number(drafts[item.id])===Number(item.quantity)}><Save size={18}/></button>
           </form>
           {item.kind==='PREPARED'&&<div className="flex flex-wrap gap-2"><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setRecipeItem(item);setBatchItem(null)}}>Техкарта</button><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setBatchItem(item);setRecipeItem(null);setBatchAmount('1')}}>Выпустить партию</button></div>}
-          <div className="flex gap-2 mt-auto pt-2 border-t border-(--lg-ring)">
-            <button className="btn-outline flex-1 px-3 py-2 inline-flex justify-center items-center gap-1 text-sm" onClick={()=>openEdit(item)}><Pencil size={15}/> Изменить</button>
-            <button aria-label={`Удалить ${item.name}`} className="btn-outline px-3 py-2 text-rose-700" onClick={()=>setDeleteTarget(item)}><Trash2 size={16}/></button>
+          <div className="mt-auto pt-2 border-t border-(--lg-ring)">
+            {deleteTarget?.id===item.id ? (
+              <div className="flex items-center gap-2" role="group" aria-label={`Удалить ${item.name}?`}>
+                <button type="button" className="btn-outline flex-1 min-w-0 px-3 py-2 text-sm" disabled={remove.isPending} onClick={()=>setDeleteTarget(null)}>Отмена</button>
+                <button type="button" className="flex-1 min-w-0 rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60" disabled={remove.isPending} onClick={()=>remove.mutate(item.id)}>{remove.isPending?'Удаляем…':'Удалить'}</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button type="button" className="btn-outline flex-1 px-3 py-2 inline-flex justify-center items-center gap-1 text-sm" onClick={()=>openEdit(item)}><Pencil size={15}/> Изменить</button>
+                <button type="button" aria-label={`Удалить ${item.name}`} className="btn-outline px-3 py-2 text-rose-700" onClick={()=>{setError('');setDeleteTarget(item)}}><Trash2 size={16}/></button>
+              </div>
+            )}
           </div>
         </div>
       </article>)}
