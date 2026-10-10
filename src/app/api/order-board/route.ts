@@ -16,7 +16,7 @@ export async function GET() {
        WHERE status IN ('PENDING', 'CONFIRMED', 'PREPARING', 'READY')
          AND (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Kaliningrad')::date
              = (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Kaliningrad')::date
-         AND ("paymentStatus" = 'SUCCEEDED'
+         AND (status = 'READY' OR "paymentStatus" = 'SUCCEEDED'
               OR ("paymentStatus" = 'PENDING' AND ("paymentMethod" IN ('CASH', 'BONUS') OR "paymentMethod" IS NULL)))
        ORDER BY "createdAt" DESC, "dailyNumber" DESC NULLS LAST, id DESC`
     );
