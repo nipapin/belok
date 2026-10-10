@@ -1,3 +1,4 @@
+import type { ComboGroup } from '@/lib/combos';
 export enum MenuLabel {
   HOME = "Главная",
   MENU = "Меню",
@@ -24,6 +25,8 @@ export interface ProductVariant {
 
 export interface Product {
   id: string;
+  isCombo?: boolean;
+  comboGroups?: ComboGroup[];
   isAvailable?: boolean;
   name: string;
   description: string | null;
