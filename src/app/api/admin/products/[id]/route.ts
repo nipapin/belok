@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { replaceProductIngredients, type IngredientLinkWrite } from '@/lib/productIngredients';
 import { query, queryOne, withTransaction } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
+import { ensureComboCategory } from '@/lib/comboCategory';
 import { deletePublicImage } from '@/lib/uploadStorage';
 import { fetchProductById } from '@/lib/queries/products';
 import { replaceProductVariants, type VariantWrite } from '@/lib/productVariants';
@@ -82,7 +83,7 @@ export async function PUT(
     if (body.description !== undefined) add('description', body.description);
     if (body.price !== undefined) add('price', toNum(body.price) ?? 0);
     if (body.image !== undefined) add('image', body.image);
-    if (body.categoryId !== undefined) add('categoryId', body.categoryId);
+    if (body.categoryId !== undefined && !existing.isCombo) add('categoryId', body.categoryId);
     if (body.isAvailable !== undefined) add('isAvailable', body.isAvailable);
     if (body.calories !== undefined) add('calories', toNum(body.calories));
     if (body.proteins !== undefined) add('proteins', toNum(body.proteins));
@@ -93,7 +94,7 @@ export async function PUT(
     if (body.spicinessLevel !== undefined) add('spicinessLevel', body.spicinessLevel);
 
     const categoryChanged =
-      body.categoryId !== undefined && body.categoryId !== existing.categoryId;
+      !existing.isCombo && body.categoryId !== undefined && body.categoryId !== existing.categoryId;
     if (categoryChanged) {
       const maxRow = await queryOne<{ max: number | string | null }>(
         `SELECT MAX("sortOrder") AS max FROM "products" WHERE "categoryId" = $1`,
@@ -105,6 +106,10 @@ export async function PUT(
     }
 
     const staleVariantImages = await withTransaction(async (client) => {
+      if (existing.isCombo) {
+        const comboCategoryId = await ensureComboCategory(client);
+        if (existing.categoryId !== comboCategoryId) add('categoryId', comboCategoryId);
+      }
       if (sets.length > 0) {
         sqlParams.push(id);
         await client.query(
