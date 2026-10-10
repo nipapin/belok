@@ -747,8 +747,7 @@ export default function KioskApp() {
             {orderList}
           </div>
           {payableTotal > 0 ? (
-            <div className={`mt-3 grid shrink-0 ${session.cardEnabled ? 'grid-cols-3' : 'grid-cols-2'} gap-3 px-3`}>
-              {session.cardEnabled ? <button type="button" className={`${paymentMethod === 'CARD' ? 'btn-primary' : 'btn-outline'} aspect-square w-full flex-col gap-4 !rounded-3xl text-2xl`} onClick={()=>{setPaymentMethod('CARD');setSubmitError('')}}><CreditCard className="size-16" strokeWidth={1.75}/><span>Картой</span></button> : null}
+            <div className="mt-3 grid shrink-0 grid-cols-3 gap-3 px-3">
               <button
                 type="button"
                 className={`kiosk-rise ${paymentMethod === 'CASH' ? 'btn-primary' : 'btn-outline'} aspect-square w-full flex-col gap-4 !rounded-3xl text-3xl`}
@@ -763,6 +762,20 @@ export default function KioskApp() {
               </button>
               <button
                 type="button"
+                className={`kiosk-rise ${paymentMethod === 'CARD' ? 'btn-primary' : 'btn-outline'} aspect-square w-full flex-col gap-4 !rounded-3xl text-3xl disabled:opacity-40`}
+                style={{ animationDelay: '240ms' }}
+                disabled={!session.cardEnabled}
+                title={!session.cardEnabled ? 'Оплата картой временно недоступна' : undefined}
+                onClick={() => {
+                  setPaymentMethod('CARD');
+                  setSubmitError('');
+                }}
+              >
+                <CreditCard className="size-16" strokeWidth={1.75} />
+                <span className="w-full text-center">Карта</span>
+              </button>
+              <button
+                type="button"
                 className={`kiosk-rise ${paymentMethod === 'SBP' ? 'btn-primary' : 'btn-outline'} aspect-square w-full flex-col gap-4 !rounded-3xl text-3xl`}
                 style={{ animationDelay: '280ms' }}
                 onClick={() => {
@@ -771,7 +784,7 @@ export default function KioskApp() {
                 }}
               >
                 <QrCode className="size-16" strokeWidth={1.75} />
-                <span className="w-full text-center">QR-код</span>
+                <span className="w-full text-center">СБП</span>
               </button>
             </div>
           ) : (

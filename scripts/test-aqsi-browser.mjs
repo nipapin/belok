@@ -27,7 +27,7 @@ try {
   await page.goto(`${base}/kiosk`,{waitUntil:'networkidle2'});
   await page.waitForSelector('[aria-label="Добавить Тестовый боул в корзину"]');
   await page.click('[aria-label="Добавить Тестовый боул в корзину"]');
-  await text('К заказу');await text('Картой');
+  await text('К заказу');await text('Карта');
   await page.waitForFunction(()=>{const button=[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Отправить заказ'));return button && getComputedStyle(button).opacity==='1'});
   await mkdir('output/aqsi-qa',{recursive:true});await page.screenshot({path:'output/aqsi-qa/checkout.png'});
   await text('Отправить заказ');
