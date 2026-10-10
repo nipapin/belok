@@ -12,7 +12,7 @@ export async function getAqsiConfig(): Promise<AqsiConfig> {
   return {
     enabled: false, deviceId: Number(process.env.AQSI_DEVICE_ID) || 0,
     receiptsEnabled: false, catalogEnabled: false,
-    taxSystemCode: 1, taxRateId: null, calculationTypeId: null,
+    taxSystemCode: 2, taxRateId: null, calculationTypeId: null,
     calculationSubjectId: 1, cashierName: '', ...stored,
   };
 }

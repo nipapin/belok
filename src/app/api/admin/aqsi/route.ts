@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { query, queryOne } from '@/lib/db';
 import { getAqsiConfig, fiscalConfigured } from '@/lib/aqsiConfig';
 import { setAppSetting } from '@/lib/appSettings';
-import { processAqsiJobs, type AqsiJob } from '@/lib/aqsiJobs';
+import { processAqsiJobs, retryAqsiReceipt, type AqsiJob } from '@/lib/aqsiJobs';
 import { processAqsiCatalog } from '@/lib/aqsiCatalog';
 import { aqsiRequest, type AqsiOperation } from '@/lib/aqsi';
 
@@ -52,7 +52,8 @@ export async function POST(request:NextRequest) {
       await query(`UPDATE aqsi_catalog_sync SET revision=revision+1 WHERE id=1`);
     } else if(body.action==='retryReceipt') {
       // Only definitive failures can be retried. UNKNOWN cannot be resubmitted.
-      await query(`UPDATE aqsi_jobs SET state='QUEUED',"operationId"=NULL,error=NULL,"updatedAt"=NOW() WHERE id=$1 AND kind='RECEIPT' AND state='FAILED'`,[body.jobId]);
+      if(typeof body.jobId!=='string' || !/^[0-9a-f-]{36}$/i.test(body.jobId)) return NextResponse.json({error:'Некорректный ID чека'},{status:400});
+      if(!await retryAqsiReceipt(body.jobId)) return NextResponse.json({error:'Повторно отправить можно только чек с подтверждённой ошибкой'},{status:409});
     } else if(body.action==='reconcile' && typeof body.operationId==='string' && /^[0-9a-f-]{36}$/i.test(body.operationId)) {
       const job=await queryOne<AqsiJob>('SELECT * FROM aqsi_jobs WHERE id=$1 AND state=\'UNKNOWN\'',[body.jobId]);
       if(!job) return NextResponse.json({error:'Операция не требует сверки'},{status:409});

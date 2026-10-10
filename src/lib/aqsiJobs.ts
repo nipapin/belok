@@ -83,7 +83,8 @@ async function applyOperation(job: AqsiJob, operation: AqsiOperation) {
       await setJob(job,'UNKNOWN','Операция завершилась с ошибкой и данными результата. Проверьте оплату/чек в aQsi.');
       return;
     }
-    await setJob(job,'FAILED',`aQsi: ${operation.status}${operation.problems ? ` (${operation.problems.slice(0,200)})` : ''}`);
+    const details=[operation.problems,operation.message].filter(Boolean).join(': ').slice(0,300);
+    await setJob(job,'FAILED',`aQsi: ${operation.status}${details ? ` (${details})` : ''}`);
     if (job.kind === 'CARD') {
       await query(`UPDATE orders SET status='CANCELLED' WHERE id=$1 AND "paymentStatus"='PENDING'`,[job.orderId]);
       await settleOrderLoyalty(job.orderId,'CANCELLED');
@@ -160,6 +161,18 @@ export async function aqsiOrderState(orderId: string) {
   const receipt = jobs.find(job => job.kind === 'RECEIPT');
   return { terminalState:card?.state ?? null, receiptState:receipt?.state ?? null,
     terminalMessage:card?.state === 'UNKNOWN' ? 'Результат оплаты уточняется. Обратитесь к сотруднику; не оплачивайте повторно.' : null };
+}
+
+export async function retryAqsiReceipt(jobId: string): Promise<boolean> {
+  return withTransaction(async client=>{
+    // Serialize with the worker. Only a definitive failure may be resubmitted;
+    // rebuild the receipt from the paid order and the current saved settings.
+    await client.query('SELECT pg_advisory_xact_lock(784146,20)');
+    const updated=await client.query(`UPDATE aqsi_jobs SET state='QUEUED',payload=NULL,result=NULL,
+      "operationId"=NULL,error=NULL,"updatedAt"=NOW()
+      WHERE id=$1 AND kind='RECEIPT' AND state='FAILED' RETURNING id`,[jobId]);
+    return updated.rowCount===1;
+  });
 }
 
 export async function cancelAqsiCard(orderId: string) {

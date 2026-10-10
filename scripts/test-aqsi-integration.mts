@@ -22,7 +22,7 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     await db.query(`INSERT INTO app_settings (key,value) VALUES ('aqsi',$1),('notification_settings',$2) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[
       JSON.stringify({enabled:true,deviceId:784146,receiptsEnabled:true,catalogEnabled:false,taxSystemCode:1,taxRateId:6,calculationTypeId:4,calculationSubjectId:1,cashierName:''}),JSON.stringify({adminNewOrdersPush:false,autoPushLoyalty:false})]);
     await db.query(`INSERT INTO categories (id,name) VALUES ('cat','Меню'); INSERT INTO products (id,name,price,"categoryId") VALUES ('p','Новое имя',10,'cat')`);
-    const {enqueueCard,processAqsiJobs,cancelAqsiCard}=await import('../src/lib/aqsiJobs');
+    const {enqueueCard,processAqsiJobs,cancelAqsiCard,retryAqsiReceipt}=await import('../src/lib/aqsiJobs');
     const {applyTbankPaymentStatus}=await import('../src/lib/tbankPayments');
     const {processAqsiCatalog}=await import('../src/lib/aqsiCatalog');
     let ticket=0;
@@ -31,7 +31,7 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
       await db!.query(`INSERT INTO order_items (id,"orderId","productId",quantity,"unitPrice","fiscalName") VALUES ($1,$2,'p',1,10,'Сохранённое имя')`,[randomUUID(),id]);
       if(method==='CARD') await db!.withTransaction(client=>enqueueCard(client,id,10,784146));
     }
-    let posts=0;let fail=false;const operations=new Map<string,{type:string;status:string;result:string|null}>();
+    let posts=0;let fail=false;const operations=new Map<string,{type:string;status:string;result:string|null;message?:string;problems?:string}>();
     const payloads:Record<string,unknown>[]=[];
     globalThis.fetch=async(input,init)=>{
       const path=new URL(String(input)).pathname;
@@ -59,8 +59,20 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     await order('sbp','SBP');
     await Promise.all([applyTbankPaymentStatus('sbp','CONFIRMED'),applyTbankPaymentStatus('sbp','CONFIRMED')]);
     assert.equal((await db.query<{id:string}>(`SELECT id FROM aqsi_jobs WHERE "orderId"='sbp' AND kind='RECEIPT'`)).length,1);
-    await processAqsiJobs();const sbpReceipt=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='sbp'`);assert.ok(sbpReceipt);
-    operations.set(sbpReceipt.operationId,{type:'receipt.process',status:'Completed',result:JSON.stringify({id:'sbp-receipt',isNonFiscal:false,info:{typeId:1,sum:1000,additionalAttribute:(payloads[2].info as {additionalAttribute:string}).additionalAttribute}})});await processAqsiJobs();
+    await processAqsiJobs();const sbpReceipt=await db.queryOne<{id:string;operationId:string}>(`SELECT id,"operationId" FROM aqsi_jobs WHERE "orderId"='sbp'`);assert.ok(sbpReceipt);
+    operations.set(sbpReceipt.operationId,{type:'receipt.process',status:'Error',result:null,problems:'Unexpected',message:'Указана недопустимая СНО'});
+    await processAqsiJobs();
+    assert.match((await db.queryOne<{error:string}>('SELECT error FROM aqsi_jobs WHERE id=$1',[sbpReceipt.id]))!.error,/Указана недопустимая СНО/);
+    await db.query(`UPDATE app_settings SET value=jsonb_set(value,'{taxSystemCode}','2') WHERE key='aqsi'`);
+    assert.equal(await retryAqsiReceipt(sbpReceipt.id),true);
+    const retryBefore=posts;
+    await processAqsiJobs();await processAqsiJobs();assert.equal(posts,retryBefore+1);
+    assert.equal((payloads.at(-1)!.info as {taxSystemCode:number}).taxSystemCode,2,'retry must rebuild using corrected fiscal settings');
+    assert.equal(await retryAqsiReceipt(sbpReceipt.id),false,'processing receipt must never be submitted again');
+    const retried=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE id=$1`,[sbpReceipt.id]);assert.ok(retried);
+    assert.notEqual(retried.operationId,sbpReceipt.operationId);
+    operations.set(retried.operationId,{type:'receipt.process',status:'Completed',result:JSON.stringify({id:'sbp-receipt',isNonFiscal:false,info:{typeId:1,sum:1000,additionalAttribute:(payloads.at(-1)!.info as {additionalAttribute:string}).additionalAttribute}})});await processAqsiJobs();
+    assert.equal(await retryAqsiReceipt(sbpReceipt.id),false,'successful receipt must never be submitted again');
     await order('cancel-race');await processAqsiJobs();await cancelAqsiCard('cancel-race');
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cancel-race'`))?.paymentStatus,'PENDING','requesting cancellation is not confirmation');
     const racing=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='cancel-race'`);assert.ok(racing);
