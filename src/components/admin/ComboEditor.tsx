@@ -1,20 +1,22 @@
 'use client';
 import { useEffect,useState } from 'react';
+import AdminProductImageField from '@/components/admin/AdminProductImageField';
 import { useRouter } from 'next/navigation';
 import { Plus,Trash2 } from 'lucide-react';
 type Product={id:string;name:string;isCombo?:boolean;isAvailable:boolean};
 type Group={key:string;name:string;minSelect:number;maxSelect:number;options:{productId:string;priceDelta:number}[]};
 const newGroup=():Group=>({key:crypto.randomUUID(),name:'',minSelect:1,maxSelect:1,options:[]});
 export default function ComboEditor({productId}:{productId?:string}){
- const router=useRouter();const [name,setName]=useState('');const [price,setPrice]=useState('');const [categoryId,setCategory]=useState('');const [description,setDescription]=useState('');const [groups,setGroups]=useState<Group[]>([newGroup()]);const [products,setProducts]=useState<Product[]>([]);const [categories,setCategories]=useState<{id:string;name:string}[]>([]);
+ const router=useRouter();const [name,setName]=useState('');const [image,setImage]=useState('');const [imageFile,setImageFile]=useState<File|null>(null);const [preview,setPreview]=useState<string|null>(null);const [price,setPrice]=useState('');const [categoryId,setCategory]=useState('');const [description,setDescription]=useState('');const [groups,setGroups]=useState<Group[]>([newGroup()]);const [products,setProducts]=useState<Product[]>([]);const [categories,setCategories]=useState<{id:string;name:string}[]>([]);
  const [saving,setSaving]=useState(false);const [error,setError]=useState('');
  useEffect(()=>{
   void Promise.all([fetch('/api/admin/products').then(r=>r.json()),fetch('/api/admin/categories').then(r=>r.json())]).then(([p,c])=>{setProducts(p.products??[]);setCategories(c.categories??[])});
   if(productId)void Promise.all([fetch('/api/admin/products/'+productId).then(r=>r.json()),fetch('/api/admin/combos?productId='+productId).then(r=>r.json())]).then(([p,g])=>{
-   if(p.product){setName(p.product.name);setPrice(String(p.product.price));setCategory(p.product.categoryId);setDescription(p.product.description??'')}
+   if(p.product){setName(p.product.name);setPrice(String(p.product.price));setCategory(p.product.categoryId);setDescription(p.product.description??'');setImage(p.product.image??'')}
    if(g.groups?.length)setGroups((g.groups as {id:string;name:string;minSelect:number;maxSelect:number;options:{productId:string;priceDelta:number}[]}[]).map(x=>({key:x.id,name:x.name,minSelect:x.minSelect,maxSelect:x.maxSelect,options:x.options.map(o=>({productId:o.productId,priceDelta:o.priceDelta}))})));
   });
  },[productId]);
+ useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview)},[preview]);
  const patch=(index:number,changes:Partial<Group>)=>setGroups(list=>list.map((g,i)=>i===index?{...g,...changes}:g));
  const candidates=products.filter(p=>!p.isCombo&&p.id!==productId);
  async function save(){
@@ -22,13 +24,15 @@ export default function ComboEditor({productId}:{productId?:string}){
   if(groups.some(g=>!g.name.trim()||g.options.length<g.maxSelect||g.options.length<g.minSelect||!g.options.length||g.options.some(o=>!o.productId))){setError('Заполните группы и выберите товары');return;}
   setSaving(true);
   try{
+   let imageUrl=image;
+   if(imageFile){const fd=new FormData();fd.append('file',imageFile);const uploaded=await fetch('/api/upload',{method:'POST',body:fd,credentials:'include'});const response=await uploaded.json();if(!uploaded.ok)throw Error(response.error||'Ошибка загрузки фото');imageUrl=response.url;}
    let id=productId;
    if(!id){
-    const res=await fetch('/api/admin/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description,price:Number(price),categoryId,isAvailable:false,isCombo:true})});
+    const res=await fetch('/api/admin/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description,price:Number(price),categoryId,image:imageUrl,isAvailable:false,isCombo:true})});
     const body=await res.json();if(!res.ok||!body.product?.id)throw Error(body.error||'Не удалось создать товар');
     id=body.product.id;
    }else{
-    const res=await fetch('/api/admin/products/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description,price:Number(price),categoryId})});
+    const res=await fetch('/api/admin/products/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description,price:Number(price),categoryId,image:imageUrl})});
     if(!res.ok)throw Error((await res.json()).error||'Не удалось обновить товар');
    }
    const res=await fetch('/api/admin/combos',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:id,groups:groups.map(g=>({name:g.name,minSelect:g.minSelect,maxSelect:g.maxSelect,options:g.options}))})});
@@ -45,6 +49,7 @@ export default function ComboEditor({productId}:{productId?:string}){
    <label className="text-sm">Категория<select className="input-pill mt-1 w-full" value={categoryId} onChange={e=>setCategory(e.target.value)}><option value="">Выберите категорию</option>{categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
    <label className="text-sm">Описание<input className="input-pill mt-1 w-full" value={description} onChange={e=>setDescription(e.target.value)}/></label>
   </section>
+  <section className="glass-panel p-4 max-w-xs"><AdminProductImageField previewUrl={preview||image||null} onFileSelect={file=>{setImageFile(file);setPreview(URL.createObjectURL(file))}} onClear={()=>{setImage('');setImageFile(null);setPreview(null)}}/></section>
   {groups.map((group,i)=><section className="glass-panel p-4 space-y-3" key={group.key}>
    <div className="flex justify-between items-center"><h2 className="font-semibold">Группа {i+1}</h2><button aria-label="Удалить группу" disabled={groups.length<=1} onClick={()=>setGroups(x=>x.filter((_,n)=>n!==i))}><Trash2 size={17}/></button></div>
    <label className="text-sm block">Название группы<input className="input-pill mt-1 w-full" placeholder="Например: Выберите напиток" value={group.name} onChange={e=>patch(i,{name:e.target.value})}/></label>
