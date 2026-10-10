@@ -9,6 +9,19 @@ import './inventory.css';
 type Item={ id:string;name:string;kind:'RAW'|'PREPARED'|'PACKAGING';unit:'g'|'ml'|'pcs';quantity:string;minQuantity:string;notes:string;image?:string|null };
 const unitLabels={g:'г',ml:'мл',pcs:'шт.'};
 const kindLabels={RAW:'Сырьё',PREPARED:'Полуфабрикат',PACKAGING:'Упаковка'};
+type StockStatus='green'|'yellow'|'orange'|'red';
+const statusLabels:Record<StockStatus,string>={green:'Достаточно',yellow:'Внимание',orange:'Скоро пополнить',red:'Пополнить'};
+function stockStatus(item:Item):StockStatus {
+ const qty=Number(item.quantity),min=Number(item.minQuantity);
+ if(qty<=min)return 'red';
+ // Without a replenishment threshold we cannot calculate relative stock levels.
+ if(min<=0)return 'green';
+ const ratio=qty/min;
+ if(ratio<=1.25)return 'orange';
+ if(ratio<=2)return 'yellow';
+ return 'green';
+}
+
 async function api(method:'GET'|'POST'|'PATCH'|'PUT', body?:unknown):Promise<{items?:Item[];error?:string}> {
   const res=await fetch('/api/admin/inventory',{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store'});
   const data=await res.json();
@@ -20,6 +33,7 @@ export default function InventoryPage(){
   const [search,setSearch]=useState('');
   const [filter,setFilter]=useState<'ALL'|Item['kind']>('ALL');
   const [mobileSearch,setMobileSearch]=useState(false);
+  const [statusFilter,setStatusFilter]=useState<'ALL'|StockStatus>('ALL');
   const [recipeItem,setRecipeItem]=useState<Item|null>(null);
   const [batchItem,setBatchItem]=useState<Item|null>(null);
   const [batchAmount,setBatchAmount]=useState('1');
@@ -40,9 +54,10 @@ export default function InventoryPage(){
   const {data,isLoading,isError}=useQuery({queryKey:['admin-inventory'],queryFn:()=>api('GET')});
   const items=data?.items||[];
   const counts=useMemo(()=>({ALL:items.length,RAW:items.filter(i=>i.kind==='RAW').length,PREPARED:items.filter(i=>i.kind==='PREPARED').length,PACKAGING:items.filter(i=>i.kind==='PACKAGING').length}),[items]);
-  const lowCount=items.filter(x=>Number(x.quantity)<=Number(x.minQuantity)).length;
+  const lowCount=items.filter(x=>stockStatus(x)==='red').length;
+  const statusCounts=useMemo(()=>({ALL:items.length,green:items.filter(x=>stockStatus(x)==='green').length,yellow:items.filter(x=>stockStatus(x)==='yellow').length,orange:items.filter(x=>stockStatus(x)==='orange').length,red:items.filter(x=>stockStatus(x)==='red').length}),[items]);
   const filters=[{value:'ALL',label:'Все'},{value:'RAW',label:'Сырьё'},{value:'PREPARED',label:'Полуфабрикаты'},{value:'PACKAGING',label:'Упаковка'}] as const;
-  const filtered=useMemo(()=>items.filter(x=>(filter==='ALL'||x.kind===filter)&&x.name.toLocaleLowerCase('ru').includes(search.toLocaleLowerCase('ru'))),[items,search,filter]);
+  const filtered=useMemo(()=>items.filter(x=>(filter==='ALL'||x.kind===filter)&&(statusFilter==='ALL'||stockStatus(x)===statusFilter)&&x.name.toLocaleLowerCase('ru').includes(search.toLocaleLowerCase('ru'))),[items,search,filter,statusFilter]);
   const resetForm=()=>{setShowForm(false);setEditing(null);setName('');setKind('RAW');setUnit('g');setQuantity('0');setMinQuantity('0');setImage('');setError('')};
   const openCreate=()=>{resetForm();setShowForm(true)};
   const openEdit=(item:Item)=>{setEditing(item);setName(item.name);setKind(item.kind);setUnit(item.unit);setQuantity(item.quantity);setMinQuantity(item.minQuantity);setImage(item.image??'');setShowForm(true);setError('');window.scrollTo({top:0,behavior:'smooth'})};
@@ -101,18 +116,31 @@ export default function InventoryPage(){
         {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
       </label>
     </div>
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Состояние остатков">
+      {(['ALL','green','yellow','orange','red'] as const).map(state=><button type="button" key={state}
+        aria-pressed={statusFilter===state}
+        onClick={()=>setStatusFilter(state)}
+        className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${statusFilter===state?'border-[#244837] bg-[#e5eee8] text-[#173d2c]':'border-[#dce4df] bg-white text-[#52625c] hover:bg-[#f0f4f1]'}`}>
+        {state!=='ALL'&&<span className={`inventory-status-dot inventory-status-${state}`} aria-hidden="true"/>}
+        <span>{state==='ALL'?'Все состояния':statusLabels[state]}</span>
+        <span className="tabular-nums opacity-70">{statusCounts[state]}</span>
+      </button>)}
+    </div>
     {mobileSearch&&<label className="inventory-search inventory-search-mobile flex md:hidden w-full min-h-11 items-center gap-2 rounded-2xl border border-[#dce4df] bg-white px-3 text-[#52625c]">
       <Search size={18} aria-hidden="true"/>
       <input autoFocus aria-label="Поиск по складу" placeholder="Поиск по складу" value={search} onChange={e=>setSearch(e.target.value)}/>
       {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
     </label>}
     {deleteTarget&&<div className="glass-panel p-4 space-y-3"><p>Удалить «{deleteTarget.name}»? Позиции, используемые в движениях или рецептах, удалить нельзя.</p><div className="flex gap-2"><button className="btn-outline px-4 py-2" onClick={()=>setDeleteTarget(null)}>Отмена</button><button className="px-4 py-2 rounded-xl bg-red-600 text-white" disabled={remove.isPending} onClick={()=>remove.mutate(deleteTarget.id)}>Удалить</button></div></div>}
-    {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="glass-panel p-8 text-center"><PackagePlus className="mx-auto mb-3" size={30}/><p>{search||filter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
+    {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="glass-panel p-8 text-center"><PackagePlus className="mx-auto mb-3" size={30}/><p>{search||filter!=='ALL'||statusFilter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-      {filtered.map(item=><article key={item.id} className="glass-panel min-w-0 overflow-hidden flex flex-col">
+      {filtered.map(item=><article key={item.id} className={`glass-panel inventory-status-card inventory-card-${stockStatus(item)} min-w-0 overflow-hidden flex flex-col`}>
         <div className="relative h-36 bg-(--lg-fill) overflow-hidden">
           {item.image?<img src={item.image} alt="" loading="lazy" className="h-full w-full object-cover"/>:<div className="h-full flex items-center justify-center text-(--lg-text-muted)"><PackagePlus size={30}/></div>}
           <span className="absolute top-2 right-2 rounded-full px-2 py-1 text-xs bg-white/90 text-slate-700">{kindLabels[item.kind]}</span>
+          <span className={`inventory-status-indicator inventory-status-${stockStatus(item)} absolute left-3 top-3`} title={statusLabels[stockStatus(item)]} aria-label={statusLabels[stockStatus(item)]}>
+            <span className="inventory-status-dot" aria-hidden="true"/><span>{statusLabels[stockStatus(item)]}</span>
+          </span>
         </div>
         <div className="p-3 flex flex-col gap-3 flex-1">
           <div><h3 className="font-semibold leading-tight">{item.name}</h3><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Number(item.minQuantity).toLocaleString('ru')} {unitLabels[item.unit]}</p></div>
