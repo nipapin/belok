@@ -1,3 +1,4 @@
+import type { ComboGroup } from '@/lib/combos';
 export type Role = 'USER' | 'ADMIN';
 export type OrderStatus =
   | 'PENDING'
@@ -88,6 +89,7 @@ export interface ProductRow {
   fiber: number | null;
   weightGrams: number | null;
   spicinessLevel: number;
+  isCombo: boolean;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
@@ -125,6 +127,7 @@ export interface ProductIngredientWithIngredient extends ProductIngredientRow {
 
 export interface ProductWithRelations extends ProductRow {
   category: CategoryRow;
+  comboGroups: ComboGroup[];
   ingredients: ProductIngredientWithIngredient[];
   variants: ProductVariantRow[];
 }
