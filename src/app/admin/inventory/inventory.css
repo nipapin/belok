@@ -82,3 +82,17 @@
   border-color: color-mix(in srgb, var(--lg-text) 25%, var(--lg-ring));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--lg-text) 7%, transparent);
 }
+
+
+/* Stock-level semantics: >200% green, 125–200% yellow, 100–125% orange, <=100% red. */
+.inventory-status-dot { display:inline-block;width:9px;height:9px;border-radius:50%;background:currentColor;flex:none;box-shadow:0 0 9px currentColor,0 0 16px color-mix(in srgb,currentColor 45%,transparent); }
+.inventory-status-green { color:#25844b; }
+.inventory-status-yellow { color:#c39111; }
+.inventory-status-orange { color:#d97120; }
+.inventory-status-red { color:#d63e46; }
+.inventory-status-indicator { display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.94);border:1px solid color-mix(in srgb,currentColor 21%,transparent);font-size:11px;font-weight:650;box-shadow:0 1px 9px #1930201a;z-index:1; }
+.inventory-status-card { position:relative;transition:box-shadow .2s,border-color .2s; }
+.inventory-card-green { border-color:color-mix(in srgb,#25844b 30%,var(--lg-ring));box-shadow:0 0 15px #25844b13,0 2px 7px #173c2406; }
+.inventory-card-yellow { border-color:color-mix(in srgb,#c39111 43%,var(--lg-ring));box-shadow:0 0 17px #c3911123,0 2px 7px #173c2406; }
+.inventory-card-orange { border-color:color-mix(in srgb,#d97120 45%,var(--lg-ring));box-shadow:0 0 19px #d971202a,0 2px 7px #173c2406; }
+.inventory-card-red { border-color:color-mix(in srgb,#d63e46 48%,var(--lg-ring));box-shadow:0 0 20px #d63e4630,0 2px 7px #173c2406; }
