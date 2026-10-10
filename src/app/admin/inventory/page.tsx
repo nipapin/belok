@@ -32,7 +32,6 @@ export default function InventoryPage(){
   const qc=useQueryClient();
   const [search,setSearch]=useState('');
   const [filter,setFilter]=useState<'ALL'|Item['kind']>('ALL');
-  const [mobileSearch,setMobileSearch]=useState(false);
   const [statusFilter,setStatusFilter]=useState<'ALL'|StockStatus>('ALL');
   const [recipeItem,setRecipeItem]=useState<Item|null>(null);
   const [batchItem,setBatchItem]=useState<Item|null>(null);
@@ -71,21 +70,25 @@ export default function InventoryPage(){
       <h1 className="heading-section m-0">Склад</h1>
       <button type="button" className="btn-primary hidden sm:inline-flex items-center gap-2 px-4 py-2" onClick={openCreate}><Plus size={17}/>Добавить позицию</button>
       <div className="flex sm:hidden items-center gap-2">
-        <button type="button" className="flex sm:hidden h-11 w-11 items-center justify-center rounded-xl border border-[#dce4df] bg-white text-[#202b28]" aria-label={mobileSearch?'Закрыть поиск':'Поиск'} aria-expanded={mobileSearch} onClick={()=>{setMobileSearch(v=>!v);if(mobileSearch)setSearch('')}}>{mobileSearch?<X size={20}/>:<Search size={20}/>}</button>
         <button type="button" className="flex sm:hidden h-11 w-11 items-center justify-center rounded-xl bg-[#242528] text-white" aria-label="Добавить позицию" onClick={openCreate}><Plus size={21}/></button>
       </div>
     </header>
+    <label className="inventory-search inventory-search-mobile flex md:hidden w-full min-h-11 items-center gap-2 rounded-2xl border border-[#dce4df] bg-white px-3 text-[#52625c]">
+      <Search size={18} aria-hidden="true"/>
+      <input aria-label="Поиск по складу" className="min-w-0 flex-1 bg-transparent outline-none text-sm text-[#202b28]" placeholder="Поиск по складу" value={search} onChange={e=>setSearch(e.target.value)}/>
+      {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
+    </label>
     {recipeItem&&<div className="space-y-3"><div className="flex items-center justify-between"><h2 className="font-semibold">Рецептура: {recipeItem.name}</h2><button className="btn-outline px-3 py-2" onClick={()=>setRecipeItem(null)}>Закрыть</button></div><RecipeEditor key={recipeItem.id} ownerKind="PREPARED" ownerId={recipeItem.id} outputUnit={recipeItem.unit}/></div>}
     {batchItem&&<form className="glass-panel p-4 space-y-3" onSubmit={async e=>{e.preventDefault();setBatchBusy(true);setBatchMessage('');try{const r=await fetch('/api/admin/inventory/batches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({preparedItemId:batchItem.id,quantity:Number(batchAmount)})});const data=await r.json();if(!r.ok)throw Error(data.error??'Ошибка');setBatchMessage('Партия выпущена, остатки обновлены');void qc.invalidateQueries({queryKey:['admin-inventory']});setBatchItem(null)}catch(err){setBatchMessage(err instanceof Error?err.message:'Ошибка')}finally{setBatchBusy(false)}}}><div className="flex justify-between"><h2 className="font-semibold">Выпуск: {batchItem.name}</h2><button type="button" className="btn-ghost" onClick={()=>setBatchItem(null)}>Закрыть</button></div><label className="block text-sm">Объём, {unitLabels[batchItem.unit]}<input className="inventory-field mt-1 w-full" type="number" min=".001" step=".001" value={batchAmount} onChange={e=>setBatchAmount(e.target.value)}/></label><button type="submit" className="btn-primary px-5 py-2" disabled={batchBusy||!valid(batchAmount)||Number(batchAmount)===0}>Подтвердить выпуск и списать компоненты</button></form>}
     {batchMessage&&<p role="status" className="text-sm">{batchMessage}</p>}
-    <div className="grid grid-cols-2 gap-3 sm:max-w-2xl">
-      <div className="min-h-32 rounded-2xl border border-[#174d38] bg-[#174d38] text-white p-5 flex flex-col justify-between shadow-sm">
-        <div className="flex items-start justify-between gap-2"><span className="text-sm font-medium">Позиции</span><Boxes size={19} aria-hidden="true"/></div>
-        <strong className="text-3xl font-semibold tabular-nums leading-none">{items.length}</strong>
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 sm:max-w-2xl">
+      <div className="min-h-16 sm:min-h-32 rounded-2xl border border-[#174d38] bg-[#174d38] text-white px-4 py-3 sm:p-5 flex flex-row sm:flex-col items-center sm:items-stretch justify-between shadow-sm">
+        <div className="flex flex-row-reverse sm:flex-row items-center sm:items-start justify-end sm:justify-between gap-3"><span className="text-sm font-medium">Позиции</span><Boxes size={19} aria-hidden="true"/></div>
+        <strong className="text-2xl sm:text-3xl font-semibold tabular-nums leading-none">{items.length}</strong>
       </div>
-      <div className="min-h-32 rounded-2xl border border-[#dce4df] bg-white text-[#202b28] p-5 flex flex-col justify-between shadow-sm">
-        <div className="flex items-start justify-between gap-2"><span className="text-sm font-medium">Ниже минимума</span><AlertTriangle size={19} aria-hidden="true"/></div>
-        <strong className="text-3xl font-semibold tabular-nums leading-none">{lowCount}</strong>
+      <div className="min-h-16 sm:min-h-32 rounded-2xl border border-[#dce4df] bg-white text-[#202b28] px-4 py-3 sm:p-5 flex flex-row sm:flex-col items-center sm:items-stretch justify-between shadow-sm">
+        <div className="flex flex-row-reverse sm:flex-row items-center sm:items-start justify-end sm:justify-between gap-3"><span className="text-sm font-medium">Ниже минимума</span><AlertTriangle size={19} aria-hidden="true"/></div>
+        <strong className="text-2xl sm:text-3xl font-semibold tabular-nums leading-none">{lowCount}</strong>
       </div>
     </div>
     {showForm&&<form className="glass-panel p-4 space-y-3" onSubmit={e=>{e.preventDefault();setError('');save.mutate({id:editing?.id,name,kind,unit,quantity:Number(quantity),minQuantity:Number(minQuantity),image});}}>
@@ -116,7 +119,7 @@ export default function InventoryPage(){
         {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
       </label>
     </div>
-    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Состояние остатков">
+    <div className="hidden md:flex flex-wrap items-center gap-2" role="group" aria-label="Состояние остатков">
       {(['ALL','green','yellow','orange','red'] as const).map(state=><button type="button" key={state}
         aria-pressed={statusFilter===state}
         onClick={()=>setStatusFilter(state)}
@@ -126,45 +129,8 @@ export default function InventoryPage(){
         <span className="tabular-nums opacity-70">{statusCounts[state]}</span>
       </button>)}
     </div>
-    {mobileSearch&&<label className="inventory-search inventory-search-mobile flex md:hidden w-full min-h-11 items-center gap-2 rounded-2xl border border-[#dce4df] bg-white px-3 text-[#52625c]">
-      <Search size={18} aria-hidden="true"/>
-      <input autoFocus aria-label="Поиск по складу" placeholder="Поиск по складу" value={search} onChange={e=>setSearch(e.target.value)}/>
-      {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
-    </label>}
-    
-    {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="glass-panel p-8 text-center"><PackagePlus className="mx-auto mb-3" size={30}/><p>{search||filter!=='ALL'||statusFilter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-      {filtered.map(item=><article key={item.id} className={`glass-panel inventory-status-card inventory-card-${stockStatus(item)} min-w-0 overflow-hidden flex flex-col`}>
-        <div className="relative h-36 bg-(--lg-fill) overflow-hidden">
-          {item.image?<img src={item.image} alt="" loading="lazy" className="h-full w-full object-cover"/>:<div className="h-full flex items-center justify-center text-(--lg-text-muted)"><PackagePlus size={30}/></div>}
-          <span className="absolute top-2 right-2 rounded-full px-2 py-1 text-xs bg-white/90 text-slate-700">{kindLabels[item.kind]}</span>
-          <span className={`inventory-status-indicator inventory-status-${stockStatus(item)} absolute left-3 top-3`} title={statusLabels[stockStatus(item)]} aria-label={statusLabels[stockStatus(item)]}>
-            <span className="inventory-status-dot" aria-hidden="true"/><span>{statusLabels[stockStatus(item)]}</span>
-          </span>
-        </div>
-        <div className="p-3 flex flex-col gap-3 flex-1">
-          <div><h3 className="font-semibold leading-tight">{item.name}</h3><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Number(item.minQuantity).toLocaleString('ru')} {unitLabels[item.unit]}</p></div>
-          <form className="flex items-end gap-2" onSubmit={e=>{e.preventDefault();setError('');recount.mutate({id:item.id,quantity:Number(drafts[item.id])});}}>
-            <label className="text-xs flex-1 min-w-0">Сейчас на складе, {unitLabels[item.unit]}<input aria-label={`Остаток: ${item.name}`} className="inventory-field mt-1" type="number" step=".001" min="0" required value={drafts[item.id]??item.quantity} onChange={e=>setDrafts(d=>({...d,[item.id]:e.target.value}))}/></label>
-            <button className="btn-primary p-2.5" type="submit" aria-label={`Сохранить остаток: ${item.name}`} disabled={recount.isPending||drafts[item.id]===undefined||!valid(drafts[item.id])||Number(drafts[item.id])===Number(item.quantity)}><Save size={18}/></button>
-          </form>
-          {item.kind==='PREPARED'&&<div className="flex flex-wrap gap-2"><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setRecipeItem(item);setBatchItem(null)}}>Техкарта</button><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setBatchItem(item);setRecipeItem(null);setBatchAmount('1')}}>Выпустить партию</button></div>}
-          <div className="mt-auto pt-2 border-t border-(--lg-ring)">
-            {deleteTarget?.id===item.id ? (
-              <div className="flex items-center gap-2" role="group" aria-label={`Удалить ${item.name}?`}>
-                <button type="button" className="btn-outline flex-1 min-w-0 px-3 py-2 text-sm" disabled={remove.isPending} onClick={()=>setDeleteTarget(null)}>Отмена</button>
-                <button type="button" className="flex-1 min-w-0 rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60" disabled={remove.isPending} onClick={()=>remove.mutate(item.id)}>{remove.isPending?'Удаляем…':'Удалить'}</button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <button type="button" className="btn-outline flex-1 px-3 py-2 inline-flex justify-center items-center gap-1 text-sm" onClick={()=>openEdit(item)}><Pencil size={15}/> Изменить</button>
-                <button type="button" aria-label={`Удалить ${item.name}`} className="btn-outline px-3 py-2 text-rose-700" onClick={()=>{setError('');setDeleteTarget(item)}}><Trash2 size={16}/></button>
-              </div>
-            )}
-          </div>
-        </div>
-      </article>)}
-    </div>}
+    <div className="md:hidden">
+      <AdminSelect ariaLabel="Состояние остатков" value={statusFilter} onChange={v=>setStatusFilter(v as typeof statusFilter)}
+        options={([{value:'ALL',label:'Все состояния'},...(['green','yellow','orange','red'] as const).map(v=>({value:v,label:statusLabels[v]}))]).map(x=>({value:x.value,label:`${x.label} · ${statusCounts[x.value as keyof typeof statusCounts]}`}))}/>
+    </div>
 
-  </div>;
-}
