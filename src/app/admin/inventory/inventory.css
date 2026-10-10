@@ -65,3 +65,20 @@
 .inventory-icon-button:focus-visible {outline:2px solid var(--lg-ring-strong);outline-offset:2px}
 .inventory-mobile-add {background:#242528;color:#fff;border-color:#242528}
 @media(max-width:767px) {.inventory-kpi {min-height:104px;padding:14px}.inventory-kpi-value{font-size:28px}.inventory-toolbar .relative.mt-1 {margin-top:0}}
+
+
+/* Search is one control: the outer shell owns the only focus indication. */
+.inventory-search input,
+.inventory-search input:focus,
+.inventory-search input:focus-visible,
+.inventory-search input:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  background: transparent !important;
+  appearance: none;
+}
+.inventory-search:focus-within {
+  border-color: color-mix(in srgb, var(--lg-text) 25%, var(--lg-ring));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--lg-text) 7%, transparent);
+}
