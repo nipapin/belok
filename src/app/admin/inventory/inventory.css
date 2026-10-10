@@ -44,3 +44,24 @@
   background: color-mix(in srgb, var(--lg-text) 9%, transparent);
   font-weight: 600;
 }
+
+
+.inventory-kpi {min-height:140px;border:1px solid var(--lg-ring);border-radius:18px;background:var(--lg-fill);padding:20px 22px;display:flex;flex-direction:column;justify-content:space-between;color:var(--lg-text);box-shadow:0 2px 7px #173c2406}
+.inventory-kpi-primary {color:#fff;background:#174d38;border-color:#174d38}
+.inventory-kpi-value {font-size:clamp(26px,3vw,36px);font-weight:650;line-height:1.15;font-variant-numeric:tabular-nums}
+.inventory-toolbar {display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.inventory-filter-pills {align-items:center;flex-wrap:wrap;gap:4px;padding:5px;border-radius:15px;background:color-mix(in srgb,var(--lg-text) 5%,transparent);border:1px solid var(--lg-ring)}
+.inventory-filter-pill {display:inline-flex;gap:10px;align-items:center;min-height:38px;border-radius:11px;padding:6px 12px;color:var(--lg-text-muted);font-size:13px;font-weight:600;transition:background .15s,color .15s;white-space:nowrap}
+.inventory-filter-pill:hover {background:color-mix(in srgb,var(--lg-text) 6%,transparent)}
+.inventory-filter-pill[aria-pressed="true"] {background:var(--lg-fill);color:var(--lg-text);box-shadow:0 1px 5px #102a1914}
+.inventory-filter-count {min-width:24px;text-align:center;padding:2px 7px;border-radius:8px;background:color-mix(in srgb,var(--lg-text) 8%,transparent);font-variant-numeric:tabular-nums;font-size:12px}
+.inventory-filter-pill[aria-pressed="true"] .inventory-filter-count {background:color-mix(in srgb,var(--lg-text) 11%,transparent)}
+.inventory-search {width:clamp(220px,23vw,330px);height:46px;flex-shrink:0;align-items:center;gap:9px;padding:0 13px;border-radius:14px;border:1px solid var(--lg-ring);background:var(--lg-fill);color:var(--lg-text-muted)}
+.inventory-search:focus-within {border-color:color-mix(in srgb,var(--lg-text) 30%,var(--lg-ring));box-shadow:0 0 0 2px color-mix(in srgb,var(--lg-text) 7%,transparent)}
+.inventory-search input {min-width:0;flex:1;background:transparent;color:var(--lg-text);outline:none;font-size:13px}
+.inventory-search input::placeholder {color:var(--lg-text-muted)}
+.inventory-search-mobile {width:100%}
+.inventory-icon-button {height:42px;width:42px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--lg-ring);border-radius:13px;background:var(--lg-fill);color:var(--lg-text)}
+.inventory-icon-button:focus-visible {outline:2px solid var(--lg-ring-strong);outline-offset:2px}
+.inventory-mobile-add {background:#242528;color:#fff;border-color:#242528}
+@media(max-width:767px) {.inventory-kpi {min-height:104px;padding:14px}.inventory-kpi-value{font-size:28px}.inventory-toolbar .relative.mt-1 {margin-top:0}}
