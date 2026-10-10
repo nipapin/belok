@@ -161,6 +161,7 @@ export interface OrderItemRow {
   productId: string;
   variantId: string | null;
   variantName: string | null;
+  comboSnapshot?: import("@/lib/combos").ComboSnapshot | null;
   quantity: number;
   unitPrice: number;
 }
