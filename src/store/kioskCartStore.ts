@@ -9,7 +9,7 @@ function isPlainLine(item: CartItem, productId: string, variantId?: string | nul
   return (
     item.productId === productId &&
     (item.variantId ?? null) === (variantId ?? null) &&
-    item.customizations.length === 0
+    item.customizations.length === 0 && !item.comboSelections?.length
   );
 }
 
