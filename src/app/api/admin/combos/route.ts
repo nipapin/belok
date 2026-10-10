@@ -16,7 +16,7 @@ export async function PUT(request:NextRequest){
   await requireAdmin();const body=await request.json() as {productId?:string;groups?:InputGroup[]};
   if(!body?.productId||!Array.isArray(body.groups)||!body.groups.length||body.groups.length>12)return fail('Добавьте группы комбо');
   for(const group of body.groups){
-   if(!group.name?.trim()||group.name.length>100||!Number.isInteger(group.minSelect)||!Number.isInteger(group.maxSelect)||group.minSelect<1||group.maxSelect>10||group.minSelect>group.maxSelect||!Array.isArray(group.options)||group.options.length<group.maxSelect||group.options.length>30||new Set(group.options.map(o=>o.productId)).size!==group.options.length||
+   if(!group.name?.trim()||group.name.length>100||!Number.isInteger(group.minSelect)||!Number.isInteger(group.maxSelect)||group.minSelect<0||group.maxSelect>10||group.minSelect>group.maxSelect||!Array.isArray(group.options)||group.options.length<group.maxSelect||group.options.length>30||new Set(group.options.map(o=>o.productId)).size!==group.options.length||
    group.options.some(o=>!o.productId||!Number.isFinite(o.priceDelta)||o.priceDelta<0||Math.round(o.priceDelta*100)!==o.priceDelta*100))return fail('Проверьте группы выбора');
   }
   const selected=[...new Set(body.groups.flatMap(g=>g.options.map(o=>o.productId)))];
