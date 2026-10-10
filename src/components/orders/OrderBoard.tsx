@@ -356,8 +356,8 @@ export default function OrderBoard() {
     let completed = 0;
     const warnings = new Set<string>();
     try {
-      // Use the regular transition so payment checks, bonuses and customer
-      // notifications work exactly as with the individual "Выдан" button.
+      // Use the same dispatch transition as the individual "Выдан" button.
+      // Issuing an order does not require or imply successful payment.
       for (const order of ready) {
         const result = await advanceOrder(order, 'COMPLETED', true);
         if (result.ok) completed++;
