@@ -277,12 +277,14 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (saved: { product?: { id?: string } }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product', productId] });
       queryClient.invalidateQueries({ queryKey: ['admin-product', productId] });
-      router.push('/admin/products');
+      // Keep the newly created product open so its technical card can be filled in immediately.
+      if (mode === 'new' && saved.product?.id) router.push(`/admin/products/${saved.product.id}/edit?recipe=1`);
+      else router.push('/admin/products');
     },
     onError: (err) =>
       setError(err instanceof Error ? err.message : 'Ошибка сохранения'),
@@ -651,6 +653,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
         </div>
       </div>
 
+      {mode==='new' && <section className="mx-auto w-full max-w-2xl mb-6 glass-panel p-4 space-y-2"><h2 className="font-semibold">Технологическая карта</h2><p className="text-sm text-(--lg-text-muted)">Сначала сохрани новый товар. Затем здесь же откроется его состав, где можно выбрать сырьё и заготовки, указать граммы, миллилитры или штуки и описать приготовление.</p></section>}
       {mode==='edit' && productId && <div className="mx-auto w-full max-w-2xl mb-8"><RecipeEditor ownerKind="PRODUCT" ownerId={productId} outputUnit="pcs" /></div>}
 
       <div className="admin-form-action-bar fixed inset-x-0 bottom-0 z-30 px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
