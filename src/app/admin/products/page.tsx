@@ -235,6 +235,7 @@ export default function AdminProductsPage() {
             <SortableList
               items={group.products}
               handlePlacement="overlay"
+              gridLayout
               getItemLabel={(product) => product.name}
               disabled={
                 reorderMutation.isPending ||
