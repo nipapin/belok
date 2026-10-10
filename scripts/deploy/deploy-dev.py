@@ -104,6 +104,18 @@ def main():
                 raise RuntimeError('Release must not contain uploaded files')
             (uploads / '.gitkeep').unlink(missing_ok=True)
             uploads.rmdir()
+        # Apply additive schema changes before starting the candidate Next.js release.
+        # A migration error aborts deployment; the active service remains untouched.
+        env = os.environ.copy()
+        env.update(NODE_ENV='production')
+        migration_script = release / 'migrate-release.cjs'
+        if not migration_script.is_file() or not (release / 'migrations').is_dir():
+            raise RuntimeError('Release is missing the migration bundle')
+        subprocess.run([
+            NODE, f'--env-file={CHECKOUT}/.env', f'--env-file={CHECKOUT}/.env.local',
+            str(migration_script),
+        ], cwd=release, env=env, check=True, timeout=180)
+
         (CHECKOUT / 'public/uploads').mkdir(exist_ok=True)
         uploads.symlink_to(CHECKOUT / 'public/uploads', target_is_directory=True)
 
