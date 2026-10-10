@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PackagePlus, Search, Save, Plus } from 'lucide-react';
 import RecipeEditor from '@/components/admin/RecipeEditor';
 import AdminSelect from '@/components/admin/AdminSelect';
+import './inventory.css';
 
 type Item={ id:string;name:string;kind:'RAW'|'PREPARED'|'PACKAGING';unit:'g'|'ml'|'pcs';quantity:string;minQuantity:string;notes:string };
 const unitLabels={g:'г',ml:'мл',pcs:'шт.'};
