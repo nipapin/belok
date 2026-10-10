@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import AqsiSettings from '@/components/admin/AqsiSettings';
 import { Save } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -265,6 +266,7 @@ export default function AdminSettingsPage() {
       </button>
 
       <KioskPinSettings />
+      <AqsiSettings />
 
       <div className="glass-panel mt-8 p-5">
         <h2 className="mb-3 text-base font-semibold text-(--lg-text)">Правила программы</h2>
