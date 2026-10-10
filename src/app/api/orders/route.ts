@@ -121,6 +121,7 @@ export async function GET() {
 
 interface IncomingItem {
   productId: string;
+  comboSelections?: import('@/lib/combos').ComboSelection[];
   variantId?: string | null;
   quantity: number;
   customizations?: { ingredientId: string; action: IngredientAction; priceDelta?: number }[];
@@ -244,9 +245,9 @@ export async function POST(request: NextRequest) {
         const itemId = uuidv4();
         await client.query(
           `INSERT INTO "order_items"
-             (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice")
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [itemId, orderId, item.productId, item.variantId, item.variantName, item.quantity, item.unitPrice]
+             (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice", "comboSnapshot")
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
+          [itemId, orderId, item.productId, item.variantId, item.variantName, item.quantity, item.unitPrice, item.comboSnapshot ? JSON.stringify(item.comboSnapshot) : null]
         );
         for (const c of item.customizations || []) {
           await client.query(
