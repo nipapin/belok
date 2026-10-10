@@ -1,3 +1,4 @@
+import { validateCombo, type ComboSelection, type ComboSnapshot } from '@/lib/combos';
 import { fetchProductsWithRelations } from '@/lib/queries/products';
 import { optionCustomizations, resolveVariant, type OptionCustomization } from '@/lib/productOptions';
 import { VariantOrderError } from '@/lib/productVariants';
@@ -5,12 +6,14 @@ import type { ProductWithRelations } from '@/lib/types';
 
 export interface IncomingOrderItem {
   productId: string;
+  comboSelections?: ComboSelection[];
   variantId?: string | null;
   quantity: number;
   customizations?: { ingredientId: string; action: 'ADD' | 'REMOVE'; priceDelta?: number }[];
 }
 export interface PricedOrderItem {
   productId: string;
+  comboSnapshot: ComboSnapshot | null;
   variantId: string | null;
   variantName: string | null;
   quantity: number;
@@ -22,6 +25,12 @@ export function priceOrderItem(item: IncomingOrderItem, product: ProductWithRela
   const fail = (message: string): never => { throw new VariantOrderError(message); };
   if (!product.isAvailable || !product.category.isActive) fail('Товар недоступен для заказа');
   if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100) fail('Некорректное количество товара');
+  let comboPriceDelta=0;
+  let comboSnapshot:ComboSnapshot|null=null;
+  if(product.isCombo){
+    try {const result=validateCombo(product.comboGroups,item.comboSelections);comboPriceDelta=result.priceDelta;comboSnapshot=result.snapshot;}
+    catch {fail('Выберите доступные товары в составе комбо');}
+  }else if(item.comboSelections !== undefined){fail('Недопустимые настройки комбо');}
   const variant = product.variants.find((entry) => entry.id === item.variantId);
   if (product.variants.length && !variant) fail('Выберите доступный вариант товара');
   if (item.variantId && !variant) fail('Вариант товара не найден');
@@ -47,9 +56,9 @@ export function priceOrderItem(item: IncomingOrderItem, product: ProductWithRela
   }
   // A replacement always removes the base ingredient, even if the client omitted it.
   const customizations = optionCustomizations(product.ingredients, removed, added);
-  const unitPrice = Math.round((resolveVariant(product, variant).price + customizations.reduce((sum, choice) => sum + choice.priceDelta, 0)) * 100) / 100;
+  const unitPrice = Math.round((resolveVariant(product, variant).price + comboPriceDelta + customizations.reduce((sum, choice) => sum + choice.priceDelta, 0)) * 100) / 100;
   if (!Number.isFinite(unitPrice) || unitPrice < 0) fail('Некорректная цена товара');
-  return { productId: product.id, variantId: variant?.id ?? null, variantName: variant?.name ?? null, quantity: item.quantity, unitPrice, customizations };
+  return { productId: product.id, comboSnapshot, variantId: variant?.id ?? null, variantName: variant?.name ?? null, quantity: item.quantity, unitPrice, customizations };
 }
 
 export async function priceOrderItems(items: IncomingOrderItem[]): Promise<PricedOrderItem[]> {
