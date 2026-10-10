@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import ProductOptions from '@/components/product/ProductOptions';
+import { ComboChoices,initialComboSelections,comboSelectionValid,comboDisplay } from '@/components/product/ComboChoices';
+import type { ComboSelection } from '@/lib/combos';
+import { useEffect } from 'react';
 import ProductGallery from '@/components/product/ProductGallery';
 import { optionCustomizations, resolveVariant } from '@/lib/productOptions';
 import { nutritionChips } from '@/components/product/FoodCard';
@@ -26,6 +29,7 @@ export default function KioskProductModal({ productId, variantId = null, onClose
   const addItem = useKioskCartStore((s) => s.addItem);
   const [pickedVariantId, setPickedVariantId] = useState(variantId);
   const [quantity, setQuantity] = useState(1);
+  const [comboSelections,setComboSelections]=useState<ComboSelection[]>([]);
   const [removedIngredients, setRemovedIngredients] = useState<Set<string>>(new Set());
   const [addedExtras, setAddedExtras] = useState<Set<string>>(new Set());
 
@@ -36,6 +40,10 @@ export default function KioskProductModal({ productId, variantId = null, onClose
   });
 
   const product = data?.product;
+  useEffect(()=>{if(product?.isCombo && product.comboGroups)setComboSelections(initialComboSelections(product.comboGroups));},[product]);
+  const comboGroups=product?.comboGroups??[];
+  const comboInfo=comboDisplay(comboGroups,comboSelections);
+  const comboValid=!product?.isCombo||comboSelectionValid(comboGroups,comboSelections);
   const variant = product?.variants?.find((item) => item.id === pickedVariantId) ?? product?.variants?.[0] ?? null;
   const display = product ? resolveVariant(product, variant) : null;
   const displayName = product
@@ -45,18 +53,20 @@ export default function KioskProductModal({ productId, variantId = null, onClose
 
   const getCustomizations = () => product ? optionCustomizations(product.ingredients, removedIngredients, addedExtras) : [];
   const extrasTotal = getCustomizations().reduce((sum, choice) => sum + choice.priceDelta, 0);
-  const linePrice = display ? Math.round((display.price + extrasTotal) * quantity * 100) / 100 : 0;
+  const linePrice = display ? Math.round((display.price + extrasTotal + (product?.isCombo ? comboInfo.extra : 0)) * quantity * 100) / 100 : 0;
   const chips = display ? nutritionChips(display) : [];
 
   function handleAdd() {
-    if (!product || product.isAvailable === false) return;
+    if (!product || product.isAvailable === false || !comboValid) return;
     addItem({
       productId: product.id,
       variantId: variant?.id ?? null,
       variantName: variant?.name ?? null,
       name: displayName,
       image: displayImage,
-      basePrice: display!.price,
+      basePrice: display!.price + (product.isCombo ? comboInfo.extra : 0),
+      comboSelections: product.isCombo ? comboSelections : undefined,
+      comboLabel: product.isCombo ? comboInfo.label : undefined,
       quantity,
       customizations: getCustomizations(),
     });
@@ -117,7 +127,7 @@ export default function KioskProductModal({ productId, variantId = null, onClose
                 <p className="mt-3 text-sm leading-relaxed text-(--lg-text-muted)">{product.description}</p>
               ) : null}
 
-              <ProductOptions links={product.ingredients} removed={removedIngredients} added={addedExtras} onRemoved={setRemovedIngredients} onAdded={setAddedExtras} />
+              {product.isCombo ? <ComboChoices groups={comboGroups} value={comboSelections} onChange={setComboSelections} /> : <ProductOptions links={product.ingredients} removed={removedIngredients} added={addedExtras} onRemoved={setRemovedIngredients} onAdded={setAddedExtras} />}
             </>
           )}
         </div>
@@ -143,7 +153,7 @@ export default function KioskProductModal({ productId, variantId = null, onClose
                 <Plus className="size-5" />
               </button>
             </div>
-            <button type="button" className="btn-primary min-h-14 flex-1 text-lg" disabled={product.isAvailable === false} onClick={handleAdd}>
+            <button type="button" className="btn-primary min-h-14 flex-1 text-lg" disabled={product.isAvailable === false || !comboValid} onClick={handleAdd}>
               {product.isAvailable === false ? 'Блюдо сейчас недоступно' : `В заказ · ${linePrice} ₽`}
             </button>
           </div>
