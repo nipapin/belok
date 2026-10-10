@@ -33,3 +33,14 @@ BEGIN RAISE EXCEPTION 'Inventory audit is append-only'; END $$;
 DROP TRIGGER IF EXISTS inventory_audit_no_update ON inventory_audit_events;
 CREATE TRIGGER inventory_audit_no_update BEFORE UPDATE OR DELETE ON inventory_audit_events
 FOR EACH ROW EXECUTE FUNCTION inventory_audit_immutable();
+
+-- Record the movement itself, including reason and delta. Existing movement rows are not modified.
+CREATE OR REPLACE FUNCTION inventory_audit_movement() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+ INSERT INTO inventory_audit_events(item_id,actor_user_id,action,before_state,after_state)
+ VALUES(NEW.item_id,NULLIF(current_setting('belok.actor_user_id',true),''),'MOVEMENT',NULL,to_jsonb(NEW));
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS inventory_movement_audit_trigger ON inventory_movements;
+CREATE TRIGGER inventory_movement_audit_trigger AFTER INSERT ON inventory_movements
+FOR EACH ROW EXECUTE FUNCTION inventory_audit_movement();
