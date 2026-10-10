@@ -6,7 +6,7 @@ import { saveRecipe,type RecipeInput } from '@/lib/inventoryRecipes';
 export const dynamic='force-dynamic';
 export async function GET(req:NextRequest){
  try{
-  await requireAdmin();
+  await requireInventoryPermission('view');
   const ownerKind=req.nextUrl.searchParams.get('ownerKind');
   const ownerId=req.nextUrl.searchParams.get('ownerId');
   if(ownerKind!=='PRODUCT'&&ownerKind!=='PREPARED')return NextResponse.json({error:'Invalid ownerKind'},{status:400});
@@ -19,7 +19,7 @@ export async function GET(req:NextRequest){
 }
 export async function PUT(req:NextRequest){
  try{await requireAdmin();const data=await req.json() as RecipeInput;
- await withTransaction(client=>saveRecipe(client,data));
+ await withTransaction(async client=>{await client.query("SELECT set_config('belok.actor_user_id',$1,true)",[actor.id]);await saveRecipe(client,data)});
  return NextResponse.json({ok:true});
  }catch(e){return error(e);}
 }
