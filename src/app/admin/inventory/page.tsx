@@ -6,7 +6,7 @@ import RecipeEditor from '@/components/admin/RecipeEditor';
 import AdminSelect from '@/components/admin/AdminSelect';
 import './inventory.css';
 
-type Item={ id:string;name:string;kind:'RAW'|'PREPARED'|'PACKAGING';unit:'g'|'ml'|'pcs';quantity:string;minQuantity:string;notes:string;image?:string|null };
+type Item={ id:string;name:string;kind:'RAW'|'PREPARED'|'PACKAGING';unit:'g'|'ml'|'pcs';quantity:string;minQuantity:string;notes:string;image?:string|null;updatedAt?:string };
 const unitLabels={g:'г',ml:'мл',pcs:'шт.'};
 const kindLabels={RAW:'Сырьё',PREPARED:'Полуфабрикат',PACKAGING:'Упаковка'};
 type StockStatus='green'|'yellow'|'orange'|'red';
@@ -145,7 +145,7 @@ export default function InventoryPage(){
           </span>
         </div>
         <div className="p-3 flex flex-col gap-3 flex-1">
-          <div><h3 className="font-semibold leading-tight">{item.name}</h3><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Number(item.minQuantity).toLocaleString('ru')} {unitLabels[item.unit]}</p></div>
+          <div><div className="flex items-start justify-between gap-2"><h3 className="font-semibold leading-tight">{item.name}</h3>{item.updatedAt&&<time className="shrink-0 text-[10px] text-(--lg-text-muted) tabular-nums text-right" dateTime={item.updatedAt} title={new Date(item.updatedAt).toLocaleString('ru-RU')}>{new Date(item.updatedAt).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</time>}</div><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Number(item.minQuantity).toLocaleString('ru')} {unitLabels[item.unit]}</p></div>
           <form className="flex items-end gap-2" onSubmit={e=>{e.preventDefault();setError('');recount.mutate({id:item.id,quantity:Number(drafts[item.id])});}}>
             <label className="text-xs flex-1 min-w-0">Сейчас на складе, {unitLabels[item.unit]}<input aria-label={`Остаток: ${item.name}`} className="inventory-field mt-1" type="number" step=".001" min="0" required value={drafts[item.id]??item.quantity} onChange={e=>setDrafts(d=>({...d,[item.id]:e.target.value}))}/></label>
             <button className="btn-primary p-2.5" type="submit" aria-label={`Сохранить остаток: ${item.name}`} disabled={recount.isPending||drafts[item.id]===undefined||!valid(drafts[item.id])||Number(drafts[item.id])===Number(item.quantity)}><Save size={18}/></button>
