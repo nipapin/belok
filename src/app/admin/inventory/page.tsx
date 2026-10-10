@@ -1,9 +1,10 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PackagePlus, Search, Save, Plus, Pencil, Trash2, ImagePlus, X, Boxes, AlertTriangle } from 'lucide-react';
+import { PackagePlus, Search, Save, Plus, Pencil, Trash2, ImagePlus, X, Boxes, AlertTriangle, History, ShieldCheck } from 'lucide-react';
 import RecipeEditor from '@/components/admin/RecipeEditor';
 import AdminSelect from '@/components/admin/AdminSelect';
+import InventoryAdministration from '@/components/admin/InventoryAdministration';
 import './inventory.css';
 
 type Item={ id:string;name:string;kind:'RAW'|'PREPARED'|'PACKAGING';unit:'g'|'ml'|'pcs';quantity:string;minQuantity:string;notes:string;image?:string|null;updatedAt?:string };
@@ -50,6 +51,7 @@ export default function InventoryPage(){
   const [drafts,setDrafts]=useState<Record<string,string>>({});
   const [error,setError]=useState('');
   const [deleteTarget,setDeleteTarget]=useState<Item|null>(null);
+  const [administration,setAdministration]=useState<{itemId?:string;itemName?:string}|null>(null);
   const {data,isLoading,isError}=useQuery({queryKey:['admin-inventory'],queryFn:()=>api('GET')});
   const items=data?.items||[];
   const counts=useMemo(()=>({ALL:items.length,RAW:items.filter(i=>i.kind==='RAW').length,PREPARED:items.filter(i=>i.kind==='PREPARED').length,PACKAGING:items.filter(i=>i.kind==='PACKAGING').length}),[items]);
@@ -69,7 +71,11 @@ export default function InventoryPage(){
     <header className="flex items-center justify-between gap-3">
       <h1 className="heading-section m-0">Склад</h1>
       <button type="button" className="btn-primary hidden sm:inline-flex items-center gap-2 px-4 py-2" onClick={openCreate}><Plus size={17}/>Добавить позицию</button>
+      <div className="hidden sm:flex items-center gap-2">
+        <button type="button" className="btn-outline inline-flex items-center gap-2 px-3 py-2 text-sm" onClick={()=>setAdministration({})}><ShieldCheck size={17}/> История и доступы</button>
+      </div>
       <div className="flex sm:hidden items-center gap-2">
+        <button type="button" className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#dce4df] bg-white" aria-label="История и доступы" onClick={()=>setAdministration({})}><ShieldCheck size={19}/></button>
         <button type="button" className="flex sm:hidden h-11 w-11 items-center justify-center rounded-xl bg-[#242528] text-white" aria-label="Добавить позицию" onClick={openCreate}><Plus size={21}/></button>
       </div>
     </header>
@@ -78,6 +84,7 @@ export default function InventoryPage(){
       <input aria-label="Поиск по складу" className="min-w-0 flex-1 bg-transparent outline-none text-sm text-[#202b28]" placeholder="Поиск по складу" value={search} onChange={e=>setSearch(e.target.value)}/>
       {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
     </label>
+    {administration&&<InventoryAdministration itemId={administration.itemId} itemName={administration.itemName} onClose={()=>setAdministration(null)}/>}
     {recipeItem&&<div className="space-y-3"><div className="flex items-center justify-between"><h2 className="font-semibold">Рецептура: {recipeItem.name}</h2><button className="btn-outline px-3 py-2" onClick={()=>setRecipeItem(null)}>Закрыть</button></div><RecipeEditor key={recipeItem.id} ownerKind="PREPARED" ownerId={recipeItem.id} outputUnit={recipeItem.unit}/></div>}
     {batchItem&&<form className="glass-panel p-4 space-y-3" onSubmit={async e=>{e.preventDefault();setBatchBusy(true);setBatchMessage('');try{const r=await fetch('/api/admin/inventory/batches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({preparedItemId:batchItem.id,quantity:Number(batchAmount)})});const data=await r.json();if(!r.ok)throw Error(data.error??'Ошибка');setBatchMessage('Партия выпущена, остатки обновлены');void qc.invalidateQueries({queryKey:['admin-inventory']});setBatchItem(null)}catch(err){setBatchMessage(err instanceof Error?err.message:'Ошибка')}finally{setBatchBusy(false)}}}><div className="flex justify-between"><h2 className="font-semibold">Выпуск: {batchItem.name}</h2><button type="button" className="btn-ghost" onClick={()=>setBatchItem(null)}>Закрыть</button></div><label className="block text-sm">Объём, {unitLabels[batchItem.unit]}<input className="inventory-field mt-1 w-full" type="number" min=".001" step=".001" value={batchAmount} onChange={e=>setBatchAmount(e.target.value)}/></label><button type="submit" className="btn-primary px-5 py-2" disabled={batchBusy||!valid(batchAmount)||Number(batchAmount)===0}>Подтвердить выпуск и списать компоненты</button></form>}
     {batchMessage&&<p role="status" className="text-sm">{batchMessage}</p>}
@@ -152,6 +159,7 @@ export default function InventoryPage(){
           </form>
           {item.kind==='PREPARED'&&<div className="flex flex-wrap gap-2"><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setRecipeItem(item);setBatchItem(null)}}>Техкарта</button><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setBatchItem(item);setRecipeItem(null);setBatchAmount('1')}}>Выпустить партию</button></div>}
           <div className="mt-auto pt-2 border-t border-(--lg-ring)">
+            <button type="button" className="mb-2 inline-flex items-center gap-1 text-xs text-(--lg-text-muted) hover:underline" onClick={()=>{setAdministration({itemId:item.id,itemName:item.name});window.scrollTo({top:0,behavior:'smooth'})}}><History size={14}/> История изменений</button>
             {deleteTarget?.id===item.id ? (
               <div className="flex items-center gap-2" role="group" aria-label={`Удалить ${item.name}?`}>
                 <button type="button" className="btn-outline flex-1 min-w-0 px-3 py-2 text-sm" disabled={remove.isPending} onClick={()=>setDeleteTarget(null)}>Отмена</button>
