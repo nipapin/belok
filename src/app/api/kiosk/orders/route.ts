@@ -218,12 +218,13 @@ export async function POST(request: NextRequest) {
 
       for (const item of stampedItems) {
         const itemId = uuidv4();
+        const comboReceipt = item.comboSnapshot?.groups.flatMap(group=>group.products.map(product=>product.name)).join(', ');
         const inserted = await client.query(
           `INSERT INTO "order_items"
              (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice", "fiscalName", "comboSnapshot")
            SELECT $1, $2, $3, $4, $5, $6, $7, p.name || $8, $9::jsonb FROM products p WHERE p.id=$3`,
           [itemId, orderId, item.productId, item.variantId, item.variantName, item.quantity, item.unitPrice,
-            `${item.variantName ? ` — ${item.variantName}` : ''}${item.customizations.map(c => `; ${c.action === 'ADD' ? '+' : '−'}${c.ingredientName}`).join('')}`,item.comboSnapshot ? JSON.stringify(item.comboSnapshot) : null]
+            `${item.variantName ? ` — ${item.variantName}` : ''}${item.customizations.map(c => `; ${c.action === 'ADD' ? '+' : '−'}${c.ingredientName}`).join('')}${comboReceipt ? `; ${comboReceipt}` : ''}`,item.comboSnapshot ? JSON.stringify(item.comboSnapshot) : null]
         );
         if(inserted.rowCount!==1) throw new VariantOrderError('Товар изменился. Обновите заказ.');
         for (const c of item.customizations || []) {
