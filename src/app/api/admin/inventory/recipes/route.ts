@@ -1,6 +1,6 @@
 import { NextRequest,NextResponse } from 'next/server';
 import { query,withTransaction } from '@/lib/db';
-import { requireAdmin } from '@/lib/adminAuth';
+import {requireInventoryPermission} from '@/lib/inventoryAccess';
 import { saveRecipe,type RecipeInput } from '@/lib/inventoryRecipes';
 
 export const dynamic='force-dynamic';
@@ -18,14 +18,14 @@ export async function GET(req:NextRequest){
  }catch(e){return error(e);}
 }
 export async function PUT(req:NextRequest){
- try{await requireAdmin();const data=await req.json() as RecipeInput;
+ try{const actor=await requireInventoryPermission('catalog');const data=await req.json() as RecipeInput;
  await withTransaction(async client=>{await client.query("SELECT set_config('belok.actor_user_id',$1,true)",[actor.id]);await saveRecipe(client,data)});
  return NextResponse.json({ok:true});
  }catch(e){return error(e);}
 }
 function error(e:unknown){
  const message=e instanceof Error?e.message:'';
- if(message==='UNAUTHORIZED')return NextResponse.json({error:'Нет доступа'},{status:403});
+ if(message==='UNAUTHORIZED'||message==='FORBIDDEN')return NextResponse.json({error:'Нет доступа'},{status:403});
  if(message.startsWith('RECIPE_'))return NextResponse.json({error:({
  RECIPE_INVALID:'Проверьте состав и количества',RECIPE_OWNER:'Продукт или заготовка не найдены',RECIPE_ITEMS:'Выбраны недоступные компоненты',RECIPE_CYCLE:'Циклическая рецептура запрещена'
  } as Record<string,string>)[message]??message},{status:400});
