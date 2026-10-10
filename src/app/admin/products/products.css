@@ -313,3 +313,90 @@
     text-overflow: ellipsis;
   }
 }
+
+
+/* Compact desktop card gallery. Mobile keeps the familiar horizontal product rows. */
+.admin-products-sortable-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+@media (min-width: 900px) {
+  .admin-products-sortable-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    align-items: stretch;
+    gap: 14px;
+  }
+  .admin-products-sortable-grid > .sortable-row-overlay {
+    min-width: 0;
+    height: 100%;
+  }
+  .admin-products-sortable-grid .sortable-row-overlay-handle {
+    top: 10px;
+    left: 10px;
+    width: 36px;
+    height: 36px;
+  }
+  .admin-products-sortable-grid .sortable-row-overlay-handle svg {
+    width: 18px;
+    height: 18px;
+  }
+  .admin-products-sortable-grid .admin-product-card {
+    --product-card-size: auto;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 300px;
+    border-radius: 18px;
+  }
+  .admin-products-sortable-grid .admin-product-photo {
+    height: 155px;
+    width: 100%;
+    aspect-ratio: auto;
+    border-right: none;
+    border-bottom: 1px solid #e4eae5;
+  }
+  .admin-products-sortable-grid .admin-product-content {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px;
+  }
+  .admin-products-sortable-grid .admin-product-name {
+    align-self: stretch;
+    min-height: 36px;
+    font-size: 14px;
+    line-height: 18px;
+  }
+  .admin-products-sortable-grid .admin-product-details {
+    min-height: 40px;
+  }
+  .admin-products-sortable-grid .admin-product-actions {
+    width: 100%;
+    margin-top: auto;
+  }
+  .admin-products-sortable-grid .admin-product-edit,
+  .admin-products-sortable-grid .admin-product-delete {
+    height: 40px;
+    min-width: 40px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+  .admin-products-sortable-grid .admin-product-delete {
+    flex: 0 0 auto;
+  }
+  .admin-products-sortable-grid .admin-product-delete span {
+    display: none;
+  }
+  .admin-products-sortable-grid .admin-product-visibility {
+    min-height: 40px;
+  }
+  .admin-products-sortable-grid .admin-product-switch-track {
+    width: 42px;
+  }
+  .admin-products-sortable-grid .admin-product-visibility[aria-checked="true"] .admin-product-switch-track > span {
+    transform: translateX(16px);
+  }
+}
