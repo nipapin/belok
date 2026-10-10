@@ -12,6 +12,9 @@ const filter = (source) => !basename(source).startsWith('.env');
 cpSync('.next/standalone', release, { recursive: true, filter });
 cpSync('.next/static', join(release, '.next/static'), { recursive: true });
 cpSync('public', join(release, 'public'), { recursive: true, filter });
+cpSync('migrations', join(release,'migrations'), {recursive:true});
+cpSync('scripts/deploy/migrate-release.cjs', join(release,'migrate-release.cjs'));
+if (!existsSync(join(release,'node_modules/pg'))) throw new Error('Standalone release missing pg required for dev migrations');
 writeFileSync(join(release, 'REVISION'), `${revision}\n`);
 function check(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
