@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ComboChoices,initialComboSelections,comboSelectionValid,comboDisplay } from "@/components/product/ComboChoices";
+import type { ComboSelection } from "@/lib/combos";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +24,7 @@ export default function ProductDetailPage() {
   const [variantPick, setVariantPick] = useState<{ productId: string; index: number } | null>(null);
 
   const [quantity, setQuantity] = useState(1);
+  const [comboSelections,setComboSelections]=useState<ComboSelection[]>([]);
   const [removedIngredients, setRemovedIngredients] = useState<Set<string>>(new Set());
   const [addedExtras, setAddedExtras] = useState<Set<string>>(new Set());
 
@@ -31,9 +34,13 @@ export default function ProductDetailPage() {
   });
 
   const product: Product | undefined = data?.product;
+  useEffect(()=>{if(product?.isCombo && product.comboGroups)setComboSelections(initialComboSelections(product.comboGroups));},[product]);
+  const comboGroups=product?.comboGroups??[];
+  const comboInfo=comboDisplay(comboGroups,comboSelections);
+  const comboValid=!product?.isCombo||comboSelectionValid(comboGroups,comboSelections);
 
   const getCustomizations = () => product ? optionCustomizations(product.ingredients, removedIngredients, addedExtras) : [];
-  const calcPrice = () => product ? Math.round((resolveVariant(product, selectedVariant).price + getCustomizations().reduce((sum, choice) => sum + choice.priceDelta, 0)) * quantity * 100) / 100 : 0;
+  const calcPrice = () => product ? Math.round((resolveVariant(product, selectedVariant).price + (product.isCombo ? comboInfo.extra : 0) + getCustomizations().reduce((sum, choice) => sum + choice.priceDelta, 0)) * quantity * 100) / 100 : 0;
 
   const variants = product?.variants ?? [];
   const requestedIndex = requestedVariantId
@@ -49,14 +56,16 @@ export default function ProductDetailPage() {
   const selectedVariant = variants[safeVariantIndex] ?? null;
 
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product || !comboValid) return;
     addItem({
       productId: product.id,
       variantId: selectedVariant?.id ?? null,
       variantName: selectedVariant?.name ?? null,
       name: formatVariantTitle(product.name, selectedVariant?.name),
       image: selectedVariant?.image || product.image,
-      basePrice: resolveVariant(product, selectedVariant).price,
+      basePrice: resolveVariant(product, selectedVariant).price + (product.isCombo ? comboInfo.extra : 0),
+      comboSelections:product.isCombo?comboSelections:undefined,
+      comboLabel:product.isCombo?comboInfo.label:undefined,
       quantity,
       customizations: getCustomizations(),
     });
@@ -180,10 +189,10 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        <ProductOptions links={product.ingredients} removed={removedIngredients} added={addedExtras} onRemoved={setRemovedIngredients} onAdded={setAddedExtras} />
+        {product.isCombo ? <ComboChoices groups={comboGroups} value={comboSelections} onChange={setComboSelections} /> : <ProductOptions links={product.ingredients} removed={removedIngredients} added={addedExtras} onRemoved={setRemovedIngredients} onAdded={setAddedExtras} />}
 
         <div className="glass-panel-strong p-2 sticky bottom-0 left-0 right-0 flex items-center justify-between">
-          <button type="button" className="btn-primary" onClick={handleAddToCart}>
+          <button type="button" className="btn-primary" onClick={handleAddToCart} disabled={!comboValid}>
             В корзину · {calcPrice()} ₽
           </button>
           <div className="flex items-center justify-center gap-2">
