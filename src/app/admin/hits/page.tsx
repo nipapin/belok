@@ -1,173 +1,33 @@
 'use client';
-
-import { useMemo, useState } from 'react';
-import { Flame, Plus, Save, Trash2 } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import SortableList from '@/components/admin/SortableList';
-
-interface ProductLite {
-  id: string;
-  name: string;
-  image: string | null;
-  price: number;
-  category?: { name: string };
-}
-
-export default function AdminHitsPage() {
-  const queryClient = useQueryClient();
-  const [query, setQuery] = useState('');
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
-
-  const { data: hitsData, isLoading } = useQuery({
-    queryKey: ['admin-hits'],
-    queryFn: () => fetch('/api/admin/hits').then((r) => r.json()),
-  });
-  const savedIds: string[] = hitsData?.productIds ?? [];
-
-  const { data: productsData } = useQuery({
-    queryKey: ['admin-products'],
-    queryFn: () => fetch('/api/admin/products').then((r) => r.json()),
-  });
-  const products: ProductLite[] = useMemo(
-    () => (productsData?.products ?? []) as ProductLite[],
-    [productsData]
-  );
-  const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
-
-  const [dirtyIds, setDirtyIds] = useState<string[] | null>(null);
-  const productIds = dirtyIds ?? savedIds;
-  const selected = productIds
-    .map((id) => productMap.get(id))
-    .filter((p): p is ProductLite => Boolean(p));
-
-  const searchResults = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (q.length < 1) return [];
-    return products
-      .filter((p) => !productIds.includes(p.id) && p.name.toLowerCase().includes(q))
-      .slice(0, 8);
-  }, [products, productIds, query]);
-
-  const saveMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const res = await fetch('/api/admin/hits', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productIds: ids }),
-      });
-      if (!res.ok) throw new Error();
-      return res.json();
-    },
-    onSuccess: (payload) => {
-      queryClient.setQueryData(['admin-hits'], payload);
-      setDirtyIds(null);
-      setSaved(true);
-      setError('');
-      window.setTimeout(() => setSaved(false), 2500);
-    },
-    onError: () => setError('Не удалось сохранить хиты'),
-  });
-
-  return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="heading-section m-0">Хиты</h1>
-          <p className="mt-1 text-sm text-(--lg-text-muted)">
-            Этот список показывается на главной вместо «Популярное». Перетащите, чтобы задать порядок.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="btn-primary inline-flex items-center gap-2 py-2.5 text-sm disabled:opacity-50"
-          onClick={() => saveMutation.mutate(productIds)}
-          disabled={saveMutation.isPending || dirtyIds === null}
-        >
-          <Save className="size-4" />
-          {saveMutation.isPending ? 'Сохранение…' : 'Сохранить'}
-        </button>
-      </div>
-
-      {saved ? (
-        <div className="mb-4 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">
-          Хиты сохранены
-        </div>
-      ) : null}
-      {error ? (
-        <div className="mb-4 rounded-2xl border border-rose-200/80 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
-          {error}
-        </div>
-      ) : null}
-
-      <div className="relative mb-6">
-        <label className="mb-1.5 block text-sm font-medium text-(--lg-text)">Добавить блюдо</label>
-        <input
-          className="input-pill w-full py-2.5 text-sm"
-          placeholder="Начните вводить название"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        {searchResults.length > 0 ? (
-          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-2xl border border-(--lg-ring) bg-(--lg-fill) shadow-(--lg-shadow)">
-            {searchResults.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-(--lg-text) hover:bg-[color-mix(in_srgb,var(--lg-text)_6%,transparent)]"
-                onClick={() => {
-                  setDirtyIds([...productIds, p.id]);
-                  setQuery('');
-                }}
-              >
-                <Plus className="size-4 shrink-0 text-(--lg-text-muted)" />
-                <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-                <span className="tabular-nums text-xs text-(--lg-text-muted)">{p.price} ₽</span>
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      {isLoading ? (
-        <div className="h-40 animate-pulse rounded-2xl bg-[color-mix(in_srgb,var(--lg-text)_8%,transparent)]" />
-      ) : selected.length === 0 ? (
-        <div className="glass-panel flex flex-col items-center gap-2 px-4 py-10 text-center">
-          <Flame className="size-8 text-(--lg-text-muted)" strokeWidth={1.5} />
-          <p className="text-sm text-(--lg-text-muted)">Пока нет хитов — найдите блюдо выше и добавьте его в список.</p>
-        </div>
-      ) : (
-        <SortableList
-          items={selected}
-          onReorder={(next) => setDirtyIds(next.map((p) => p.id))}
-          renderItem={(product) => (
-            <div className="glass-panel flex items-center gap-3 p-3">
-              {product.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={product.image} alt="" className="size-12 rounded-xl object-cover" />
-              ) : (
-                <span className="flex size-12 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] text-sm font-bold text-(--lg-text-muted)">
-                  {product.name[0]}
-                </span>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-(--lg-text)">{product.name}</p>
-                <p className="text-xs text-(--lg-text-muted)">
-                  {product.category?.name ?? 'Без категории'} · {product.price} ₽
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn-icon size-9 border-0 bg-transparent text-rose-600 shadow-none hover:bg-rose-50"
-                onClick={() => setDirtyIds(productIds.filter((id) => id !== product.id))}
-                aria-label="Убрать из хитов"
-              >
-                <Trash2 className="size-4" />
-              </button>
-            </div>
-          )}
-        />
-      )}
-    </div>
-  );
+import { useMemo,useState } from 'react';
+import { Flame, Plus, Save, Pin, Ban, RotateCcw } from 'lucide-react';
+import { useQuery,useMutation,useQueryClient } from '@tanstack/react-query';
+type Product={id:string;name:string;price:number;image:string|null;isAvailable:boolean;category?:{name:string}};
+type Config={productIds:string[];pinnedIds:string[];excludedIds:string[];suggestedIds:string[];sales:Record<string,number>;limit:number};
+const load=async<T,>(url:string):Promise<T>=>{const r=await fetch(url,{cache:'no-store'});const data=await r.json();if(!r.ok)throw new Error(data.error||'Ошибка загрузки');return data};
+export default function AdminHitsPage(){
+  const qc=useQueryClient();
+  const {data,isPending,isError}=useQuery({queryKey:['admin-hits'],queryFn:()=>load<Config>('/api/admin/hits')});
+  const {data:productsData}=useQuery({queryKey:['admin-products'],queryFn:()=>load<{products:Product[]}>('/api/admin/products')});
+  const [draft,setDraft]=useState<{pinnedIds:string[];excludedIds:string[];limit:number}|null>(null);
+  const [query,setQuery]=useState('');const [error,setError]=useState('');const [saved,setSaved]=useState(false);
+  const pins=draft?.pinnedIds??data?.pinnedIds??[];
+  const excluded=draft?.excludedIds??data?.excludedIds??[];
+  const limit=draft?.limit??data?.limit??6;
+  const products=productsData?.products??[];
+  const map=useMemo(()=>new Map(products.map(p=>[p.id,p])),[products]);
+  const suggested=(data?.productIds??[]).filter(id=>!pins.includes(id)&&!excluded.includes(id));
+  const visible=[...pins.filter(id=>!excluded.includes(id)),...suggested].slice(0,limit);
+  const change=(next:Partial<{pinnedIds:string[];excludedIds:string[];limit:number}>)=>{setSaved(false);setDraft({pinnedIds:pins,excludedIds:excluded,limit,...next});};
+  const save=useMutation({mutationFn:async()=>{const r=await fetch('/api/admin/hits',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({productIds:pins,excludedIds:excluded,limit})});const json=await r.json();if(!r.ok)throw Error(json.error||'Ошибка сохранения');return json as Config;},onSuccess:()=>{setDraft(null);setSaved(true);setError('');void qc.invalidateQueries({queryKey:['admin-hits']});},onError:(e:Error)=>setError(e.message)});
+  const results=query.trim()?products.filter(p=>p.isAvailable&&!visible.includes(p.id)&&p.name.toLowerCase().includes(query.toLowerCase())).slice(0,8):[];
+  return <div className="space-y-5">
+    <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="heading-section m-0">Хиты продаж</h1><p className="mt-1 text-sm text-(--lg-text-muted)">Автоматически: самые покупаемые блюда за последние 30 дней. Можно закреплять позиции и исключать неподходящие.</p></div><button className="btn-primary inline-flex items-center gap-2 px-4 py-2.5 disabled:opacity-50" disabled={!draft||save.isPending} onClick={()=>save.mutate()}><Save size={16}/>{save.isPending?'Сохраняем…':'Сохранить'}</button></header>
+    {error&&<p className="text-sm text-rose-600" role="alert">{error}</p>}{saved&&<p className="text-sm text-emerald-700" role="status">Настройки сохранены</p>}
+    <div className="glass-panel p-4 flex flex-wrap items-center gap-3"><span className="text-sm font-medium">Показывать хитов</span><div className="flex gap-2">{[4,5,6,7,8].map(n=><button key={n} className={`rounded-xl px-3 py-2 text-sm ${limit===n?'bg-neutral-900 text-white':'bg-neutral-100 text-neutral-700'}`} onClick={()=>change({limit:n})}>{n}</button>)}</div><button className="ml-auto text-sm underline" onClick={()=>change({pinnedIds:[],excludedIds:[]})}><RotateCcw size={14} className="inline"/> Сбросить настройки</button></div>
+    <div className="relative"><label className="text-sm font-medium">Закрепить блюдо вручную<input className="input-pill mt-1 w-full" placeholder="Название блюда" value={query} onChange={e=>setQuery(e.target.value)}/></label>{results.length>0&&<div className="absolute z-20 w-full rounded-2xl border bg-white shadow-xl overflow-hidden">{results.map(p=><button key={p.id} className="flex w-full items-center gap-2 px-3 py-3 text-left hover:bg-neutral-100" onClick={()=>{change({pinnedIds:[...pins,p.id].slice(0,limit),excludedIds:excluded.filter(id=>id!==p.id)});setQuery('')}}><Plus size={16}/>{p.name}</button>)}</div>}</div>
+    {isPending?<p>Загружаем рейтинг…</p>:isError?<p role="alert">Не удалось загрузить рейтинг</p>:visible.length===0?<div className="glass-panel p-8 text-center"><Flame size={28} className="mx-auto mb-2"/><p>Пока нет завершённых продаж за последние 30 дней. Можно закрепить блюда вручную.</p></div>:<div className="space-y-2">{visible.map((id,i)=>{const p=map.get(id);if(!p)return null;const pinned=pins.includes(id);return <div key={id} className="glass-panel p-3 flex items-center gap-3"><span className="w-5 text-sm tabular-nums text-(--lg-text-muted)">{i+1}</span>{p.image?<img src={p.image} alt="" className="size-12 rounded-xl object-cover"/>:<span className="size-12 rounded-xl bg-neutral-100 flex items-center justify-center"><Flame size={18}/></span>}<div className="min-w-0 flex-1"><strong className="block truncate">{p.name}</strong><p className="text-xs text-(--lg-text-muted)">{p.category?.name??'Блюдо'} · {data?.sales?.[id]??0} шт. за 30 дней · {pinned?'Закреплено':'Автоматически'}</p></div><button className="btn-icon p-2" aria-label={pinned?'Открепить':'Закрепить'} title={pinned?'Открепить':'Закрепить'} onClick={()=>change({pinnedIds:pinned?pins.filter(x=>x!==id):[...pins,id]})}><Pin size={17} fill={pinned?'currentColor':'none'}/></button><button className="btn-icon p-2 text-rose-600" title="Исключить из хитов" aria-label="Исключить из хитов" onClick={()=>change({pinnedIds:pins.filter(x=>x!==id),excludedIds:[...excluded,id]})}><Ban size={17}/></button></div>})}</div>}
+    {excluded.length>0&&<section className="glass-panel p-4"><h2 className="font-semibold mb-2">Исключённые товары</h2><div className="flex flex-wrap gap-2">{excluded.map(id=><button key={id} className="rounded-xl border px-3 py-2 text-sm" onClick={()=>change({excludedIds:excluded.filter(x=>x!==id)})}>{map.get(id)?.name??id} ×</button>)}</div></section>}
+    <p className="text-xs text-(--lg-text-muted)">Учитываются завершённые оплаченные заказы, а также завершённые наличные и бонусные. Упаковка и одноразовые принадлежности исключаются автоматически. Закреплённые блюда показываются первыми.</p>
+  </div>;
 }
