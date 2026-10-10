@@ -1,3 +1,4 @@
+import { loadComboGroups } from '@/lib/combos';
 import { query } from '@/lib/db';
 import type {
   CategoryRow,
@@ -68,6 +69,8 @@ function rowToProduct(row: ProductJoinedRow): ProductWithRelations {
     fiber: row.fiber,
     weightGrams: row.weightGrams,
     spicinessLevel: row.spicinessLevel,
+    isCombo: row.isCombo,
+    comboGroups: [],
     sortOrder: row.sortOrder,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -103,7 +106,7 @@ export async function fetchProductsWithRelations(
     `SELECT
        p."id", p."name", p."description", p."price", p."image", p."categoryId",
        p."isAvailable", p."calories", p."proteins", p."fats", p."carbs", p."fiber",
-       p."weightGrams", p."spicinessLevel",
+       p."weightGrams", p."spicinessLevel", p."isCombo",
        p."sortOrder", p."createdAt", p."updatedAt",
        c."id"        AS "c_id",
        c."name"      AS "c_name",
@@ -188,6 +191,8 @@ export async function fetchProductsWithRelations(
     product.variants.push(variant);
   }
 
+  const combos = await loadComboGroups(ids.filter(id=>productMap.get(id)?.isCombo));
+  for(const id of ids){const item=productMap.get(id)!;item.comboGroups=combos[id]??[];}
   return products.map((r) => productMap.get(r.id)!);
 }
 
