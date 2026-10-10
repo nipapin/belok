@@ -78,6 +78,7 @@ export default function AdminShell({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [versionOpen, setVersionOpen] = useState(false);
   const { user, fetchUser, isLoading, logout } = useAuthStore();
   const { data: ordersData } = useQuery({
     queryKey: ["admin-orders"],
@@ -110,6 +111,7 @@ export default function AdminShell({
   }, [isUnauthorized, router]);
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
+    setVersionOpen(false);
   }, [pathname]);
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -213,12 +215,19 @@ export default function AdminShell({
           Рабочее пространство <ChevronRight size={14} aria-hidden="true" />{" "}
           <strong>{currentPage?.label || "Обзор"}</strong>
         </span>
-        <span className="admin-environment">
+        <button
+          type="button"
+          className="admin-environment"
+          aria-label="Информация о версии приложения"
+          aria-expanded={versionOpen}
+          aria-controls="admin-build-version-details"
+          onClick={() => setVersionOpen((open) => !open)}
+        >
           {process.env.NODE_ENV === "development" ||
           process.env.NEXT_PUBLIC_APP_URL?.includes("dev.")
             ? "DEV"
             : "ADMIN"}
-        </span>
+        </button>
         <div className="admin-header-actions">
           {editingProduct && (
             <button
@@ -254,7 +263,7 @@ export default function AdminShell({
         inert={mobileOpen || undefined}
       >
         <AdminNewOrderWatcher />
-        <AdminBuildVersion />
+        {versionOpen && <div id="admin-build-version-details"><AdminBuildVersion /></div>}
         {children}
       </main>
       {!editingProduct && (
