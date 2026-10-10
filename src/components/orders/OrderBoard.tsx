@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, Check, CheckCheck, ChefHat, Clock3, Expand, Loader2, LockKeyhole, Radio, Undo2, Volume2, VolumeX } from 'lucide-react';
+import { Bell, Check, CheckCheck, ChefHat, Clock3, Expand, Loader2, LockKeyhole, Moon, Radio, Sun, Undo2, Volume2, VolumeX } from 'lucide-react';
 import KioskPinPad from '@/components/kiosk/KioskPinPad';
 import { fulfillmentLabel, orderTicket, paymentMethodLabel } from '@/lib/orderCustomer';
 import type { BoardOrder } from '@/lib/orderBoard';
@@ -13,6 +13,7 @@ const columns = [
   { id: 'ready', title: 'Готовы', statuses: ['READY'], icon: CheckCheck },
 ];
 const ACKNOWLEDGED_KEY = 'belok-board-acknowledged';
+const THEME_KEY = 'belok-board-theme';
 const REPEAT_SECONDS_KEY = 'belok-board-repeat-seconds';
 const DEFAULT_REPEAT_SECONDS = 20;
 const MIN_REPEAT_SECONDS = 5;
@@ -100,6 +101,7 @@ export default function OrderBoard() {
   const [repeatInput, setRepeatInput] = useState(() => String(repeatSeconds));
   const [soundBusy, setSoundBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [completingAll, setCompletingAll] = useState(false);
   const bulkBusy = useRef(false);
@@ -146,6 +148,8 @@ export default function OrderBoard() {
       } catch { /* Audio still works when browser storage is unavailable. */ }
       const response = await fetch('/api/kiosk/session', { cache: 'no-store' });
       if (!response.ok) throw new Error();
+      try { setTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'); }
+      catch { /* Keep the default theme when browser storage is unavailable. */ }
       setSession(await response.json()); setError('');
     } catch { setError('Не удалось проверить PIN. Проверьте соединение и повторите.'); }
   }, []);
@@ -363,13 +367,20 @@ export default function OrderBoard() {
     } finally { bulkBusy.current = false; setCompletingAll(false); refreshNow.current(); }
   }
 
-  if (!session || !session.unlocked) return <main className="order-board board-login">
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    try { localStorage.setItem(THEME_KEY, next); }
+    catch { /* The theme still works for the current session. */ }
+  }
+
+  if (!session || !session.unlocked) return <main className="order-board board-login" data-theme={theme}>
     <div className="board-brand">бело́к</div>
     {session ? <KioskPinPad configured={session.configured} title="Экран заказов" description="Введите тот же PIN, что и на кассе" onUnlocked={() => void checkSession()} /> : <div className="board-loading"><Loader2 className="animate-spin" /> Проверяем доступ…</div>}
     {error && <div className="board-notice board-notice-error">{error}<button onClick={() => void checkSession()}>Повторить</button></div>}
   </main>;
 
-  return <main className="order-board" aria-label="Экран заказов">
+  return <main className="order-board" data-theme={theme} aria-label="Экран заказов">
     <header className="board-header">
       <div className="board-brand">бело́к</div>
       <div className={`board-connection ${error || (lastSync && now - lastSync > 15000) ? 'board-disconnected' : ''}`}><Radio size={17} />{error ? 'Нет соединения' : lastSync ? 'На связи' : 'Подключаемся'}<small>{lastSync ? `Обновлено ${timeLabel(new Date(lastSync).toISOString())}` : 'Получаем заказы'}</small></div>
@@ -379,6 +390,7 @@ export default function OrderBoard() {
           else void enableSound();
         }}>{soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}{soundEnabled ? 'Звук включён' : 'Включить звук'}</button>
         <button onClick={() => setSettingsOpen(!settingsOpen)}>Настройки звука</button>
+        <button onClick={toggleTheme} title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'} aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
         <button onClick={() => void fullscreen()} title="Полный экран" aria-label="Полный экран"><Expand size={16} /></button>
         <button onClick={() => void lockScreen()} title="Заблокировать экран" aria-label="Заблокировать экран"><LockKeyhole size={16} /></button>
       </div>
