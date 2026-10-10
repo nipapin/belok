@@ -9,9 +9,9 @@ export async function GET(
     const { id } = await params;
     const product = await fetchProductById(id);
     if (!product) {
-      return NextResponse.json({ error: 'Товар не найден' }, { status: 404 });
+      return NextResponse.json({ error: 'Товар не найден' }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
     }
-    return NextResponse.json({ product });
+    return NextResponse.json({ product }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Get product error:', error);
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });

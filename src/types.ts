@@ -9,6 +9,14 @@ export enum MenuLabel {
 }
 
 export interface ProductVariant {
+  price?: number | null;
+  calories?: number | null;
+  proteins?: number | null;
+  fats?: number | null;
+  carbs?: number | null;
+  fiber?: number | null;
+  weightGrams?: number | null;
+  volumeMl?: number | null;
   id: string;
   name: string;
   image: string | null;
@@ -16,6 +24,7 @@ export interface ProductVariant {
 
 export interface Product {
   id: string;
+  isAvailable?: boolean;
   name: string;
   description: string | null;
   price: number;
@@ -25,6 +34,7 @@ export interface Product {
   fats: number | null;
   carbs: number | null;
   fiber: number | null;
+  volumeMl?: number | null;
   weightGrams: number | null;
   spicinessLevel: number;
   categoryId: string;
@@ -46,9 +56,11 @@ export interface ProductIngredient {
   isDefault: boolean;
   isRemovable: boolean;
   isExtra: boolean;
+  optionGroup?: string | null;
   ingredient: {
     id: string;
     name: string;
     price: number;
+    isAvailable?: boolean;
   };
 }

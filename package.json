@@ -14,7 +14,10 @@
     "deploy": "git pull && npm ci --no-fund --no-audit && npm run build && pm2 startOrReload ecosystem.config.js --only belok --update-env && pm2 save",
     "test:smoke": "node scripts/smoke-puppeteer.mjs",
     "test:checkout": "node scripts/test-checkout-api.mjs",
-    "test:checkout:browser": "node scripts/test-checkout-browser.mjs"
+    "test:checkout:browser": "node scripts/test-checkout-browser.mjs",
+    "aqsi:worker": "node --conditions=react-server --import tsx scripts/aqsi-worker.ts",
+    "test:aqsi": "node --import tsx --test scripts/test-aqsi.mts",
+    "test:aqsi:integration": "node --conditions=react-server --import tsx --test scripts/test-aqsi-integration.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1104.0",
@@ -45,7 +48,8 @@
     "web-push": "^3.6.7",
     "webpack": "^5.106.2",
     "zod": "^4.3.6",
-    "zustand": "^5.0.12"
+    "zustand": "^5.0.12",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

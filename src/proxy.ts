@@ -15,6 +15,12 @@ function redirectHomeToMenu(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostname = (request.headers.get('host')?.split(':')[0] ?? request.nextUrl.hostname).toLowerCase();
+  if (pathname === '/' && (hostname === 'orders.belok.pro' || hostname === 'orders.localhost')) {
+    const board = request.nextUrl.clone();
+    board.pathname = '/order-board';
+    return NextResponse.rewrite(board);
+  }
 
   if (pathname === '/') {
     try {

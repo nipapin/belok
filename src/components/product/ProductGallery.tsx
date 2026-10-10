@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export type GallerySlide = {
@@ -18,33 +18,39 @@ type ProductGalleryProps = {
 
 export default function ProductGallery({ slides, index, onIndex }: ProductGalleryProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const programmatic = useRef(false);
+  const userScroll = useRef(false);
+  const animateNext = useRef(false);
+  const settleTimer = useRef<number | undefined>(undefined);
   const choosable = slides.length > 1;
   const safeIndex = slides.length === 0 ? 0 : Math.min(index, slides.length - 1);
 
-  useEffect(() => {
+  // Apply the requested variant before paint; a smooth initial scroll can
+  // otherwise briefly report the first slide and overwrite a deep link.
+  useLayoutEffect(() => {
     const el = scrollerRef.current;
     if (!el || !choosable) return;
-    const left = safeIndex * el.clientWidth;
-    if (Math.abs(el.scrollLeft - left) <= 2) return;
-    programmatic.current = true;
-    el.scrollTo({ left, behavior: 'smooth' });
+    el.scrollTo({ left: safeIndex * el.clientWidth, behavior: animateNext.current ? 'smooth' : 'instant' });
+    animateNext.current = false;
   }, [choosable, safeIndex]);
 
+  useEffect(() => () => window.clearTimeout(settleTimer.current), []);
+
   function onScroll() {
-    const el = scrollerRef.current;
-    if (!el || el.clientWidth === 0) return;
-    const left = safeIndex * el.clientWidth;
-    if (programmatic.current) {
-      if (Math.abs(el.scrollLeft - left) <= 2) programmatic.current = false;
-      return;
-    }
-    const next = Math.round(el.scrollLeft / el.clientWidth);
-    const clamped = Math.min(slides.length - 1, Math.max(0, next));
-    if (clamped !== safeIndex) onIndex(clamped);
+    if (!userScroll.current) return;
+    window.clearTimeout(settleTimer.current);
+    settleTimer.current = window.setTimeout(() => {
+      const el = scrollerRef.current;
+      if (!el || el.clientWidth === 0) return;
+      const next = Math.min(slides.length - 1, Math.max(0, Math.round(el.scrollLeft / el.clientWidth)));
+      userScroll.current = false;
+      if (next !== safeIndex) onIndex(next);
+    }, 150);
   }
 
   function step(delta: number) {
+    userScroll.current = false;
+    window.clearTimeout(settleTimer.current);
+    animateNext.current = true;
     onIndex((safeIndex + delta + slides.length) % slides.length);
   }
 
@@ -53,6 +59,8 @@ export default function ProductGallery({ slides, index, onIndex }: ProductGaller
       <div
         ref={scrollerRef}
         onScroll={choosable ? onScroll : undefined}
+        onPointerDown={() => { userScroll.current = true; }}
+        onWheel={() => { userScroll.current = true; }}
         className={
           choosable
             ? 'absolute inset-0 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
@@ -82,7 +90,7 @@ export default function ProductGallery({ slides, index, onIndex }: ProductGaller
           <button
             type="button"
             className="btn-icon glass-fx absolute top-1/2 left-4 z-10 -translate-y-1/2"
-            aria-label="Предыдущий вкус"
+            aria-label="Предыдущий вариант"
             onClick={() => step(-1)}
           >
             <ChevronLeft className="size-5" strokeWidth={1.75} />
@@ -90,7 +98,7 @@ export default function ProductGallery({ slides, index, onIndex }: ProductGaller
           <button
             type="button"
             className="btn-icon glass-fx absolute top-1/2 right-4 z-10 -translate-y-1/2"
-            aria-label="Следующий вкус"
+            aria-label="Следующий вариант"
             onClick={() => step(1)}
           >
             <ChevronRight className="size-5" strokeWidth={1.75} />

@@ -6,9 +6,11 @@ import { useState } from 'react';
 type KioskPinPadProps = {
   configured: boolean;
   onUnlocked: () => void;
+  title?: string;
+  description?: string;
 };
 
-export default function KioskPinPad({ configured, onUnlocked }: KioskPinPadProps) {
+export default function KioskPinPad({ configured, onUnlocked, title = 'Терминал', description = 'Введите PIN, чтобы открыть меню' }: KioskPinPadProps) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -67,8 +69,8 @@ export default function KioskPinPad({ configured, onUnlocked }: KioskPinPadProps
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6">
-      <h1 className="text-3xl font-semibold text-(--lg-text)">Терминал</h1>
-      <p className="mt-2 text-base text-(--lg-text-muted)">Введите PIN, чтобы открыть меню</p>
+      <h1 className="text-3xl font-semibold text-(--lg-text)">{title}</h1>
+      <p className="mt-2 text-base text-(--lg-text-muted)">{description}</p>
 
       <div className="mt-8 flex gap-3" aria-hidden>
         {Array.from({ length: Math.max(4, pin.length) }).map((_, i) => (

@@ -11,6 +11,7 @@ export interface ProductFilter {
   categoryId?: string | null;
   onlyAvailable?: boolean;
   productId?: string;
+  productIds?: string[];
 }
 
 interface ProductJoinedRow extends ProductRow {
@@ -30,6 +31,7 @@ interface IngredientJoinedRow {
   pi_isDefault: boolean;
   pi_isRemovable: boolean;
   pi_isExtra: boolean;
+  pi_optionGroup: string | null;
   i_id: string;
   i_name: string;
   i_price: number;
@@ -91,6 +93,10 @@ export async function fetchProductsWithRelations(
     where.push(`p."id" = $${params.length}`);
   }
 
+  if (filter.productIds) {
+    params.push(filter.productIds);
+    where.push(`p.id = ANY($${params.length}::text[])`);
+  }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
   const products = await query<ProductJoinedRow>(
@@ -131,6 +137,7 @@ export async function fetchProductsWithRelations(
        pi."isDefault"    AS "pi_isDefault",
        pi."isRemovable"  AS "pi_isRemovable",
        pi."isExtra"      AS "pi_isExtra",
+       pi."optionGroup" AS "pi_optionGroup",
        i."id"            AS "i_id",
        i."name"          AS "i_name",
        i."price"         AS "i_price",
@@ -162,12 +169,13 @@ export async function fetchProductsWithRelations(
       isDefault: row.pi_isDefault,
       isRemovable: row.pi_isRemovable,
       isExtra: row.pi_isExtra,
+      optionGroup: row.pi_optionGroup,
       ingredient,
     });
   }
 
   const variants = await query<ProductVariantRow>(
-    `SELECT id, "productId", name, image, "sortOrder"
+    `SELECT *
        FROM "product_variants"
       WHERE "productId" = ANY($1::text[])
       ORDER BY "sortOrder" ASC, name ASC`,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserWithLoyaltyById } from '@/lib/auth';
 import { queryOne } from '@/lib/db';
 import { KioskUnauthorizedError, requireKioskUnlocked } from '@/lib/kioskAuth';
 import { isValidEmail, normalizeEmail } from '@/lib/verificationCode';
@@ -8,20 +9,27 @@ export async function GET(request: NextRequest) {
     await requireKioskUnlocked();
     const emailRaw = request.nextUrl.searchParams.get('email')?.trim() ?? '';
     if (!emailRaw || !isValidEmail(emailRaw)) {
-      return NextResponse.json({ found: false, bonusBalance: 0 });
+      return NextResponse.json({ found: false });
     }
 
-    const user = await queryOne<{ bonusBalance: number }>(
-      `SELECT "bonusBalance" FROM "users" WHERE email = $1`,
-      [normalizeEmail(emailRaw)]
-    );
+    const row = await queryOne<{ id: string }>(`SELECT id FROM "users" WHERE email = $1`, [
+      normalizeEmail(emailRaw),
+    ]);
+    if (!row) {
+      return NextResponse.json({ found: false });
+    }
+
+    const user = await getUserWithLoyaltyById(row.id);
     if (!user) {
-      return NextResponse.json({ found: false, bonusBalance: 0 });
+      return NextResponse.json({ found: false });
     }
 
     return NextResponse.json({
       found: true,
       bonusBalance: Math.floor(Number(user.bonusBalance) || 0),
+      cashbackPercent: user.loyaltyLevel?.cashbackPercent ?? 3,
+      discountPercent: user.loyaltyLevel?.discountPercent ?? 0,
+      levelName: user.loyaltyLevel?.name ?? null,
     });
   } catch (error) {
     if (error instanceof KioskUnauthorizedError) {

@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
+import { processAqsiJobs } from '@/lib/aqsiJobs';
 import { verifyTbankNotification } from '@/lib/tbank';
 import { applyTbankPaymentStatus } from '@/lib/tbankPayments';
 
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
     const status = typeof body.Status === 'string' ? body.Status : String(body.Status ?? '');
     if (orderId && status) {
       await applyTbankPaymentStatus(orderId, status);
+      after(() => processAqsiJobs());
     }
 
     return ok();
