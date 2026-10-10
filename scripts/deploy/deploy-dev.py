@@ -16,6 +16,30 @@ CHECKOUT = Path('/var/www/dev.belok.pro')
 CONFIG = '/etc/belok-dev/ecosystem.config.cjs'
 NODE = '/root/.nvm/versions/node/v24.14.1/bin/node'
 PM2 = '/root/.nvm/versions/node/v24.14.1/bin/pm2'
+TBANK_CA_BUNDLE = Path('/etc/ssl/tbank/russian-trusted-ca-bundle.pem')
+
+
+def configure_tbank_tls():
+    if not TBANK_CA_BUNDLE.is_file() or not TBANK_CA_BUNDLE.read_bytes().strip():
+        raise RuntimeError(f'T-Bank CA certificates are missing or empty: {TBANK_CA_BUNDLE}')
+    # Node reads additional CAs only on startup. Cover preview, PM2 and rollback.
+    os.environ['NODE_EXTRA_CA_CERTS'] = str(TBANK_CA_BUNDLE)
+    probe = """
+const tls = require('node:tls');
+const socket = tls.connect({
+  host: 'securepay.tinkoff.ru', port: 443,
+  servername: 'securepay.tinkoff.ru', rejectUnauthorized: true,
+}, () => {
+  console.log('T-Bank TLS certificate verified');
+  socket.end();
+});
+socket.setTimeout(15000, () => socket.destroy(new Error('TLS handshake timed out')));
+socket.on('error', (error) => { console.error(error.message); process.exitCode = 1; });
+"""
+    try:
+        subprocess.run([NODE, '-e', probe], check=True, timeout=20)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        raise RuntimeError('T-Bank TLS verification failed; current release remains active') from error
 
 
 def pm2(*args):
@@ -57,6 +81,7 @@ def main():
     ROOT.mkdir(mode=0o700, exist_ok=True)
     with open('/var/lock/belok-dev-deploy.lock', 'w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
+        configure_tbank_tls()
         release = ROOT / sha
         if release.exists():
             raise RuntimeError('Release already exists; use a new commit')
@@ -108,7 +133,10 @@ def main():
             'name': 'belok-dev', 'cwd': old_dev['pm_cwd'], 'script': old_dev['pm_exec_path'],
             'args': old_dev.get('args', []), 'interpreter': old_dev.get('exec_interpreter', NODE),
             'node_args': old_dev.get('node_args', []),
-            'env': {k: old_dev[k] for k in ['PORT', 'HOSTNAME', 'NODE_ENV'] if k in old_dev},
+            'env': {
+                **{k: old_dev[k] for k in ['PORT', 'HOSTNAME', 'NODE_ENV'] if k in old_dev},
+                'NODE_EXTRA_CA_CERTS': str(TBANK_CA_BUNDLE),
+            },
         }]}
         fallback = release / 'previous-process.json'
         fallback.write_text(json.dumps(old_config))
