@@ -18,6 +18,7 @@ export interface BoardOrder {
     name: string;
     quantity: number;
     preparedQuantity: number;
+    comboSnapshot?: import("@/lib/combos").ComboSnapshot | null;
     customizations: { id: string; action: IngredientAction; name: string }[];
   }[];
 }
