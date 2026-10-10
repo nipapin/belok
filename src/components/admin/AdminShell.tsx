@@ -100,6 +100,8 @@ export default function AdminShell({
   // Product editing already has a fixed save bar: give it the entire bottom edge.
   const editingProduct =
     pathname === "/admin/products/new" ||
+    pathname === "/admin/combos/new" ||
+    /^\/admin\/combos\/[^/]+\/edit$/.test(pathname) ||
     /^\/admin\/products\/[^/]+\/edit$/.test(pathname);
 
   useEffect(() => {
