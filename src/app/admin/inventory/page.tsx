@@ -134,3 +134,39 @@ export default function InventoryPage(){
         options={([{value:'ALL',label:'Все состояния'},...(['green','yellow','orange','red'] as const).map(v=>({value:v,label:statusLabels[v]}))]).map(x=>({value:x.value,label:`${x.label} · ${statusCounts[x.value as keyof typeof statusCounts]}`}))}/>
     </div>
 
+    {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="glass-panel p-8 text-center"><PackagePlus className="mx-auto mb-3" size={30}/><p>{search||filter!=='ALL'||statusFilter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      {filtered.map(item=><article key={item.id} className={`glass-panel inventory-status-card inventory-card-${stockStatus(item)} min-w-0 overflow-hidden flex flex-col`}>
+        <div className="relative h-36 bg-(--lg-fill) overflow-hidden">
+          {item.image?<img src={item.image} alt="" loading="lazy" className="h-full w-full object-cover"/>:<div className="h-full flex items-center justify-center text-(--lg-text-muted)"><PackagePlus size={30}/></div>}
+          <span className="absolute top-2 right-2 rounded-full px-2 py-1 text-xs bg-white/90 text-slate-700">{kindLabels[item.kind]}</span>
+          <span className={`inventory-status-indicator inventory-status-${stockStatus(item)} absolute left-3 top-3`} title={statusLabels[stockStatus(item)]} aria-label={statusLabels[stockStatus(item)]}>
+            <span className="inventory-status-dot" aria-hidden="true"/><span>{statusLabels[stockStatus(item)]}</span>
+          </span>
+        </div>
+        <div className="p-3 flex flex-col gap-3 flex-1">
+          <div><h3 className="font-semibold leading-tight">{item.name}</h3><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Number(item.minQuantity).toLocaleString('ru')} {unitLabels[item.unit]}</p></div>
+          <form className="flex items-end gap-2" onSubmit={e=>{e.preventDefault();setError('');recount.mutate({id:item.id,quantity:Number(drafts[item.id])});}}>
+            <label className="text-xs flex-1 min-w-0">Сейчас на складе, {unitLabels[item.unit]}<input aria-label={`Остаток: ${item.name}`} className="inventory-field mt-1" type="number" step=".001" min="0" required value={drafts[item.id]??item.quantity} onChange={e=>setDrafts(d=>({...d,[item.id]:e.target.value}))}/></label>
+            <button className="btn-primary p-2.5" type="submit" aria-label={`Сохранить остаток: ${item.name}`} disabled={recount.isPending||drafts[item.id]===undefined||!valid(drafts[item.id])||Number(drafts[item.id])===Number(item.quantity)}><Save size={18}/></button>
+          </form>
+          {item.kind==='PREPARED'&&<div className="flex flex-wrap gap-2"><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setRecipeItem(item);setBatchItem(null)}}>Техкарта</button><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setBatchItem(item);setRecipeItem(null);setBatchAmount('1')}}>Выпустить партию</button></div>}
+          <div className="mt-auto pt-2 border-t border-(--lg-ring)">
+            {deleteTarget?.id===item.id ? (
+              <div className="flex items-center gap-2" role="group" aria-label={`Удалить ${item.name}?`}>
+                <button type="button" className="btn-outline flex-1 min-w-0 px-3 py-2 text-sm" disabled={remove.isPending} onClick={()=>setDeleteTarget(null)}>Отмена</button>
+                <button type="button" className="flex-1 min-w-0 rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60" disabled={remove.isPending} onClick={()=>remove.mutate(item.id)}>{remove.isPending?'Удаляем…':'Удалить'}</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button type="button" className="btn-outline flex-1 px-3 py-2 inline-flex justify-center items-center gap-1 text-sm" onClick={()=>openEdit(item)}><Pencil size={15}/> Изменить</button>
+                <button type="button" aria-label={`Удалить ${item.name}`} className="btn-outline px-3 py-2 text-rose-700" onClick={()=>{setError('');setDeleteTarget(item)}}><Trash2 size={16}/></button>
+              </div>
+            )}
+          </div>
+        </div>
+      </article>)}
+    </div>}
+
+  </div>;
+}
