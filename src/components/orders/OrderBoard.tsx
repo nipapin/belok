@@ -1,16 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, CheckCheck, ChefHat, Clock3, Expand, Loader2, LockKeyhole, Radio, Volume2, VolumeX } from 'lucide-react';
+import { Bell, Check, CheckCheck, ChefHat, Clock3, Expand, Loader2, LockKeyhole, Radio, Undo2, Volume2, VolumeX } from 'lucide-react';
 import KioskPinPad from '@/components/kiosk/KioskPinPad';
 import { fulfillmentLabel, orderTicket, paymentMethodLabel } from '@/lib/orderCustomer';
 import type { BoardOrder } from '@/lib/orderBoard';
 import { loadBoardSound, playBoardChime, saveBoardSound } from '@/lib/orderBoardSound';
 
 const columns = [
-  { id: 'new', title: 'Новые', hint: 'Ждут принятия', statuses: ['PENDING'], icon: Bell },
-  { id: 'cooking', title: 'Готовятся', hint: 'Заказы в работе', statuses: ['CONFIRMED', 'PREPARING'], icon: ChefHat },
-  { id: 'ready', title: 'Готовы', hint: 'Можно выдавать', statuses: ['READY'], icon: CheckCheck },
+  { id: 'new', title: 'Новые', statuses: ['PENDING'], icon: Bell },
+  { id: 'cooking', title: 'Готовятся', statuses: ['CONFIRMED', 'PREPARING'], icon: ChefHat },
+  { id: 'ready', title: 'Готовы', statuses: ['READY'], icon: CheckCheck },
 ];
 const ACKNOWLEDGED_KEY = 'belok-board-acknowledged';
 const REPEAT_SECONDS_KEY = 'belok-board-repeat-seconds';
@@ -19,6 +19,15 @@ const MIN_REPEAT_SECONDS = 5;
 const MAX_REPEAT_SECONDS = 600;
 function validRepeatSeconds(value: number) {
   return Number.isInteger(value) && value >= MIN_REPEAT_SECONDS && value <= MAX_REPEAT_SECONDS;
+}
+function loadRepeatSeconds() {
+  try {
+    if (typeof window !== 'undefined') {
+      const saved = Number(window.localStorage.getItem(REPEAT_SECONDS_KEY));
+      if (validRepeatSeconds(saved)) return saved;
+    }
+  } catch { /* Use the default interval when browser storage is unavailable. */ }
+  return DEFAULT_REPEAT_SECONDS;
 }
 const actions = {
   PENDING: { label: 'Начать готовить', status: 'PREPARING' },
@@ -31,7 +40,7 @@ function timeLabel(value: string) {
   return new Date(value).toLocaleTimeString('ru-RU', { timeZone: 'Europe/Kaliningrad', hour: '2-digit', minute: '2-digit' });
 }
 
-function OrderCard({ order, fresh, now, acknowledge, advance, busy }: { order: BoardOrder; fresh: boolean; now: number; acknowledge: () => void; advance: (status: 'PREPARING' | 'READY' | 'COMPLETED') => void; busy: boolean }) {
+function OrderCard({ order, fresh, now, acknowledge, advance, markItem, busy }: { order: BoardOrder; fresh: boolean; now: number; acknowledge: () => void; advance: (status: 'PREPARING' | 'READY' | 'COMPLETED') => void; markItem: (item: BoardOrder['items'][number], action: 'prepare' | 'undo') => void; busy: boolean }) {
   const minutes = Math.max(0, Math.floor((now - new Date(order.createdAt).getTime()) / 60_000));
   const ageLabel = minutes < 60 ? `${minutes} мин` : `${Math.floor(minutes / 60)} ч ${minutes % 60} мин`;
   const action = order.status in actions ? actions[order.status as keyof typeof actions] : null;
@@ -43,12 +52,19 @@ function OrderCard({ order, fresh, now, acknowledge, advance, busy }: { order: B
       </div>
       <div className="board-tags"><span>{order.source === 'KIOSK' ? 'Касса' : 'Сайт'}</span><span>{fulfillmentLabel(order.fulfillment) ?? 'Самовывоз'}</span><span>{timeLabel(order.createdAt)}</span></div>
       <ul className="board-items">
-        {order.items.map((item) => (
-          <li key={item.id}>
-            <div className="board-item"><strong className="board-quantity">{item.quantity}×</strong><strong>{item.name}</strong></div>
+        {order.items.map((item) => {
+          const prepared = item.preparedQuantity ?? 0;
+          const remaining = Math.max(0, item.quantity - prepared);
+          return <li key={item.id} data-item-id={item.id} className={remaining === 0 ? 'board-item-done' : ''}>
+            <div className="board-item-row">
+              <button type="button" className="board-item" disabled={busy || remaining === 0} aria-label={`${item.name}: осталось ${remaining} из ${item.quantity}. Отметить одну порцию`} onClick={() => markItem(item, 'prepare')}>
+                <strong>{item.name}</strong><strong className="board-quantity">{remaining ? `×${remaining}` : <Check size={24} aria-label="Готово" />}</strong>
+              </button>
+              {prepared > 0 && <button className="board-item-undo" type="button" disabled={busy} aria-label={`Вернуть одну порцию: ${item.name}`} title="Вернуть одну порцию" onClick={() => markItem(item, 'undo')}><Undo2 size={16} /></button>}
+            </div>
             {item.customizations.map((c) => <p key={c.id} className={`board-customization ${c.action === 'REMOVE' ? 'board-remove' : 'board-add'}`}>{c.action === 'REMOVE' ? 'Без' : '+ Добавить'} {c.name}</p>)}
-          </li>
-        ))}
+          </li>;
+        })}
       </ul>
       {order.comment && <p className="board-comment">{order.comment}</p>}
       {order.fulfillment === 'DELIVERY' && <div className="board-delivery">
@@ -74,11 +90,13 @@ export default function OrderBoard() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [soundName, setSoundName] = useState('Сигнал бело́к');
   const [volume, setVolume] = useState(0.8);
-  const [repeatSeconds, setRepeatSeconds] = useState(DEFAULT_REPEAT_SECONDS);
-  const [repeatInput, setRepeatInput] = useState(String(DEFAULT_REPEAT_SECONDS));
+  const [repeatSeconds, setRepeatSeconds] = useState(loadRepeatSeconds);
+  const [repeatInput, setRepeatInput] = useState(() => String(repeatSeconds));
   const [soundBusy, setSoundBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
+  const [completingAll, setCompletingAll] = useState(false);
+  const bulkBusy = useRef(false);
   const updating = useRef(new Set<string>());
   const mutationRevision = useRef(0);
   const acknowledged = useRef(new Set<string>());
@@ -91,7 +109,7 @@ export default function OrderBoard() {
   const context = useRef<AudioContext | null>(null);
   const sound = useRef<AudioBuffer | null>(null);
   const soundData = useRef<ArrayBuffer | null>(null);
-  const soundConfig = useRef({ enabled: false, volume: 0.8, repeatSeconds: DEFAULT_REPEAT_SECONDS });
+  const soundConfig = useRef({ enabled: false, volume: 0.8, repeatSeconds });
 
   const startSignal = useCallback((ctx: AudioContext, buffer: AudioBuffer | null, level: number, alarm: boolean) => {
     if (alarm && playback.current && Date.now() < playback.current.until) return;
@@ -127,14 +145,7 @@ export default function OrderBoard() {
   }, []);
 
   useEffect(() => {
-    try {
-      const saved = Number(localStorage.getItem(REPEAT_SECONDS_KEY));
-      if (validRepeatSeconds(saved)) {
-        soundConfig.current.repeatSeconds = saved;
-        setRepeatSeconds(saved); setRepeatInput(String(saved));
-      }
-    } catch { /* Use the default interval when browser storage is unavailable. */ }
-    void checkSession();
+    void Promise.resolve().then(checkSession);
     void loadBoardSound().then((saved) => {
       if (saved) { soundData.current = saved.data; setSoundName(saved.name); }
     }).catch(() => setMessage('Не удалось загрузить сохранённый звук. Используется стандартный сигнал.'));
@@ -275,8 +286,8 @@ export default function OrderBoard() {
     try { localStorage.setItem(ACKNOWLEDGED_KEY, JSON.stringify([...acknowledged.current].slice(-1000))); } catch { /* Keep acknowledgment for this session. */ }
   }
 
-  async function advanceOrder(order: BoardOrder, status: 'PREPARING' | 'READY' | 'COMPLETED') {
-    if (updating.current.has(order.id)) return;
+  async function advanceOrder(order: BoardOrder, status: 'PREPARING' | 'READY' | 'COMPLETED', silent = false): Promise<{ ok: boolean; message?: string }> {
+    if (updating.current.has(order.id)) return { ok: false, message: 'Заказ ещё обновляется' };
     mutationRevision.current++;
     updating.current.add(order.id); setUpdatingIds(new Set(updating.current));
     const controller = new AbortController();
@@ -292,9 +303,57 @@ export default function OrderBoard() {
       newQueue.current.delete(order.id);
       if (!newQueue.current.size && playback.current?.alarm) playback.current.stop();
       setOrders((current) => status === 'COMPLETED' ? current.filter((item) => item.id !== order.id) : current.map((item) => item.id === order.id ? { ...item, status } : item));
-      setMessage(data.warning || '');
-    } catch (error) { setMessage(controller.signal.aborted ? 'Сервер не ответил вовремя. Проверяем текущий статус заказа…' : error instanceof Error ? error.message : 'Нет соединения. Проверяем статус заказа.'); }
+      if (!silent) setMessage(data.warning || '');
+      return { ok: true, message: data.warning };
+    } catch (error) {
+      const message = controller.signal.aborted ? 'Сервер не ответил вовремя. Проверяем текущий статус заказа…' : error instanceof Error ? error.message : 'Нет соединения. Проверяем статус заказа.';
+      if (!silent) setMessage(message);
+      return { ok: false, message };
+    }
     finally { window.clearTimeout(timeout); mutationRevision.current++; updating.current.delete(order.id); setUpdatingIds(new Set(updating.current)); refreshNow.current(); }
+  }
+
+  async function markItem(order: BoardOrder, item: BoardOrder['items'][number], action: 'prepare' | 'undo') {
+    if (bulkBusy.current || updating.current.has(order.id)) return;
+    mutationRevision.current++;
+    updating.current.add(order.id); setUpdatingIds(new Set(updating.current));
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12_000);
+    try {
+      const response = await fetch(`/api/order-board/${order.id}/items/${item.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, preparedQuantity: item.preparedQuantity ?? 0 }), signal: controller.signal,
+      });
+      const data = await response.json() as { item?: { id: string; preparedQuantity: number }; error?: string };
+      if (!response.ok || !data.item) {
+        if (response.status === 401) { newQueue.current.clear(); playback.current?.stop(); soundConfig.current.enabled = false; setSoundEnabled(false); setSession({ configured: true, unlocked: false }); setOrders([]); }
+        throw new Error(data.error || 'Не удалось отметить позицию');
+      }
+      const preparedQuantity = data.item.preparedQuantity;
+      setOrders((current) => current.map((entry) => entry.id === order.id ? { ...entry, items: entry.items.map((position) => position.id === item.id ? { ...position, preparedQuantity } : position) } : entry));
+      setMessage('');
+    } catch (error) {
+      setMessage(controller.signal.aborted ? 'Сервер не ответил вовремя. Проверяем отметку позиции…' : error instanceof Error ? error.message : 'Не удалось отметить позицию');
+    } finally { window.clearTimeout(timeout); mutationRevision.current++; updating.current.delete(order.id); setUpdatingIds(new Set(updating.current)); refreshNow.current(); }
+  }
+
+  async function completeAllReady() {
+    if (bulkBusy.current || updating.current.size) return;
+    const ready = orders.filter((order) => order.status === 'READY');
+    if (!ready.length) return;
+    bulkBusy.current = true; setCompletingAll(true);
+    let completed = 0;
+    const warnings = new Set<string>();
+    try {
+      // Use the regular transition so payment checks, bonuses and customer
+      // notifications work exactly as with the individual "Выдан" button.
+      for (const order of ready) {
+        const result = await advanceOrder(order, 'COMPLETED', true);
+        if (result.ok) completed++;
+        if (result.message) warnings.add(result.message);
+      }
+      setMessage(completed !== ready.length || warnings.size ? `Выдано заказов: ${completed} из ${ready.length}.${warnings.size ? ` ${[...warnings].join(' ')}` : ''}` : '');
+    } finally { bulkBusy.current = false; setCompletingAll(false); refreshNow.current(); }
   }
 
   if (!session || !session.unlocked) return <main className="order-board board-login">
@@ -303,7 +362,7 @@ export default function OrderBoard() {
     {error && <div className="board-notice board-notice-error">{error}<button onClick={() => void checkSession()}>Повторить</button></div>}
   </main>;
 
-  return <main className="order-board">
+  return <main className="order-board" aria-label="Экран заказов">
     <header className="board-header">
       <div className="board-brand">бело́к</div>
       <div className={`board-connection ${error || (lastSync && now - lastSync > 15000) ? 'board-disconnected' : ''}`}><Radio size={17} />{error ? 'Нет соединения' : lastSync ? 'На связи' : 'Подключаемся'}<small>{lastSync ? `Обновлено ${timeLabel(new Date(lastSync).toISOString())}` : 'Получаем заказы'}</small></div>
@@ -316,6 +375,7 @@ export default function OrderBoard() {
         <button onClick={() => void fullscreen()} title="Полный экран" aria-label="Полный экран"><Expand size={16} /></button>
         <button onClick={() => void lockScreen()} title="Заблокировать экран" aria-label="Заблокировать экран"><LockKeyhole size={16} /></button>
       </div>
+      <time className="board-clock" suppressHydrationWarning>{timeLabel(new Date(now).toISOString())}</time>
     </header>
     {settingsOpen && <section className="board-settings" aria-label="Настройки звука">
       <div><strong>Сигнал нового заказа</strong><p>{soundName}</p></div>
@@ -327,7 +387,6 @@ export default function OrderBoard() {
     {!soundEnabled && <div className="board-notice"><VolumeX size={19} />Нажмите «Включить звук», чтобы слышать новые заказы. После перезагрузки включите его снова.</div>}
     {message && <div className="board-notice" role="status">{message}<button onClick={() => setMessage('')}>Закрыть</button></div>}
     {error && <div className="board-notice board-notice-error" role="alert">{error}</div>}
-    <div className="board-summary"><h1>Заказы <span>{orders.length}</span></h1><div aria-live="polite">{freshIds.size ? <button className="board-new-banner" onClick={() => acknowledge([...freshIds])}>Новые заказы ждут внимания: {freshIds.size} · отметить просмотренными</button> : <span>Состав заказа — перед глазами</span>}</div><time suppressHydrationWarning>{timeLabel(new Date(now).toISOString())}</time></div>
     <div className="board-columns">
       {columns.map((column) => {
         const group = orders.filter((order) => column.statuses.includes(order.status))
@@ -335,14 +394,15 @@ export default function OrderBoard() {
             || (b.dailyNumber ?? 0) - (a.dailyNumber ?? 0) || b.id.localeCompare(a.id));
         const Icon = column.icon;
         return <section key={column.id} className={`board-column board-column-${column.id}`}>
-          <div className="board-column-heading"><Icon size={24} /><div><h2>{column.title}</h2><p>{column.hint}</p></div><strong>{group.length}</strong></div>
+          <div className="board-column-heading"><Icon size={19} /><h2>{column.title}</h2>
+            {column.id === 'ready' && <button className="board-complete-all" type="button" title="Отметить все готовые заказы выданными" aria-label="Выдать все готовые заказы" disabled={!group.length || completingAll || updatingIds.size > 0} onClick={() => void completeAllReady()}>{completingAll ? <Loader2 size={18} className="animate-spin" /> : <CheckCheck size={18} />}</button>}
+            <strong>{group.length}</strong></div>
           <div className="board-column-scroll">
-            {group.map((order) => <OrderCard key={order.id} order={order} fresh={freshIds.has(order.id)} now={now} acknowledge={() => acknowledge([order.id])} advance={(status) => void advanceOrder(order, status)} busy={updatingIds.has(order.id)} />)}
+            {group.map((order) => <OrderCard key={order.id} order={order} fresh={freshIds.has(order.id)} now={now} acknowledge={() => acknowledge([order.id])} advance={(status) => { if (!bulkBusy.current) void advanceOrder(order, status); }} markItem={(item, action) => void markItem(order, item, action)} busy={updatingIds.has(order.id) || completingAll} />)}
             {!group.length && <div className="board-empty"><Icon size={34} /><p>{lastSync ? 'Пока нет заказов' : 'Загружаем заказы…'}</p></div>}
           </div>
         </section>;
       })}
     </div>
-    <footer className="board-bottom">Заказы за сегодня · Калининград · автообновление каждые 3 секунды<span>Один сигнал каждые {repeatSeconds} сек., пока есть новые заказы</span></footer>
   </main>;
 }

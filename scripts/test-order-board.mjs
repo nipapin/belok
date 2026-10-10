@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import http from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
 import puppeteer from 'puppeteer';
@@ -12,6 +12,7 @@ const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: proc
 try {
   assert.equal((await fetch(`${base}/api/order-board`)).status, 401);
   assert.equal((await fetch(`${base}/api/order-board/nonexistent-test-order/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'PREPARING' }) })).status, 401);
+  assert.equal((await fetch(`${base}/api/order-board/nonexistent-test-order/items/nonexistent-item`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'prepare', preparedQuantity: 0 }) })).status, 401);
   const subdomain = await new Promise((resolve, reject) => {
     http.get(`${base}/`, { headers: { host: 'orders.belok.pro' } }, (response) => {
       let body = ''; response.setEncoding('utf8');
@@ -48,6 +49,45 @@ try {
         AND (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Kaliningrad')::date = $1::date`, [today]);
     assert.deepEqual(boardOrders.map((order) => order.id).sort(), expected.rows.map((order) => order.id).sort(), 'Include all eligible orders for the current Kaliningrad day');
     console.log(`PASS: today’s board contains ${boardOrders.length} eligible orders; historical orders excluded`);
+    if (['localhost', '127.0.0.1'].includes(new URL(base).hostname)) {
+      const orderId = `board-test-${randomUUID()}`;
+      const otherOrderId = `board-test-${randomUUID()}`;
+      const itemId = `board-test-${randomUUID()}`;
+      const product = (await pool.query('SELECT id FROM products LIMIT 1')).rows[0];
+      assert.ok(product, 'A product is needed for the isolated progress fixture');
+      try {
+        await pool.query(`INSERT INTO orders (id, total, source, "paymentMethod") VALUES ($1, 0, 'KIOSK', 'CASH'), ($2, 0, 'KIOSK', 'CASH')`, [orderId, otherOrderId]);
+        await pool.query(`INSERT INTO order_items (id, "orderId", "productId", quantity, "unitPrice") VALUES ($1, $2, $3, 2, 0)`, [itemId, orderId, product.id]);
+        const mark = (action, preparedQuantity, targetOrderId = orderId) => fetch(`${base}/api/order-board/${targetOrderId}/items/${itemId}`, {
+          method: 'PATCH', headers: { cookie: `belok_kiosk=${cookie}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action, preparedQuantity }),
+        });
+        assert.equal((await mark('invalid', 0)).status, 400);
+        assert.equal((await mark('prepare', 0.5)).status, 400);
+        assert.equal((await mark('prepare', -1)).status, 400);
+        assert.equal((await mark('prepare', Number.MAX_SAFE_INTEGER)).status, 400);
+        assert.equal((await mark('prepare', 0, otherOrderId)).status, 409, 'Items cannot be marked through another order');
+        const simultaneous = await Promise.all([mark('prepare', 0), mark('prepare', 0)]);
+        assert.deepEqual(simultaneous.map((response) => response.status).sort(), [200, 409], 'Concurrent clicks/retries mark only one unit');
+        const currentBoard = await fetch(`${base}/api/order-board`, { headers: { cookie: `belok_kiosk=${cookie}` } });
+        assert.equal((await currentBoard.json()).orders.find((order) => order.id === orderId).items[0].preparedQuantity, 1);
+        assert.equal((await mark('prepare', 1)).status, 200);
+        assert.equal((await mark('prepare', 2)).status, 409, 'Cannot exceed ordered quantity');
+        assert.equal((await mark('undo', 2)).status, 200);
+        assert.equal((await mark('undo', 1)).status, 200);
+        assert.equal((await mark('undo', 0)).status, 409, 'Cannot undo below zero');
+        for (const status of ['COMPLETED', 'CANCELLED']) {
+          await pool.query('UPDATE orders SET status=$2 WHERE id=$1', [orderId, status]);
+          assert.equal((await mark('prepare', 0)).status, 409, 'Closed orders cannot be marked');
+        }
+        await pool.query(`UPDATE orders SET status='PENDING', "createdAt"=(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '2 days' WHERE id=$1`, [orderId]);
+        assert.equal((await mark('prepare', 0)).status, 409, 'Historical orders cannot be marked');
+        await pool.query(`UPDATE orders SET "createdAt"=CURRENT_TIMESTAMP AT TIME ZONE 'UTC', "paymentMethod"='CARD' WHERE id=$1`, [orderId]);
+        assert.equal((await mark('prepare', 0)).status, 409, 'Unpaid online orders cannot be marked');
+        console.log('PASS: real item API enforces PIN, ownership, concurrency, bounds and kitchen eligibility; counts persist');
+      } finally {
+        await pool.query('DELETE FROM orders WHERE id = ANY($1::text[])', [[orderId, otherOrderId]]);
+      }
+    }
   }
   console.log('PASS: actual API requires PIN; signed kiosk session reads kitchen data without customer accounts');
 } finally { await pool.end(); }
@@ -57,13 +97,15 @@ const fixture = (id, status = 'PENDING') => ({
   paymentMethod: 'CASH', paymentStatus: 'PENDING', total: 690,
   comment: 'Соус отдельно', deliveryAddress: null, deliveryTime: null,
   createdAt: new Date(Date.now() - 5 * 60_000).toISOString(),
-  items: [{ id: `item-${id}`, name: 'Боул с курицей', quantity: 2,
+  items: [{ id: `item-${id}`, name: 'Боул с курицей', quantity: 2, preparedQuantity: 0,
     customizations: [{ id: `remove-${id}`, action: 'REMOVE', name: 'Лук' }, { id: `add-${id}`, action: 'ADD', name: 'Авокадо' }] }],
 });
 let snapshot = [fixture('101'), fixture('102', 'PREPARING'), fixture('103', 'READY')];
 let offline = false;
 let unlocked = false;
 let statusFailure = false;
+let itemFailure = false;
+const failedStatusIds = new Set();
 const browser = await puppeteer.launch({ headless: true, ...(process.env.BROWSER_EXECUTABLE ? { executablePath: process.env.BROWSER_EXECUTABLE } : {}) });
 try {
   const page = await browser.newPage();
@@ -92,10 +134,22 @@ try {
       if (offline) return void respond({ error: 'offline' }, 503);
       return void respond({ orders: snapshot });
     }
+    const itemPath = path.match(/^\/api\/order-board\/([^/]+)\/items\/([^/]+)$/);
+    if (itemPath) {
+      if (!unlocked) return void respond({ error: 'PIN' }, 401);
+      if (itemFailure) return void respond({ error: 'Не удалось отметить позицию' }, 503);
+      const order = snapshot.find((order) => order.id === itemPath[1]);
+      const item = order?.items.find((item) => item.id === itemPath[2]);
+      const body = JSON.parse(request.postData());
+      const next = (item?.preparedQuantity ?? 0) + (body.action === 'prepare' ? 1 : -1);
+      if (!item || item.preparedQuantity !== body.preparedQuantity || next < 0 || next > item.quantity) return void respond({ error: 'Позиция уже изменена' }, 409);
+      item.preparedQuantity = next;
+      return void respond({ item: { id: item.id, preparedQuantity: next } });
+    }
     const statusPath = path.match(/^\/api\/order-board\/([^/]+)\/status$/);
     if (statusPath) {
       if (!unlocked) return void respond({ error: 'PIN' }, 401);
-      if (statusFailure) return void respond({ error: 'Не удалось изменить статус заказа' }, 503);
+      if (statusFailure || failedStatusIds.has(statusPath[1])) return void respond({ error: 'Не удалось изменить статус заказа' }, 503);
       const id = statusPath[1];
       const status = JSON.parse(request.postData()).status;
       const current = snapshot.find((order) => order.id === id);
@@ -117,6 +171,32 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.board-card').length === 3);
   assert.equal(await page.evaluate(() => window.__boardSounds), 0, 'Initial snapshot must be silent');
   assert.ok((await page.$eval('.board-items', (element) => element.innerText)).includes('Без Лук'));
+  assert.equal(await page.$('.board-summary'), null);
+  assert.equal(await page.$('.board-bottom'), null);
+  assert.ok(await page.$('.board-header time'), 'Clock must be in the header');
+  const position = '[data-order-id="101"] [data-item-id="item-101"]';
+  itemFailure = true;
+  await page.click(`${position} .board-item`);
+  await page.waitForFunction(() => document.body.innerText.includes('Не удалось отметить позицию'));
+  assert.equal(await page.$eval(`${position} .board-quantity`, (element) => element.innerText), '×2');
+  itemFailure = false;
+  await page.click(`${position} .board-item`);
+  await page.waitForFunction(() => document.querySelector('[data-item-id="item-101"] .board-quantity').innerText === '×1');
+  await page.click(`${position} .board-item-undo`);
+  await page.waitForFunction(() => document.querySelector('[data-item-id="item-101"] .board-quantity').innerText === '×2');
+  for (let prepared = 1; prepared <= 2; prepared++) {
+    await page.click(`${position} .board-item`);
+    await page.waitForFunction((prepared) => document.querySelector('[data-item-id="item-101"] .board-item').disabled === (prepared === 2) && (prepared === 2 || document.querySelector('[data-item-id="item-101"] .board-quantity').innerText === '×1'), {}, prepared);
+  }
+  assert.ok(await page.$(`${position}.board-item-done`));
+  await page.reload({ waitUntil: 'networkidle2' });
+  await page.waitForSelector(`${position}.board-item-done`);
+  assert.equal(await page.$eval(`${position} .board-item`, (button) => button.disabled), true);
+  await page.click(`${position} .board-item-undo`);
+  await page.waitForFunction(() => document.querySelector('[data-item-id="item-101"] .board-quantity').innerText === '×1');
+  const quantityIsRight = await page.$eval(`${position} .board-item`, (button) => button.firstElementChild.getBoundingClientRect().right <= button.lastElementChild.getBoundingClientRect().left);
+  assert.ok(quantityIsRight, 'Quantity must be aligned to the right of the item name');
+  console.log('PASS: item quantities decrement one at a time, completed items disable, undo/reload work, failed mutations retain counts');
   await clickText('Включить звук');
   await page.waitForFunction(() => window.__boardSounds === 5);
   snapshot = [...snapshot, fixture('104'), fixture('105'), fixture('106'), fixture('107')];
@@ -124,7 +204,7 @@ try {
   assert.equal(await page.evaluate(() => window.__boardSounds), 5, 'Five queued orders must share one alarm, without per-order sounds');
   assert.equal(await page.$$eval('.board-card-fresh', (elements) => elements.length), 5);
   assert.deepEqual(await page.$$eval('.board-column-new .board-ticket', (elements) => elements.slice(0, 2).map((element) => element.innerText)), ['#107', '#106'], 'Newest orders must be visible at the top of the column');
-  await clickText('отметить просмотренными');
+  for (const id of ['107', '106', '105', '104', '101']) await page.click(`[data-order-id="${id}"] .board-card-footer button`);
   await page.waitForFunction(() => window.__boardSounds === 10, { timeout: 25_000 });
   assert.equal(await page.$$eval('.board-card-fresh', (elements) => elements.length), 0, 'Acknowledgment removes highlight');
   assert.deepEqual(await page.$$eval('.board-column-new .board-ticket', (elements) => elements.slice(0, 2).map((element) => element.innerText)), ['#107', '#106'], 'Acknowledgment must not change chronological order or silence the queue');
@@ -143,18 +223,26 @@ try {
   console.log('PASS: five new orders share one repeating alarm; viewed does not silence it; buttons move orders and failures retain cards');
   await page.click('[data-order-id="107"] .board-order-action');
   await page.waitForFunction(() => !!document.querySelector('.board-column-ready [data-order-id="107"]'));
-  await page.click('[data-order-id="107"] .board-order-action');
+  failedStatusIds.add('103');
+  await page.click('[aria-label="Выдать все готовые заказы"]');
   await page.waitForFunction(() => !document.querySelector('[data-order-id="107"]'));
   await page.waitForFunction(() => document.querySelectorAll('.board-card').length === 6);
+  await page.waitForFunction(() => document.body.innerText.includes('Выдано заказов: 1 из 2.'));
+  assert.ok(await page.$('.board-column-ready [data-order-id="103"]'), 'Bulk completion must retain failed orders');
+  failedStatusIds.clear();
+  await page.click('[aria-label="Выдать все готовые заказы"]');
+  await page.waitForFunction(() => document.querySelectorAll('.board-card').length === 5);
+  assert.equal(await page.$eval('[aria-label="Выдать все готовые заказы"]', (button) => button.disabled), true);
+  console.log('PASS: bulk completes only Ready orders, retains failures and disables when the column is empty');
   const quietCount = await page.evaluate(() => window.__boardSounds);
   await new Promise((resolve) => setTimeout(resolve, 21_000));
   assert.equal(await page.evaluate(() => window.__boardSounds), quietCount, 'Empty New column must stop reminders');
   offline = true;
   await page.waitForFunction(() => document.body.innerText.includes('Нет связи с сервером'));
-  assert.equal(await page.$$eval('.board-card', (elements) => elements.length), 6, 'Retain orders during network failure');
+  assert.equal(await page.$$eval('.board-card', (elements) => elements.length), 5, 'Retain orders during network failure');
   offline = false;
   snapshot.push(fixture('108'));
-  await page.waitForFunction(() => document.querySelectorAll('.board-card').length === 7 && !document.body.innerText.includes('Нет связи с сервером'));
+  await page.waitForFunction(() => document.querySelectorAll('.board-card').length === 6 && !document.body.innerText.includes('Нет связи с сервером'));
   assert.equal(await page.evaluate(() => window.__boardSounds), quietCount + 5, 'A new queue restarts one alarm');
   await mkdir('artifacts/order-board', { recursive: true });
   await page.screenshot({ path: 'artifacts/order-board/desktop.png' });
@@ -179,7 +267,7 @@ try {
   };
   assert.equal(await page.$eval('input[type="number"]', (input) => input.value), '20');
   await setRepeat('5');
-  await page.waitForFunction(() => document.querySelector('.board-bottom').innerText.includes('каждые 5 сек.'));
+  await page.waitForFunction(() => document.querySelector('input[type="number"]').value === '5');
   const beforeRepeat = await page.evaluate(() => window.__boardSounds);
   await new Promise((resolve) => setTimeout(resolve, 2000));
   assert.equal(await page.evaluate(() => window.__boardSounds), beforeRepeat, 'Changing interval must not trigger an immediate extra sound');
@@ -190,7 +278,7 @@ try {
   assert.equal(await page.$eval('input[type="number"]', (input) => input.value), '5', 'Invalid interval must revert to the last valid value');
   assert.equal(await page.evaluate(() => localStorage.getItem('belok-board-repeat-seconds')), '5');
   await page.reload({ waitUntil: 'networkidle2' });
-  await page.waitForFunction(() => document.querySelectorAll('.board-card').length === 7);
+  await page.waitForFunction(() => document.querySelectorAll('.board-card').length === 6);
   assert.equal(await page.evaluate(() => window.__boardSounds), 0, 'Reload must require a new gesture for audio');
   await clickText('Настройки звука');
   await page.waitForFunction(() => document.body.innerText.includes('test-sound.wav'));
@@ -201,6 +289,7 @@ try {
   console.log('PASS: configurable repeat interval applies to active alarms, validates input and persists after reload');
   await clickText('Настройки звука');
   await page.setViewport({ width: 390, height: 844 });
+  await clickText('Настройки звука');
   await page.screenshot({ path: 'artifacts/order-board/mobile.png', fullPage: true });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Mobile must not overflow horizontally');
   await page.click('[aria-label="Заблокировать экран"]');

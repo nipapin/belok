@@ -17,6 +17,7 @@ export interface BoardOrder {
     id: string;
     name: string;
     quantity: number;
+    preparedQuantity: number;
     customizations: { id: string; action: IngredientAction; name: string }[];
   }[];
 }

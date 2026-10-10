@@ -21,8 +21,8 @@ export async function GET() {
        ORDER BY "createdAt" DESC, "dailyNumber" DESC NULLS LAST, id DESC`
     );
     const orderIds = orders.map((order) => order.id);
-    const items = orderIds.length ? await query<OrderItemRow & { name: string }>(
-      `SELECT i.id, i."orderId", i.quantity, i."variantName", COALESCE(p.name, 'Блюдо удалено') AS name
+    const items = orderIds.length ? await query<OrderItemRow & { name: string; preparedQuantity: number }>(
+      `SELECT i.id, i."orderId", i.quantity, i."preparedQuantity", i."variantName", COALESCE(p.name, 'Блюдо удалено') AS name
        FROM "order_items" i LEFT JOIN "products" p ON p.id = i."productId"
        WHERE i."orderId" = ANY($1::text[]) ORDER BY i.id`, [orderIds]
     ) : [];
@@ -35,7 +35,7 @@ export async function GET() {
       orders: orders.map((order) => ({
         ...order,
         items: items.filter((item) => item.orderId === order.id).map((item) => ({
-          id: item.id, name: formatVariantTitle(item.name, item.variantName), quantity: item.quantity,
+          id: item.id, name: formatVariantTitle(item.name, item.variantName), quantity: item.quantity, preparedQuantity: item.preparedQuantity,
           customizations: customizations.filter((c) => c.orderItemId === item.id)
             .map((c) => ({ id: c.id, action: c.action, name: c.name })),
         })),
