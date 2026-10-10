@@ -30,6 +30,7 @@ import type {
 
 interface IncomingItem {
   productId: string;
+  comboSelections?: import('@/lib/combos').ComboSelection[];
   variantId?: string | null;
   quantity: number;
   customizations?: { ingredientId: string; action: IngredientAction; priceDelta?: number }[];
@@ -219,10 +220,10 @@ export async function POST(request: NextRequest) {
         const itemId = uuidv4();
         const inserted = await client.query(
           `INSERT INTO "order_items"
-             (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice", "fiscalName")
-           SELECT $1, $2, $3, $4, $5, $6, $7, p.name || $8 FROM products p WHERE p.id=$3`,
+             (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice", "fiscalName", "comboSnapshot")
+           SELECT $1, $2, $3, $4, $5, $6, $7, p.name || $8, $9::jsonb FROM products p WHERE p.id=$3`,
           [itemId, orderId, item.productId, item.variantId, item.variantName, item.quantity, item.unitPrice,
-            `${item.variantName ? ` — ${item.variantName}` : ''}${item.customizations.map(c => `; ${c.action === 'ADD' ? '+' : '−'}${c.ingredientName}`).join('')}`]
+            `${item.variantName ? ` — ${item.variantName}` : ''}${item.customizations.map(c => `; ${c.action === 'ADD' ? '+' : '−'}${c.ingredientName}`).join('')}`,item.comboSnapshot ? JSON.stringify(item.comboSnapshot) : null]
         );
         if(inserted.rowCount!==1) throw new VariantOrderError('Товар изменился. Обновите заказ.');
         for (const c of item.customizations || []) {
