@@ -26,6 +26,7 @@ export async function POST(request:NextRequest){
    // Lock ALL affected inventory rows in stable order to prevent deadlocks.
    const ids=[...new Set([preparedItemId,...required.map(l=>l.id)])].sort();
    const locked=await client.query<{id:string;quantity:string;kind:string}>(`SELECT id::text AS id,quantity::text AS quantity,kind FROM inventory_items WHERE id::text=ANY($1::text[]) ORDER BY id FOR UPDATE`,[ids]);
+   if(locked.rows.find(x=>x.id===preparedItemId)?.kind!=='PREPARED')throw new Error('PREPARED_NOT_FOUND');
    const stock=new Map(locked.rows.map(x=>[x.id,Number(x.quantity)]));
    if(stock.size!==ids.length)throw new Error('BATCH_ITEMS');
    for(const item of required)if((stock.get(item.id)??0)<item.amount)throw new Error('BATCH_STOCK');

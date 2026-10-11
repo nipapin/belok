@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { query, withTransaction } from '@/lib/db';
+import {assertInventoryMetadataChange} from '@/lib/inventoryMetadata';
 import {requireInventoryPermission} from '@/lib/inventoryAccess';
 import {inventoryKinds, stockMilli, stockDecimal, type InventoryUnit} from '@/lib/inventoryStock';
 
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
   try {
     const actor=await requireInventoryPermission('catalog');
     const body = await request.json() ?? {};
+    body.kind ??= 'UNSPECIFIED';
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name || name.length > 160 || !units.includes(body.unit) || !kinds.includes(body.kind) ||
       (body.quantity !== undefined && Number(body.quantity) !== 0) || !validQuantity(body.minQuantity ?? 0,body.unit) || !validImage(body.image ?? null)) {
@@ -56,19 +58,14 @@ export async function PUT(request: NextRequest) {
    return NextResponse.json({error:'Проверьте данные позиции'},{status:400});
   const item=await withTransaction(async client=>{
    await client.query("SELECT set_config('belok.actor_user_id',$1,true)",[actor.id]);
-   const current=await client.query<{unit:string;kind:string}>(`SELECT unit,kind FROM inventory_items WHERE id=$1 FOR UPDATE`,[body.id]);
-   if(!current.rows.length)return null;
-   if(current.rows[0].unit!==body.unit || current.rows[0].kind!==body.kind) {
-    const used=await client.query(`SELECT (EXISTS(SELECT 1 FROM inventory_recipe_lines WHERE item_id=$1) OR EXISTS(SELECT 1 FROM inventory_product_links WHERE item_id=$1) OR EXISTS(SELECT 1 FROM inventory_batches WHERE prepared_item_id=$1) OR EXISTS(SELECT 1 FROM inventory_movements WHERE item_id=$1) OR EXISTS(SELECT 1 FROM inventory_items WHERE id=$1 AND quantity<>0)) AS used`,[body.id]);
-    if(used.rows[0]?.used)throw Error('ITEM_REFERENCED');
-   }
+   if(!await assertInventoryMetadataChange(client,body.id,body.kind,body.unit))return null;
    const updated=await client.query(`UPDATE inventory_items SET name=$2,kind=$3,unit=$4,min_quantity=$5,image=$6,notes=$7,updated_at=NOW() WHERE id=$1
     RETURNING id,name,kind,unit,quantity::text AS quantity,min_quantity::text AS "minQuantity",image,notes,updated_at AS "updatedAt"`,
     [body.id,body.name.trim(),body.kind,body.unit,stockDecimal(stockMilli(body.minQuantity,body.unit)),body.image||null,String(body.notes??'').slice(0,1000)]);
    return updated.rows[0];
   });
   return item?NextResponse.json({item}):NextResponse.json({error:'Не найдено'},{status:404});
- }catch(e){if((e as Error).message==='ITEM_REFERENCED')return NextResponse.json({error:'Тип или единицу нельзя изменить: позиция используется в рецептах или товарах'},{status:409});return errorResponse(e)}
+ }catch(e){const messages:Record<string,string>={UNIT_REFERENCED:'Единицу нельзя изменить после внесения остатков или использования позиции.',PREPARED_REFERENCED:'Нельзя изменить тип заготовки с техкартой или выпущенными партиями.',PREPARED_LINKED:'Сначала уберите прямую привязку к товару: для заготовки используется техкарта.'};if(messages[(e as Error).message])return NextResponse.json({error:messages[(e as Error).message]},{status:409});return errorResponse(e)}
 }
 export async function DELETE(request: NextRequest){
  try{

@@ -10,10 +10,10 @@ import InventoryAdministration from '@/components/admin/InventoryAdministration'
 import StockOperationModal from '@/components/admin/StockOperationModal';
 import StockMovements from '@/components/admin/StockMovements';
 import InventoryCardMenu from '@/components/admin/InventoryCardMenu';
-import {inventoryKindLabels, stockMilli, type StockReason} from '@/lib/inventoryStock';
+import {inventoryKinds, inventoryKindLabels, stockMilli, type InventoryKind, type StockReason} from '@/lib/inventoryStock';
 import './inventory.css';
 
-type Item={ id:string;name:string;kind:'RAW'|'PURCHASED'|'PREPARED'|'PACKAGING';unit:'g'|'ml'|'pcs';quantity:string;minQuantity:string;notes:string;image?:string|null;updatedAt?:string };
+type Item={ id:string;name:string;kind:InventoryKind;unit:'g'|'ml'|'pcs';quantity:string;minQuantity:string;notes:string;image?:string|null;updatedAt?:string };
 const unitLabels={g:'г',ml:'мл',pcs:'шт.'};
 const kindLabels=inventoryKindLabels;
 type StockStatus='green'|'yellow'|'orange'|'red';
@@ -50,7 +50,7 @@ export default function InventoryPage(){
   const [image,setImage]=useState('');
   const [uploading,setUploading]=useState(false);
   const [name,setName]=useState('');
-  const [kind,setKind]=useState<Item['kind']>('RAW');
+  const [kind,setKind]=useState<Item['kind']>('UNSPECIFIED');
   const [unit,setUnit]=useState<Item['unit']>('g');
   const [stockOperation,setStockOperation]=useState<{item:Item;reason:StockReason}|null>(null);
   const [movementItem,setMovementItem]=useState<Item|null>(null);
@@ -61,12 +61,12 @@ export default function InventoryPage(){
   const [administration,setAdministration]=useState<{itemId?:string;itemName?:string}|null>(null);
   const {data,isLoading,isError}=useQuery({queryKey:['admin-inventory'],queryFn:()=>api('GET'),refetchInterval:10000});
   const items=data?.items||[];
-  const counts=useMemo(()=>({ALL:items.length,RAW:items.filter(i=>i.kind==='RAW').length,PURCHASED:items.filter(i=>i.kind==='PURCHASED').length,PREPARED:items.filter(i=>i.kind==='PREPARED').length,PACKAGING:items.filter(i=>i.kind==='PACKAGING').length}),[items]);
+  const counts=useMemo(()=>({ALL:items.length,UNSPECIFIED:items.filter(i=>i.kind==='UNSPECIFIED').length,RAW:items.filter(i=>i.kind==='RAW').length,PURCHASED:items.filter(i=>i.kind==='PURCHASED').length,PREPARED:items.filter(i=>i.kind==='PREPARED').length,PACKAGING:items.filter(i=>i.kind==='PACKAGING').length}),[items]);
   const lowCount=items.filter(x=>stockStatus(x)==='red').length;
   const statusCounts=useMemo(()=>({ALL:items.length,green:items.filter(x=>stockStatus(x)==='green').length,yellow:items.filter(x=>stockStatus(x)==='yellow').length,orange:items.filter(x=>stockStatus(x)==='orange').length,red:items.filter(x=>stockStatus(x)==='red').length}),[items]);
-  const filters=[{value:'ALL',label:'Все'},{value:'RAW',label:'Сырьё'},{value:'PURCHASED',label:'Покупная продукция'},{value:'PREPARED',label:'Заготовки'},{value:'PACKAGING',label:'Упаковка'}] as const;
+  const filters: {value:'ALL'|InventoryKind;label:string}[]=[{value:'ALL',label:'Все'},...inventoryKinds.map(value=>({value,label:kindLabels[value]}))];
   const filtered=useMemo(()=>items.filter(x=>(filter==='ALL'||x.kind===filter)&&(statusFilter==='ALL'||stockStatus(x)===statusFilter)&&x.name.toLocaleLowerCase('ru').includes(search.toLocaleLowerCase('ru'))),[items,search,filter,statusFilter]);
-  const resetForm=()=>{setShowForm(false);setEditing(null);setName('');setKind('RAW');setUnit('g');setNotes('');setMinQuantity('0');setImage('');setError('')};
+  const resetForm=()=>{setShowForm(false);setEditing(null);setName('');setKind('UNSPECIFIED');setUnit('g');setNotes('');setMinQuantity('0');setImage('');setError('')};
   const openCreate=()=>{resetForm();setShowForm(true)};
   const openEdit=(item:Item)=>{setEditing(item);setName(item.name);setKind(item.kind);setUnit(item.unit);setNotes(item.notes??'');setMinQuantity(String(Number(item.minQuantity)));setImage(item.image??'');setShowForm(true);setError('')};
   const uploadImage=async (file:File)=>{setUploading(true);setError('');try{const data=new FormData();data.append('file',file);data.append('folder','products');const res=await fetch('/api/upload',{method:'POST',body:data});const result=await res.json();if(!res.ok)throw Error(result.error??'Ошибка загрузки');setImage(result.url)}catch(e){setError(e instanceof Error?e.message:'Ошибка загрузки')}finally{setUploading(false)}};
@@ -128,6 +128,7 @@ export default function InventoryPage(){
       <label className="block text-sm">Название<input className="inventory-field mt-1 w-full" required maxLength={160} value={name} onChange={e=>setName(e.target.value)} placeholder="Например, мука пшеничная"/></label>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="text-sm">Тип<AdminSelect ariaLabel="Тип складской позиции" value={kind} onChange={v=>setKind(v as Item['kind'])} options={Object.entries(kindLabels).map(([value,label])=>({value,label}))}/></label><label className="text-sm">Единица<AdminSelect ariaLabel="Единица измерения" value={unit} onChange={v=>setUnit(v as Item['unit'])} options={Object.entries(unitLabels).map(([value,label])=>({value,label}))}/></label>
       <label className="text-sm">Напомнить о пополнении при остатке, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="text" inputMode="decimal" required value={minQuantity} onChange={e=>setMinQuantity(quantityInput(e.target.value))}/></label></div>
+      <p className="text-sm text-(--lg-text-muted)">Тип можно указать позже через «Изменить». Остатки и история сохранятся.</p>
       <label className="block text-sm">Примечание<textarea className="inventory-field mt-1" maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)}/></label>
       {!editing&&<p className="text-sm text-(--lg-text-muted)">Создаём карточку с нулевым остатком. Затем откроется отдельная операция внесения начального остатка.</p>}
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
