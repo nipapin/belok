@@ -886,6 +886,7 @@ export default function KioskApp() {
                           eager={categoryIndex === 0 && index < 4}
                           product={{
                             id: product.id,
+                            isAvailable: product.isAvailable,
                             variants: product.variants,
                             hasOptions: product.hasOptions,
                             name: product.name,

@@ -50,13 +50,13 @@ export async function POST(request: NextRequest) {
     { error: 'Подбор сейчас недоступен. Можно искать по названию.' }, { status: 503, headers },
   );
   try {
-    const menu = await fetchProductsWithRelations({ onlyAvailable: true });
+    const menu = await fetchProductsWithRelations({ onlyAvailable: true, stockAvailability: true });
     const selections = await searchMenu(input.query, menu, {
       baseUrl, apiKey, model: process.env.ANTHROPIC_MODEL || 'claude-haiku-5-5',
     });
     // A product may be disabled or repriced while the model is working.
     const current = selections.length ? searchableMenu(await fetchProductsWithRelations({
-      onlyAvailable: true, productIds: selections.map((match) => match.productId),
+      onlyAvailable: true, stockAvailability: true, productIds: selections.map((match) => match.productId),
     })) : [];
     const matches = validateSelections({ matches: selections }, current).map((match) => ({
       product: current.find((product) => product.id === match.productId)!, variantId: match.variantId,

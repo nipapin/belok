@@ -22,6 +22,9 @@
     "test:menu-search": "tsx --test scripts/test-menu-search.mts",
     "test:product-options:integration": "node scripts/test-product-options-integration.mjs",
     "test:inventory": "node --import tsx --test scripts/test-inventory-stock.mts",
+    "test:manager": "node --import tsx --test scripts/test-manager-workspace.mts",
+    "test:manager:integration": "node --import tsx --test scripts/test-manager-workspace-integration.mts",
+    "test:manager:browser": "node scripts/test-manager-workspace-browser.mjs",
     "test:inventory:integration": "node --import tsx --test scripts/test-inventory-operations.mts"
   },
   "dependencies": {

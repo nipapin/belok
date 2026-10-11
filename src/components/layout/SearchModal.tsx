@@ -50,6 +50,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
 
   const { data: productsData, isLoading } = useQuery({
     queryKey: ["products"],
+    refetchInterval: 10000,
     queryFn: () => fetch("/api/products").then((r) => r.json()),
     enabled: open,
   });

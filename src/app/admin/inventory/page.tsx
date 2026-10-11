@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import {createPortal} from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PackagePlus, Search, Plus, Pencil, Trash2, ImagePlus, X, Boxes, AlertTriangle, ShieldCheck, ArrowDownLeft, ArrowUpRight, ClipboardCheck } from 'lucide-react';
@@ -58,7 +59,7 @@ export default function InventoryPage(){
   const [error,setError]=useState('');
   const [deleteTarget,setDeleteTarget]=useState<Item|null>(null);
   const [administration,setAdministration]=useState<{itemId?:string;itemName?:string}|null>(null);
-  const {data,isLoading,isError}=useQuery({queryKey:['admin-inventory'],queryFn:()=>api('GET')});
+  const {data,isLoading,isError}=useQuery({queryKey:['admin-inventory'],queryFn:()=>api('GET'),refetchInterval:10000});
   const items=data?.items||[];
   const counts=useMemo(()=>({ALL:items.length,RAW:items.filter(i=>i.kind==='RAW').length,PURCHASED:items.filter(i=>i.kind==='PURCHASED').length,PREPARED:items.filter(i=>i.kind==='PREPARED').length,PACKAGING:items.filter(i=>i.kind==='PACKAGING').length}),[items]);
   const lowCount=items.filter(x=>stockStatus(x)==='red').length;
@@ -74,6 +75,7 @@ export default function InventoryPage(){
   const quantityInput=(value:string)=>value.replace(/[^0-9.,]/g,'');
   const valid=(s:string,measure:Item['unit']=unit)=>{try{stockMilli(s,measure);return true}catch{return false}};
   return <div className="space-y-5">
+    <Link href="/admin/recipes" className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 underline underline-offset-4">Техкарты блюд и заготовок →</Link>
     <header className="flex items-center justify-between gap-3">
       <h1 className="heading-section m-0">Склад</h1>
       <div className="hidden sm:flex items-center gap-2">

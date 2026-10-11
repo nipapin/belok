@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ComboChoices,initialComboSelections,comboSelectionValid,comboDisplay } from "@/components/product/ComboChoices";
 import type { ComboSelection } from "@/lib/combos";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -24,18 +24,20 @@ export default function ProductDetailPage() {
   const [variantPick, setVariantPick] = useState<{ productId: string; index: number } | null>(null);
 
   const [quantity, setQuantity] = useState(1);
-  const [comboSelections,setComboSelections]=useState<ComboSelection[]>([]);
+  const [pickedCombo,setPickedCombo]=useState<{ownerId:string;choices:ComboSelection[]}|null>(null);
   const [removedIngredients, setRemovedIngredients] = useState<Set<string>>(new Set());
   const [addedExtras, setAddedExtras] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useQuery({
     queryKey: ["product", id],
+    refetchInterval: 10000,
     queryFn: () => fetch(`/api/products/${id}`).then((r) => r.json()),
   });
 
   const product: Product | undefined = data?.product;
-  useEffect(()=>{if(product?.isCombo && product.comboGroups)setComboSelections(initialComboSelections(product.comboGroups));},[product]);
   const comboGroups=product?.comboGroups??[];
+  const comboSelections=pickedCombo?.ownerId===id?pickedCombo.choices:initialComboSelections(comboGroups);
+  const setComboSelections=(choices:ComboSelection[])=>setPickedCombo({ownerId:id,choices});
   const comboInfo=comboDisplay(comboGroups,comboSelections);
   const comboValid=!product?.isCombo||comboSelectionValid(comboGroups,comboSelections);
 
@@ -56,7 +58,7 @@ export default function ProductDetailPage() {
   const selectedVariant = variants[safeVariantIndex] ?? null;
 
   const handleAddToCart = () => {
-    if (!product || !comboValid) return;
+    if (!product || !comboValid || product.isAvailable === false) return;
     addItem({
       productId: product.id,
       variantId: selectedVariant?.id ?? null,
@@ -192,8 +194,8 @@ export default function ProductDetailPage() {
         {product.isCombo ? <ComboChoices groups={comboGroups} value={comboSelections} onChange={setComboSelections} /> : <ProductOptions links={product.ingredients} removed={removedIngredients} added={addedExtras} onRemoved={setRemovedIngredients} onAdded={setAddedExtras} />}
 
         <div className="glass-panel-strong p-2 sticky bottom-0 left-0 right-0 flex items-center justify-between">
-          <button type="button" className="btn-primary" onClick={handleAddToCart} disabled={!comboValid}>
-            В корзину · {calcPrice()} ₽
+          <button type="button" className="btn-primary" onClick={handleAddToCart} disabled={!comboValid || product.isAvailable === false}>
+            {product.isAvailable === false ? 'Блюдо на стопе' : `В корзину · ${calcPrice()} ₽`}
           </button>
           <div className="flex items-center justify-center gap-2">
             <button

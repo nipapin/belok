@@ -23,6 +23,7 @@ export type FoodCardVariant = import("@/types").ProductVariant;
 
 
 export type FoodCardModel = {
+  isAvailable?: boolean;
   id: string;
   name: string;
   price: number;
@@ -216,7 +217,7 @@ export function FoodCard({
         className="food-card__footer"
         onClick={(event) => event.stopPropagation()}
       >
-        <PriceCTA
+        {product.isAvailable === false ? <div className="food-price-cta"><p className="food-price">{product.price} ₽</p><span className="text-sm font-semibold text-red-700" role="status">На стопе</span></div> : <PriceCTA
           price={product.price}
           quantity={quantity}
           busy={busy}
@@ -226,7 +227,7 @@ export function FoodCard({
           onAdd={onAdd}
           onIncrement={onIncrement}
           onDecrement={onDecrement}
-        />
+        />}
       </div>
     </article>
   );

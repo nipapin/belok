@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
 
     const products = await fetchProductsWithRelations({
       onlyAvailable: true,
+      stockAvailability: true,
       categoryId,
     });
 

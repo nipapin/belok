@@ -4,7 +4,7 @@ export type ComboGroup={id:string;name:string;minSelect:number;maxSelect:number;
 export type ComboSelection={groupId:string;productIds:string[]};
 export type ComboSnapshot={groups:{name:string;products:{productId:string;name:string;quantity:number}[]}[]};
 type Row={comboId:string;groupId:string;groupName:string;minSelect:number;maxSelect:number;productId:string|null;productName:string|null;priceDelta:string|null;available:boolean|null};
-export async function loadComboGroups(ids:string[]):Promise<Record<string,ComboGroup[]>>{
+export async function loadComboGroups(ids:string[], checkStock = false):Promise<Record<string,ComboGroup[]>>{
  if(!ids.length)return {};
  const rows=await query<Row>(`SELECT g."comboId",g.id AS "groupId",g.name AS "groupName",g."minSelect",g."maxSelect",
   o."productId",p.name AS "productName",o."priceDelta"::text AS "priceDelta",
@@ -12,6 +12,11 @@ export async function loadComboGroups(ids:string[]):Promise<Record<string,ComboG
   FROM combo_groups g LEFT JOIN combo_group_options o ON o."groupId"=g.id
   LEFT JOIN products p ON p.id=o."productId" LEFT JOIN categories c ON c.id=p."categoryId"
   WHERE g."comboId"=ANY($1::text[]) ORDER BY g."sortOrder",g.id,o."sortOrder",o.id`,[ids]);
+ if(checkStock){
+  const {loadStockAvailability}=await import('@/lib/inventoryAvailability.server');
+  const stock=await loadStockAvailability([...new Set(rows.flatMap(row=>row.productId?[row.productId]:[]))]);
+  for(const row of rows)if(row.productId&&stock.get(row.productId)?.state==='STOP')row.available=false;
+ }
  const grouped:Record<string,ComboGroup[]>={};
  for(const row of rows){const groups=grouped[row.comboId]??(grouped[row.comboId]=[]);
  let group=groups.find(g=>g.id===row.groupId);

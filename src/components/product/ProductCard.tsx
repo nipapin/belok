@@ -31,6 +31,7 @@ function sameProductCard(prev: ProductCardProps, next: ProductCardProps) {
     a.price === b.price &&
     a.hasOptions === b.hasOptions &&
     a.isCombo === b.isCombo &&
+    a.isAvailable === b.isAvailable &&
     a.calories === b.calories &&
     a.proteins === b.proteins &&
     a.fats === b.fats &&
@@ -67,6 +68,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
 
   function handleAdd(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.isAvailable === false) return;
     if(product.isCombo){setComboOpen(true);return;}
     if (product.hasOptions) {
       const query = active ? `?v=${encodeURIComponent(active.id)}` : '';
@@ -92,6 +94,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
 
   function handleIncrement(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.isAvailable === false) return;
     if (plainLineId) {
       updateQuantity(plainLineId, quantity + 1);
       haptic("light");

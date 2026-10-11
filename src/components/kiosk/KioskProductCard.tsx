@@ -24,6 +24,7 @@ function sameCard(prev: KioskProductCardProps, next: KioskProductCardProps) {
     a.price === b.price &&
     a.hasOptions === b.hasOptions &&
     a.isCombo === b.isCombo &&
+    a.isAvailable === b.isAvailable &&
     JSON.stringify(a.variants) === JSON.stringify(b.variants) &&
     a.calories === b.calories &&
     a.proteins === b.proteins &&
@@ -61,6 +62,7 @@ export const KioskProductCard = memo(function KioskProductCard({
 
   function handleAdd(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.isAvailable === false) return;
     if (product.hasOptions || product.isCombo) { onOpen(active?.id ?? null); return; }
     if (busy) return;
     setBusy(true);
@@ -81,6 +83,7 @@ export const KioskProductCard = memo(function KioskProductCard({
 
   function handleIncrement(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.isAvailable === false) return;
     if (plainLineId) {
       updateQuantity(plainLineId, quantity + 1);
       haptic('light');

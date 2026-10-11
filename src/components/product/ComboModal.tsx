@@ -1,17 +1,19 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
-import { useState,useEffect } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { ComboChoices,comboDisplay,comboSelectionValid,initialComboSelections } from '@/components/product/ComboChoices';
 import type { ComboGroup,ComboSelection } from '@/lib/combos';
 import { useCartStore } from '@/store/cartStore';
 type Product={id:string;name:string;price:number;image:string|null;isAvailable:boolean;comboGroups:ComboGroup[]};
 export default function ComboModal({productId,onClose}:{productId:string;onClose:()=>void}){
- const {data,isLoading}=useQuery({queryKey:['combo-product',productId],queryFn:async()=>{const r=await fetch('/api/products/'+productId,{cache:'no-store'});if(!r.ok)throw Error('Недоступно');return (await r.json()).product as Product|null}});
- const [choices,setChoices]=useState<ComboSelection[]>([]);
+ const {data,isLoading}=useQuery({queryKey:['combo-product',productId],refetchInterval:10000,queryFn:async()=>{const r=await fetch('/api/products/'+productId,{cache:'no-store'});if(!r.ok)throw Error('Недоступно');return (await r.json()).product as Product|null}});
+ const [picked,setPicked]=useState<{ownerId:string;choices:ComboSelection[]}|null>(null);
  const add=useCartStore(s=>s.addItem);
- useEffect(()=>{if(data?.comboGroups)setChoices(initialComboSelections(data.comboGroups));},[data]);
- const groups=data?.comboGroups??[];const info=comboDisplay(groups,choices);
+ const groups=data?.comboGroups??[];
+ const choices=picked?.ownerId===productId?picked.choices:initialComboSelections(groups);
+ const setChoices=(choices:ComboSelection[])=>setPicked({ownerId:productId,choices});
+ const info=comboDisplay(groups,choices);
  const valid=comboSelectionValid(groups,choices);
  return <div className="fixed inset-0 z-[2000] flex items-end justify-center sm:items-center sm:p-6" role="presentation">
   <button className="absolute inset-0 bg-black/50" onClick={onClose} aria-label="Закрыть окно"/>

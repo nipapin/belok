@@ -1,5 +1,6 @@
 import { loadComboGroups } from '@/lib/combos';
 import { query } from '@/lib/db';
+import { loadStockAvailability } from '@/lib/inventoryAvailability.server';
 import type {
   CategoryRow,
   IngredientRow,
@@ -9,6 +10,7 @@ import type {
 } from '@/lib/types';
 
 export interface ProductFilter {
+  stockAvailability?: boolean;
   categoryId?: string | null;
   onlyAvailable?: boolean;
   productId?: string;
@@ -191,12 +193,20 @@ export async function fetchProductsWithRelations(
     product.variants.push(variant);
   }
 
-  const combos = await loadComboGroups(ids.filter(id=>productMap.get(id)?.isCombo));
+  const combos = await loadComboGroups(ids.filter(id=>productMap.get(id)?.isCombo), filter.stockAvailability);
   for(const id of ids){const item=productMap.get(id)!;item.comboGroups=combos[id]??[];}
+  if (filter.stockAvailability) {
+    const stock = await loadStockAvailability(ids);
+    for (const id of ids) {
+      const item = productMap.get(id)!;
+      const stopped = stock.get(id)?.state === 'STOP' || (item.isCombo && item.comboGroups.some(group => group.options.filter(option => option.available).length < group.minSelect));
+      item.isAvailable = item.isAvailable && !stopped;
+    }
+  }
   return products.map((r) => productMap.get(r.id)!);
 }
 
-export async function fetchProductById(id: string): Promise<ProductWithRelations | null> {
-  const list = await fetchProductsWithRelations({ productId: id });
+export async function fetchProductById(id: string, stockAvailability = false): Promise<ProductWithRelations | null> {
+  const list = await fetchProductsWithRelations({ productId: id, stockAvailability });
   return list[0] ?? null;
 }

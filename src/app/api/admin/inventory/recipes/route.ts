@@ -9,6 +9,18 @@ export async function GET(req:NextRequest){
   await requireInventoryPermission('view');
   const ownerKind=req.nextUrl.searchParams.get('ownerKind');
   const ownerId=req.nextUrl.searchParams.get('ownerId');
+  if(!ownerKind&&!ownerId){
+   const recipes=await query(`SELECT p.id AS "ownerId",'PRODUCT' AS "ownerKind",p.name,'pcs' AS unit,
+    r.id AS "recipeId",r.output_quantity::text AS "outputQuantity",r.output_unit AS "outputUnit",
+    (SELECT count(*)::int FROM inventory_recipe_lines l WHERE l.recipe_id=r.id) AS "lineCount"
+    FROM products p LEFT JOIN inventory_recipes r ON r.owner_kind='PRODUCT' AND r.owner_id=p.id
+    WHERE COALESCE(p."isCombo",false)=false
+    UNION ALL SELECT i.id::text,'PREPARED',i.name,i.unit,r.id,r.output_quantity::text,r.output_unit,
+    (SELECT count(*)::int FROM inventory_recipe_lines l WHERE l.recipe_id=r.id)
+    FROM inventory_items i LEFT JOIN inventory_recipes r ON r.owner_kind='PREPARED' AND r.owner_id=i.id::text
+    WHERE i.kind='PREPARED' AND i.is_active=true ORDER BY name`);
+   return NextResponse.json({recipes},{headers:{'Cache-Control':'no-store'}});
+  }
   if(ownerKind!=='PRODUCT'&&ownerKind!=='PREPARED')return NextResponse.json({error:'Invalid ownerKind'},{status:400});
   if(!ownerId)return NextResponse.json({error:'Invalid ownerId'},{status:400});
   const rows=await query<{id:string;outputQuantity:string;outputUnit:string;itemId:string|null;quantity:string|null;instructions:string}>(`SELECT r.id,r.output_quantity::text AS "outputQuantity",r.output_unit AS "outputUnit",r.instructions,l.item_id::text AS "itemId",l.quantity::text AS quantity

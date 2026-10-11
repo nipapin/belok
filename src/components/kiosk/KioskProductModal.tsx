@@ -6,7 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import ProductOptions from '@/components/product/ProductOptions';
 import { ComboChoices,initialComboSelections,comboSelectionValid,comboDisplay } from '@/components/product/ComboChoices';
 import type { ComboSelection } from '@/lib/combos';
-import { useEffect } from 'react';
 import ProductGallery from '@/components/product/ProductGallery';
 import { optionCustomizations, resolveVariant } from '@/lib/productOptions';
 import { nutritionChips } from '@/components/product/FoodCard';
@@ -29,7 +28,7 @@ export default function KioskProductModal({ productId, variantId = null, onClose
   const addItem = useKioskCartStore((s) => s.addItem);
   const [pickedVariantId, setPickedVariantId] = useState(variantId);
   const [quantity, setQuantity] = useState(1);
-  const [comboSelections,setComboSelections]=useState<ComboSelection[]>([]);
+  const [pickedCombo,setPickedCombo]=useState<{ownerId:string;choices:ComboSelection[]}|null>(null);
   const [removedIngredients, setRemovedIngredients] = useState<Set<string>>(new Set());
   const [addedExtras, setAddedExtras] = useState<Set<string>>(new Set());
 
@@ -40,8 +39,9 @@ export default function KioskProductModal({ productId, variantId = null, onClose
   });
 
   const product = data?.product;
-  useEffect(()=>{if(product?.isCombo && product.comboGroups)setComboSelections(initialComboSelections(product.comboGroups));},[product]);
   const comboGroups=product?.comboGroups??[];
+  const comboSelections=pickedCombo?.ownerId===productId?pickedCombo.choices:initialComboSelections(comboGroups);
+  const setComboSelections=(choices:ComboSelection[])=>setPickedCombo({ownerId:productId,choices});
   const comboInfo=comboDisplay(comboGroups,comboSelections);
   const comboValid=!product?.isCombo||comboSelectionValid(comboGroups,comboSelections);
   const variant = product?.variants?.find((item) => item.id === pickedVariantId) ?? product?.variants?.[0] ?? null;

@@ -3,6 +3,8 @@ import { fetchProductsWithRelations } from '@/lib/queries/products';
 import { optionCustomizations, resolveVariant, type OptionCustomization } from '@/lib/productOptions';
 import { VariantOrderError } from '@/lib/productVariants';
 import type { ProductWithRelations } from '@/lib/types';
+import { loadStockRequirements } from '@/lib/inventoryAvailability.server';
+import { cartStockAvailability } from '@/lib/inventoryAvailability';
 
 export interface IncomingOrderItem {
   productId: string;
@@ -65,11 +67,18 @@ export async function priceOrderItems(items: IncomingOrderItem[]): Promise<Price
   if (!Array.isArray(items) || items.length === 0 || items.length > 100) throw new VariantOrderError('Некорректный состав заказа');
   const ids = new Set(items.map((item) => item?.productId));
   if ([...ids].some((id) => typeof id !== 'string' || !id)) throw new VariantOrderError('Товар не найден');
-  const products = await fetchProductsWithRelations({ productIds: [...ids] });
+  const products = await fetchProductsWithRelations({ productIds: [...ids], stockAvailability: true });
   const map = new Map(products.map((product) => [product.id, product]));
-  return items.map((item) => {
+  const priced = items.map((item) => {
     const product = map.get(item.productId);
     if (!product) throw new VariantOrderError('Товар не найден');
     return priceOrderItem(item, product);
   });
+  const requests = priced.flatMap(item => [
+    { productId: item.productId, quantity: item.quantity },
+    ...(item.comboSnapshot?.groups.flatMap(group => group.products.map(product => ({ productId: product.productId, quantity: product.quantity * item.quantity }))) ?? []),
+  ]);
+  const requirements = await loadStockRequirements([...new Set(requests.map(item => item.productId))]);
+  if (requirements && cartStockAvailability(requests, requirements).state === 'STOP') throw new VariantOrderError('Недостаточно продуктов на складе для выбранного количества блюд');
+  return priced;
 }
