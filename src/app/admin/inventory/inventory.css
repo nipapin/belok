@@ -112,3 +112,25 @@
 .inventory-drawer-content {overflow-y:auto;min-height:0;flex:1;padding-bottom:12px;scrollbar-width:thin}
 @media(max-width:639px) {.inventory-drawer-panel{max-width:none;padding:18px 16px 26px}}
 @media(prefers-reduced-motion:reduce) {.inventory-drawer-panel,.inventory-drawer-backdrop{transition:none}}
+
+
+/* Standalone inventory modal: avoid resizing the inventory page. */
+.inventory-modal-root {position:fixed;inset:0;z-index:9998;display:grid;place-items:center;padding:16px;isolation:isolate}
+.inventory-modal-backdrop {position:absolute;inset:0;width:100%;height:100%;border:0;background:rgba(20,30,25,.48);backdrop-filter:blur(3px)}
+.inventory-modal-panel {position:relative;z-index:1;width:min(100%,560px);max-height:calc(100dvh - 32px);overflow-y:auto;padding:24px;border:1px solid #dce4df;border-radius:24px;background:#fff!important;color:#202b28!important;box-shadow:0 22px 70px #12271b35;animation:inventory-modal-enter 240ms cubic-bezier(.22,1,.36,1) both}
+.inventory-modal-panel .inventory-field {background:#fff!important;color:#202b28!important;border-color:#dce4df!important}
+.inventory-modal-panel .inventory-select-trigger {background:#fff!important;color:#202b28!important}
+.inventory-modal-panel .inventory-select-menu {background:#fff!important;color:#202b28!important}
+.inventory-drawer-panel {animation:inventory-drawer-enter 320ms cubic-bezier(.22,1,.36,1) both}
+.inventory-drawer-root .inventory-drawer-content,.inventory-drawer-root .inventory-drawer-content *:not(.inventory-status-dot) {color:#202b28}
+.inventory-drawer-root .inventory-drawer-content p.text-xs {color:#64746d}
+.inventory-drawer-root .inventory-drawer-content .inventory-select-trigger,
+.inventory-drawer-root .inventory-drawer-content .inventory-select-menu {background:#fff!important;color:#202b28!important}
+.inventory-drawer-root .inventory-drawer-content .inventory-select-trigger span,
+.inventory-drawer-root .inventory-drawer-content .inventory-select-option {color:#202b28!important}
+.inventory-drawer-root .inventory-drawer-header h2 {color:#202b28!important}
+.inventory-drawer-root .inventory-drawer-content time {color:#64746d!important}
+@keyframes inventory-drawer-enter {from {transform:translateX(105%)}to{transform:translateX(0)}}
+@keyframes inventory-modal-enter {from {opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:639px){.inventory-modal-panel{padding:18px;border-radius:20px}}
+@media(prefers-reduced-motion:reduce){.inventory-modal-panel,.inventory-drawer-panel{animation:none}}
