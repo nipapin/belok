@@ -117,7 +117,7 @@
 /* Standalone inventory modal: avoid resizing the inventory page. */
 .inventory-modal-root {position:fixed;inset:0;z-index:9998;display:grid;place-items:center;padding:16px;isolation:isolate}
 .inventory-modal-backdrop {position:absolute;inset:0;width:100%;height:100%;border:0;background:rgba(20,30,25,.48);backdrop-filter:blur(3px)}
-.inventory-modal-panel {position:relative;z-index:1;width:min(100%,560px);max-height:calc(100dvh - 32px);overflow-y:auto;padding:24px;border:1px solid #dce4df;border-radius:24px;background:#fff!important;color:#202b28!important;box-shadow:0 22px 70px #12271b35;animation:inventory-modal-enter 240ms cubic-bezier(.22,1,.36,1) both}
+.inventory-modal-panel {position:relative;z-index:1;width:min(100%,700px);max-height:calc(100dvh - 32px);overflow-y:auto;padding:24px;border:1px solid #dce4df;border-radius:24px;background:#fff!important;color:#202b28!important;box-shadow:0 22px 70px #12271b35;animation:inventory-modal-enter 240ms cubic-bezier(.22,1,.36,1) both}
 .inventory-modal-panel .inventory-field {background:#fff!important;color:#202b28!important;border-color:#dce4df!important}
 .inventory-modal-panel .inventory-select-trigger {background:#fff!important;color:#202b28!important}
 .inventory-modal-panel .inventory-select-menu {background:#fff!important;color:#202b28!important}
@@ -157,24 +157,10 @@
   --lg-backdrop-bright: 1;
   color: #202b28;
 }
-.inventory-modal-panel .inventory-modal-photo-button {
-  min-height: 44px;
-  border: 1px solid #d5e0d8;
-  border-radius: 14px;
-  background: #f4f7f5;
-  color: #26382d;
-  box-shadow: 0 2px 8px rgba(15, 50, 29, .06);
-  font-size: 13px;
-  font-weight: 650;
-  transition: background-color 150ms, border-color 150ms;
-}
-.inventory-modal-panel .inventory-modal-photo-button:hover {
-  background: #e8f0ea;
-  border-color: #afc5b5;
-}
 .inventory-modal-panel .inventory-modal-submit {
-  display: inline-flex;
-  min-height: 44px;
+  display: flex;
+  width: 100%;
+  min-height: 48px;
   align-items: center;
   justify-content: center;
   border: 1px solid #242a27;
@@ -198,7 +184,6 @@
   box-shadow: none;
   opacity: 1;
 }
-.inventory-modal-panel .inventory-modal-photo-button:focus-visible,
 .inventory-modal-panel .inventory-modal-submit:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(43, 82, 57, .14);
@@ -213,4 +198,146 @@
 .inventory-modal-panel .inventory-select-option:hover,
 .inventory-modal-panel .inventory-select-option:focus-visible {
   background: #edf3ee;
+}
+
+/* Top photo Paper: one large, discoverable upload surface with image-preview affordances. */
+.inventory-photo-area {
+  position: relative;
+  width: 100%;
+}
+.inventory-photo-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 152px;
+  overflow: hidden;
+  border: 1px solid #d9e5dc;
+  border-radius: 20px;
+  background: #f5f8f5;
+  color: #334a3c;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(22, 52, 30, .05);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+.inventory-photo-tile:hover {
+  border-color: #89b39c;
+  background: #edf5ef;
+  box-shadow: 0 8px 22px rgba(22, 75, 43, .12);
+  transform: translateY(-1px);
+}
+.inventory-photo-tile:focus-within {
+  outline: none;
+  border-color: #74a486;
+  box-shadow: 0 0 0 3px rgba(46, 102, 65, .12);
+}
+.inventory-photo-tile .sr-only:focus-visible {
+  outline: none;
+}
+.inventory-photo-placeholder {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 5px;
+  text-align: center;
+  padding: 22px 16px;
+  pointer-events: none;
+}
+.inventory-photo-symbol {
+  display: flex;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  border: 1px solid #d3e4d7;
+  border-radius: 15px;
+  background: #e8f0e9;
+  color: #38684b;
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+.inventory-photo-tile:hover .inventory-photo-symbol {
+  background: #dcebe0;
+  transform: translateY(-2px);
+}
+.inventory-photo-title {
+  color: #25392d;
+  font-size: 14px;
+  font-weight: 650;
+}
+.inventory-photo-hint {
+  color: #778b7d;
+  font-size: 12px;
+}
+.inventory-photo-tile-filled {
+  background: #edf2ee;
+}
+.inventory-photo-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.inventory-photo-replace {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+  background: rgba(16, 38, 24, .45);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.inventory-photo-tile-filled:hover .inventory-photo-replace,
+.inventory-photo-tile-filled:focus-within .inventory-photo-replace {
+  opacity: 1;
+}
+.inventory-photo-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,.90);
+  color: #25392d;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: progress;
+}
+.inventory-photo-remove {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(226,236,228,.86);
+  background: rgba(255,255,255,.96);
+  color: #273a2e;
+  box-shadow: 0 2px 10px rgba(17,40,24,.12);
+}
+.inventory-photo-remove:hover {
+  background: #fceaea;
+  color: #b52f36;
+}
+.inventory-photo-remove:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(46,102,65,.16);
+}
+@media (max-width: 639px) {
+  .inventory-photo-tile {min-height: 132px;border-radius: 17px;}
+}
+@media (prefers-reduced-motion: reduce) {
+  .inventory-photo-tile,.inventory-photo-symbol,.inventory-photo-replace {transition: none;}
 }
