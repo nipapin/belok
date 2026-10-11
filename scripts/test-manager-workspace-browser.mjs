@@ -82,3 +82,4 @@ try {
   assert.equal(errors.length, 0, errors.join('\n'));
   console.log('PASS: standalone recipes, save, manager, multi-year reports, pagination, mobile layout, live stop-list. Previews:', output);
 } finally { await browser.close(); }
+
