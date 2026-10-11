@@ -170,6 +170,7 @@ export default function AdminShell({
               <Link
                 key={item.path}
                 href={item.path}
+                prefetch={false}
                 aria-current={selected(item.path) ? "page" : undefined}
                 onClick={() => setMobileOpen(false)}
                 className={`admin-nav-item ${selected(item.path) ? "is-selected" : ""}`}
@@ -294,6 +295,7 @@ export default function AdminShell({
             <Link
               key={item.path}
               href={item.path}
+              prefetch={false}
               className={`admin-bottom-item ${selected(item.path) ? "is-selected" : ""}`}
               aria-current={selected(item.path) ? "page" : undefined}
             >
