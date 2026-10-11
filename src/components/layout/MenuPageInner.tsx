@@ -27,6 +27,7 @@ export function MenuPageInner() {
 
   const { data: productsData, isLoading: loadingProducts } = useQuery({
     queryKey: ["products"],
+    refetchInterval: 10000,
     queryFn: () => fetch("/api/products").then((r) => r.json()),
   });
 
@@ -151,6 +152,7 @@ export function MenuPageInner() {
                       eager={categoryIndex === 0 && productIndex < 2}
                       product={{
                         id: product.id,
+              isAvailable: product.isAvailable,
                         name: product.name,
                         price: product.price,
                         image: product.image,
@@ -181,6 +183,7 @@ export function MenuPageInner() {
                 <ProductCard
                   product={{
                     id: product.id,
+              isAvailable: product.isAvailable,
                     name: product.name,
                     price: product.price,
                     image: product.image,

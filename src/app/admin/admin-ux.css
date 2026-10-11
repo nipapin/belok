@@ -1,3 +1,7 @@
+.dashboard-payment-breakdown { display: grid; gap: 10px; margin: 20px 0; font-size: 12px; }
+.dashboard-payment-breakdown > div { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: start; }
+.dashboard-payment-breakdown > div > :not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.dashboard-payment-breakdown strong { white-space: nowrap; font-weight: 650; }
 /* Scoped to the admin workspace; the customer storefront keeps its own theme. */
 .admin-workspace {
   --lg-text: #202b28;

@@ -1,3 +1,5 @@
+import { loadStockRequirements } from '@/lib/inventoryAvailability.server';
+import { cartStockAvailability } from '@/lib/inventoryAvailability';
 import { fetchProductsWithRelations } from '@/lib/queries/products';
 import { optionCustomizations, resolveVariant, type OptionCustomization } from '@/lib/productOptions';
 import { VariantOrderError } from '@/lib/productVariants';
@@ -56,11 +58,14 @@ export async function priceOrderItems(items: IncomingOrderItem[]): Promise<Price
   if (!Array.isArray(items) || items.length === 0 || items.length > 100) throw new VariantOrderError('Некорректный состав заказа');
   const ids = new Set(items.map((item) => item?.productId));
   if ([...ids].some((id) => typeof id !== 'string' || !id)) throw new VariantOrderError('Товар не найден');
-  const products = await fetchProductsWithRelations({ productIds: [...ids] });
+  const products = await fetchProductsWithRelations({ productIds: [...ids], stockAvailability: true });
   const map = new Map(products.map((product) => [product.id, product]));
-  return items.map((item) => {
+  const priced = items.map((item) => {
     const product = map.get(item.productId);
     if (!product) throw new VariantOrderError('Товар не найден');
     return priceOrderItem(item, product);
   });
+  const requirements = await loadStockRequirements([...ids]);
+  if (requirements && cartStockAvailability(priced, requirements).state === 'STOP') throw new VariantOrderError('Недостаточно продуктов на складе для выбранного количества блюд');
+  return priced;
 }

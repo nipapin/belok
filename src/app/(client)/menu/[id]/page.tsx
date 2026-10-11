@@ -35,6 +35,7 @@ export default function ProductDetailPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["product", id],
+    refetchInterval: 10000,
     queryFn: () => fetch(`/api/products/${id}`).then((r) => r.json()),
   });
 
@@ -103,7 +104,7 @@ export default function ProductDetailPage() {
   const selectedVariant = variants[safeVariantIndex] ?? null;
 
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product || product.isAvailable === false) return;
     addItem({
       productId: product.id,
       variantId: selectedVariant?.id ?? null,
@@ -284,8 +285,8 @@ export default function ProductDetailPage() {
         )}
 
         <div className="glass-panel-strong p-2 sticky bottom-0 left-0 right-0 flex items-center justify-between">
-          <button type="button" className="btn-primary" onClick={handleAddToCart}>
-            В корзину · {calcPrice()} ₽
+          <button type="button" className="btn-primary" onClick={handleAddToCart} disabled={product.isAvailable === false}>
+            {product.isAvailable === false ? 'Блюдо на стопе' : `В корзину · ${calcPrice()} ₽`}
           </button>
           <div className="flex items-center justify-center gap-2">
             <button

@@ -1,4 +1,5 @@
 'use client';
+import ProductAccountingEditor from '@/components/admin/ProductAccountingEditor';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ImagePlus, Plus, Save, Trash2, X } from 'lucide-react';
@@ -611,6 +612,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
             </div>
           </section>
 
+          {product?.id && <section className="admin-form-section"><ProductAccountingEditor productId={product.id}/></section>}
           <section className="admin-form-section">
             <p className="admin-form-eyebrow">Состав</p>
             <p className="admin-form-hint mt-1.5 mb-4">Ингредиенты, которые можно убрать или добавить к блюду.</p>

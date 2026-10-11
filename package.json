@@ -17,7 +17,13 @@
     "test:checkout:browser": "node scripts/test-checkout-browser.mjs",
     "aqsi:worker": "node --conditions=react-server --import tsx scripts/aqsi-worker.ts",
     "test:aqsi": "node --import tsx --test scripts/test-aqsi.mts",
-    "test:aqsi:integration": "node --conditions=react-server --import tsx --test scripts/test-aqsi-integration.mts"
+    "test:aqsi:integration": "node --conditions=react-server --import tsx --test scripts/test-aqsi-integration.mts",
+    "test:manager": "node --import tsx --test scripts/test-manager-workspace.mts",
+    "test:manager:integration": "node --import tsx --test scripts/test-manager-workspace-integration.mts",
+    "test:employees": "node --import tsx --test scripts/test-employees.mts",
+    "test:inventory": "node --import tsx --test scripts/test-inventory-stock.mts",
+    "test:inventory:integration": "node --import tsx --test scripts/test-inventory-operations.mts",
+    "test:inventory:metadata": "node --import tsx --test scripts/test-inventory-metadata.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1104.0",

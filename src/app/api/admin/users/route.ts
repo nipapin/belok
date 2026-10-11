@@ -13,13 +13,15 @@ interface UserListRow extends UserRow {
   order_count: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireAdmin();
+    const scope = new URL(request.url).searchParams.get('scope') ?? 'all';
+    if (!['all', 'users', 'employees'].includes(scope)) return NextResponse.json({ error: 'Некорректный раздел' }, { status: 400 });
 
     const rows = await query<UserListRow>(
       `SELECT
-         u."id", u."email", u."emailVerifiedAt", u."passwordHash", u."phone", u."name",
+         u."id", u."email", u."emailVerifiedAt", u."phone", u."name",
          u."avatarUrl", u."role", u."bonusBalance", u."totalSpent", u."loyaltyLevelId",
          u."createdAt", u."updatedAt",
          l."id"          AS "ll_id",
@@ -31,7 +33,8 @@ export async function GET() {
          (SELECT COUNT(*) FROM "orders" o WHERE o."userId" = u."id") AS order_count
        FROM "users" u
        LEFT JOIN "loyalty_levels" l ON l."id" = u."loyaltyLevelId"
-       ORDER BY u."createdAt" DESC`
+       WHERE ($1='all' OR ($1='users' AND u.role::text='USER') OR ($1='employees' AND u.role::text<>'USER'))
+       ORDER BY u."createdAt" DESC`, [scope]
     );
 
     const users = rows.map((r) => ({
@@ -60,7 +63,7 @@ export async function GET() {
       _count: { orders: Number(r.order_count) },
     }));
 
-    return NextResponse.json({ users });
+    return NextResponse.json({ users }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
       return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });

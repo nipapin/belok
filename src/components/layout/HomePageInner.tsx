@@ -120,6 +120,7 @@ function ProductsBlockView({
             eager={index < 4}
             product={{
               id: product.id,
+              isAvailable: product.isAvailable,
               name: product.name,
               price: product.price,
               image: product.image,
@@ -312,6 +313,7 @@ export function HomePageInner() {
 
   const { data: productsData, isLoading: loadingProducts } = useQuery({
     queryKey: ["products"],
+    refetchInterval: 10000,
     queryFn: () => fetch("/api/products").then((r) => r.json()),
     enabled: needsProducts,
   });

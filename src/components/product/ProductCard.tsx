@@ -27,6 +27,7 @@ function sameProductCard(prev: ProductCardProps, next: ProductCardProps) {
     a.image === b.image &&
     a.name === b.name &&
     a.price === b.price &&
+    a.isAvailable === b.isAvailable &&
     a.calories === b.calories &&
     a.proteins === b.proteins &&
     a.fats === b.fats &&
@@ -61,6 +62,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
 
   function handleAdd(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.isAvailable === false) return;
     if (busy) return;
     setBusy(true);
     addItem({
@@ -80,6 +82,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
 
   function handleIncrement(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.isAvailable === false) return;
     if (plainLineId) {
       updateQuantity(plainLineId, quantity + 1);
       haptic("light");
@@ -90,6 +93,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
 
   function handleDecrement(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.isAvailable === false) return;
     if (!plainLineId) return;
     if (quantity <= 1) {
       removeItem(plainLineId);

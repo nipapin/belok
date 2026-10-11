@@ -20,6 +20,18 @@ const order = (overrides: Partial<DashboardOrder>): DashboardOrder => ({
   ...overrides,
 });
 
+test('cash and noncash sums and settled amounts are separated; bonuses remain explicit', () => {
+  const metrics = orderMetrics([
+    order({ total: 500, paymentMethod: 'CASH', paymentStatus: 'SUCCEEDED' }),
+    order({ total: 200, paymentMethod: 'CARD', paymentStatus: 'SUCCEEDED' }),
+    order({ total: 150, paymentMethod: 'SBP', paymentStatus: 'PENDING' }),
+    order({ total: 100, paymentMethod: 'BONUS', paymentStatus: 'SUCCEEDED' }),
+    order({ total: 999, paymentMethod: 'CASH', status: 'CANCELLED' }),
+  ]);
+  assert.deepEqual(metrics.amounts, { cash: 500, nonCash: 350, other: 100 });
+  assert.deepEqual(metrics.paidAmounts, { cash: 500, nonCash: 200, other: 100 });
+});
+
 test("cafe day changes at Kaliningrad midnight, regardless of the timestamp offset", () => {
   assert.equal(cafeDay("2026-10-08T21:59:59Z"), "2026-10-08");
   assert.equal(cafeDay("2026-10-08T22:00:00Z"), "2026-10-09");
@@ -48,7 +60,7 @@ test("cancelled orders never inflate totals, paid amounts or the average", () =>
       order({ total: 700 }),
       order({ total: 900, status: "CANCELLED", paymentStatus: "SUCCEEDED" }),
     ]),
-    { count: 3, total: 1200, average: 600, paid: 500 },
+    { count: 3, total: 1200, average: 600, paid: 500, amounts: { cash: 0, nonCash: 0, other: 1200 }, paidAmounts: { cash: 0, nonCash: 0, other: 500 } },
   );
 });
 
@@ -58,12 +70,16 @@ test("an empty or entirely cancelled period has no NaN or fabricated revenue", (
     total: 0,
     average: 0,
     paid: 0,
+    amounts: { cash: 0, nonCash: 0, other: 0 },
+    paidAmounts: { cash: 0, nonCash: 0, other: 0 },
   });
   assert.deepEqual(orderMetrics([order({ status: "CANCELLED" })]), {
     count: 1,
     total: 0,
     average: 0,
     paid: 0,
+    amounts: { cash: 0, nonCash: 0, other: 0 },
+    paidAmounts: { cash: 0, nonCash: 0, other: 0 },
   });
 });
 

@@ -5,6 +5,7 @@ export interface DashboardOrder {
   status: string;
   total: number;
   paymentStatus: string;
+  paymentMethod?: string | null;
   createdAt: string;
   comment: string | null;
   user: {
@@ -44,9 +45,17 @@ export function dashboardPeriod(days: number, now = new Date()) {
 export function orderMetrics(orders: DashboardOrder[]) {
   const valid = orders.filter((order) => order.status !== "CANCELLED");
   const total = valid.reduce((sum, order) => sum + Number(order.total), 0);
+  const paidOrders = valid.filter(order => order.paymentStatus === 'SUCCEEDED');
+  const breakdown = (list: DashboardOrder[]) => ({
+    cash: list.filter(order => order.paymentMethod === 'CASH').reduce((sum, order) => sum + Number(order.total), 0),
+    nonCash: list.filter(order => ['CARD','SBP'].includes(order.paymentMethod ?? '')).reduce((sum, order) => sum + Number(order.total), 0),
+    other: list.filter(order => !['CASH','CARD','SBP'].includes(order.paymentMethod ?? '')).reduce((sum, order) => sum + Number(order.total), 0),
+  });
   return {
     count: orders.length,
     total,
+    amounts: breakdown(valid),
+    paidAmounts: breakdown(paidOrders),
     average: valid.length ? total / valid.length : 0,
     paid: valid
       .filter((order) => order.paymentStatus === "SUCCEEDED")

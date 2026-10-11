@@ -91,7 +91,7 @@ export default function AdminDashboard() {
   const usersQuery = useQuery({
     queryKey: ["admin-users"],
     queryFn: () =>
-      fetchAdminJson<{ users: { id: string }[] }>("/api/admin/users"),
+      fetchAdminJson<{ users: { id: string }[] }>("/api/admin/users?scope=users"),
   });
   const productsQuery = useQuery({
     queryKey: ["admin-products"],
@@ -255,6 +255,12 @@ export default function AdminDashboard() {
           <strong className="dashboard-revenue-value">
             {metricValue(money(metrics.total))}
           </strong>
+          {ordersQuery.data && <div className="dashboard-payment-breakdown">
+            <div><span>Расчет</span><span>Сумма заказов</span><span>Оплачено</span></div>
+            <div><span>Наличные</span><strong>{money(metrics.amounts.cash)}</strong><strong>{money(metrics.paidAmounts.cash)}</strong></div>
+            <div><span>Безналичные</span><strong>{money(metrics.amounts.nonCash)}</strong><strong>{money(metrics.paidAmounts.nonCash)}</strong></div>
+            {metrics.amounts.other > 0 && <div><span>Бонусы / не указан</span><strong>{money(metrics.amounts.other)}</strong><strong>{money(metrics.paidAmounts.other)}</strong></div>}
+          </div>}
           <div className="dashboard-revenue-footer">
             <span>
               {ordersQuery.data ? (

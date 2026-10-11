@@ -22,6 +22,7 @@ function sameCard(prev: KioskProductCardProps, next: KioskProductCardProps) {
     a.image === b.image &&
     a.name === b.name &&
     a.price === b.price &&
+    a.isAvailable === b.isAvailable &&
     a.hasOptions === b.hasOptions &&
     JSON.stringify(a.variants) === JSON.stringify(b.variants) &&
     a.calories === b.calories &&
@@ -60,6 +61,7 @@ export const KioskProductCard = memo(function KioskProductCard({
 
   function handleAdd(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.isAvailable === false) return;
     if (product.hasOptions) { onOpen(active?.id ?? null); return; }
     if (busy) return;
     setBusy(true);
@@ -80,6 +82,7 @@ export const KioskProductCard = memo(function KioskProductCard({
 
   function handleIncrement(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.isAvailable === false) return;
     if (plainLineId) {
       updateQuantity(plainLineId, quantity + 1);
       haptic('light');
@@ -90,6 +93,7 @@ export const KioskProductCard = memo(function KioskProductCard({
 
   function handleDecrement(e: React.MouseEvent) {
     e.stopPropagation();
+    if (product.isAvailable === false) return;
     if (!plainLineId) return;
     if (quantity <= 1) {
       removeItem(plainLineId);

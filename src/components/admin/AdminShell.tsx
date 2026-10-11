@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Bell,
+  BriefcaseBusiness,
+  BarChart3,
+  Warehouse,
+  ClipboardList,
   LayoutDashboard,
   MoreHorizontal,
   UtensilsCrossed,
@@ -12,6 +16,7 @@ import {
   ChefHat,
   Receipt,
   Users,
+  UserRoundCog,
   Settings,
   ScanLine,
   Sparkles,
@@ -35,6 +40,8 @@ const menuGroups = [
     label: "Рабочее пространство",
     items: [
       { label: "Обзор", icon: LayoutDashboard, path: "/admin" },
+      { label: "Управляющий", icon: BriefcaseBusiness, path: "/admin/manager" },
+      { label: "Отчетность", icon: BarChart3, path: "/admin/reports" },
       { label: "Заказы", icon: Receipt, path: "/admin/orders" },
       { label: "Касса и лояльность", icon: ScanLine, path: "/admin/loyalty" },
     ],
@@ -45,6 +52,8 @@ const menuGroups = [
       { label: "Товары", icon: UtensilsCrossed, path: "/admin/products" },
       { label: "Категории", icon: Tags, path: "/admin/categories" },
       { label: "Ингредиенты", icon: ChefHat, path: "/admin/ingredients" },
+      { label: "Склад", icon: Warehouse, path: "/admin/inventory" },
+      { label: "Техкарты", icon: ClipboardList, path: "/admin/recipes" },
       { label: "Кухня · приготовление", icon: ChefHat, path: "/kitchen" },
       { label: "Кухня · техкарты", icon: ChefHat, path: "/admin/kitchen" },
       { label: "Хиты", icon: Flame, path: "/admin/hits" },
@@ -54,6 +63,7 @@ const menuGroups = [
     label: "Управление",
     items: [
       { label: "Пользователи", icon: Users, path: "/admin/users" },
+      { label: "Сотрудники", icon: UserRoundCog, path: "/admin/employees" },
       { label: "Уведомления", icon: Bell, path: "/admin/notifications" },
       { label: "Главная сайта", icon: Home, path: "/admin/home" },
       { label: "Приветствие", icon: Sparkles, path: "/admin/walkthrough" },

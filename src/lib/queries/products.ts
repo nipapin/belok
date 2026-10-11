@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { loadStockAvailability } from '@/lib/inventoryAvailability.server';
 import type {
   CategoryRow,
   IngredientRow,
@@ -10,6 +11,7 @@ import type {
 export interface ProductFilter {
   categoryId?: string | null;
   onlyAvailable?: boolean;
+  stockAvailability?: boolean;
   productId?: string;
   productIds?: string[];
 }
@@ -188,10 +190,14 @@ export async function fetchProductsWithRelations(
     product.variants.push(variant);
   }
 
+  if (filter.stockAvailability) {
+    const stock = await loadStockAvailability(ids);
+    for (const id of ids) { const item = productMap.get(id)!; item.isAvailable = item.isAvailable && stock.get(id)?.state !== 'STOP'; }
+  }
   return products.map((r) => productMap.get(r.id)!);
 }
 
-export async function fetchProductById(id: string): Promise<ProductWithRelations | null> {
-  const list = await fetchProductsWithRelations({ productId: id });
+export async function fetchProductById(id: string, stockAvailability = false): Promise<ProductWithRelations | null> {
+  const list = await fetchProductsWithRelations({ productId: id, stockAvailability });
   return list[0] ?? null;
 }
