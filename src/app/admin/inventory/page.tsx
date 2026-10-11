@@ -101,9 +101,6 @@ export default function InventoryPage(){
     </div>
     {showForm&&createPortal(<div className="inventory-modal-root inventory-overlay-theme"><button type="button" className="inventory-modal-backdrop" aria-label="Закрыть форму" onClick={resetForm}/><form role="dialog" aria-modal="true" aria-label={editing?"Изменить позицию":"Новая складская позиция"} className="inventory-modal-panel space-y-3" onSubmit={e=>{e.preventDefault();setError('');save.mutate({id:editing?.id,name,kind,unit,quantity:Number(quantity),minQuantity:Number(minQuantity),image});}}>
       <div className="flex justify-between items-center"><h2 className="font-semibold">{editing?"Изменить позицию":"Новая складская позиция"}</h2><button type="button" aria-label="Закрыть" onClick={resetForm}><X size={18}/></button></div>
-      <label className="block text-sm">Название<input className="inventory-field mt-1 w-full" required maxLength={160} value={name} onChange={e=>setName(e.target.value)} placeholder="Например, мука пшеничная"/></label>
-      <div className="grid grid-cols-2 gap-3"><label className="text-sm">Тип<AdminSelect ariaLabel="Тип складской позиции" value={kind} onChange={v=>setKind(v as Item['kind'])} options={Object.entries(kindLabels).map(([value,label])=>({value,label}))}/></label><label className="text-sm">Единица<AdminSelect ariaLabel="Единица измерения" value={unit} onChange={v=>setUnit(v as Item['unit'])} options={Object.entries(unitLabels).map(([value,label])=>({value,label}))}/></label>
-      <label className="text-sm">Сейчас на складе, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="number" min="0" step="1" required value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><label className="text-sm">Напомнить о пополнении при остатке, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="number" min="0" step="1" required value={minQuantity} onChange={e=>setMinQuantity(e.target.value)}/></label></div>
       <div className="inventory-photo-area">
         <label className={`inventory-photo-tile${image?' inventory-photo-tile-filled':''}`}>
           {image ? (
@@ -121,6 +118,9 @@ export default function InventoryPage(){
         </label>
         {image&&<button type="button" className="inventory-photo-remove" aria-label="Убрать фото" onClick={()=>setImage('')}><X size={18}/></button>}
       </div>
+      <label className="block text-sm">Название<input className="inventory-field mt-1 w-full" required maxLength={160} value={name} onChange={e=>setName(e.target.value)} placeholder="Например, мука пшеничная"/></label>
+      <div className="grid grid-cols-2 gap-3"><label className="text-sm">Тип<AdminSelect ariaLabel="Тип складской позиции" value={kind} onChange={v=>setKind(v as Item['kind'])} options={Object.entries(kindLabels).map(([value,label])=>({value,label}))}/></label><label className="text-sm">Единица<AdminSelect ariaLabel="Единица измерения" value={unit} onChange={v=>setUnit(v as Item['unit'])} options={Object.entries(unitLabels).map(([value,label])=>({value,label}))}/></label>
+      <label className="text-sm">Сейчас на складе, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="number" min="0" step="1" required value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><label className="text-sm">Напомнить о пополнении при остатке, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="number" min="0" step="1" required value={minQuantity} onChange={e=>setMinQuantity(e.target.value)}/></label></div>
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       <button disabled={save.isPending||uploading||!name.trim()||!valid(quantity)||!valid(minQuantity)} className="inventory-modal-submit px-5 py-2" type="submit">{save.isPending?'Сохраняем…':editing?'Сохранить изменения':'Создать позицию'}</button>
     </form></div>,document.body)}
