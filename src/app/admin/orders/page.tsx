@@ -12,6 +12,7 @@ import {
   type OrderItemView,
 } from '@/components/admin/OrderItemsList';
 import { fulfillmentLabel, isKioskSource, orderCustomerLabel, orderTicket } from '@/lib/orderCustomer';
+import { fetchAdminJson } from '@/lib/adminDashboard';
 
 interface Order {
   id: string;
@@ -68,7 +69,7 @@ export default function AdminOrdersPage() {
 
   const { data } = useQuery({
     queryKey: ['admin-orders'],
-    queryFn: () => fetch('/api/admin/orders').then((r) => r.json()),
+    queryFn: () => fetchAdminJson<{ orders: Order[] }>('/api/admin/orders'),
     refetchInterval: 5_000,
     refetchIntervalInBackground: true,
   });
