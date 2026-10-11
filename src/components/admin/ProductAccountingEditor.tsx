@@ -26,7 +26,7 @@ export default function ProductAccountingEditor({productId}:{productId:string}){
   }).catch(e=>{if(active)setError(e instanceof Error?e.message:'Ошибка загрузки')});
   return ()=>{active=false};
  },[productId]);
- const goods=items.filter(x=>['RAW','PACKAGING'].includes(x.kind)&&(x.isActive!==false||x.id===itemId));
+ const goods=items.filter(x=>['RAW','PURCHASED','PACKAGING'].includes(x.kind)&&(x.isActive!==false||x.id===itemId));
  async function saveBinding(){
   setBusy(true);setError('');setMessage('');
   try{

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { paymentsDisabled, PAYMENTS_DISABLED_MESSAGE } from '@/lib/paymentMode';
 import { queryOne } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { syncSbpPayment } from '@/lib/tbankPayments';
@@ -9,6 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (paymentsDisabled()) return NextResponse.json({error:PAYMENTS_DISABLED_MESSAGE},{status:503});
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 });

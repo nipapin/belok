@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { paymentsDisabled, PAYMENTS_DISABLED_MESSAGE } from '@/lib/paymentMode';
 import { queryOne } from '@/lib/db';
 import { KioskUnauthorizedError, requireKioskUnlocked } from '@/lib/kioskAuth';
 import { syncSbpPayment } from '@/lib/tbankPayments';
@@ -10,6 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (paymentsDisabled()) return NextResponse.json({error:PAYMENTS_DISABLED_MESSAGE},{status:503});
     await requireKioskUnlocked();
     const { id } = await params;
     const order = await queryOne<OrderRow>(
@@ -37,6 +39,7 @@ export async function GET(
 
 export async function POST(_request: NextRequest,{params}:{params:Promise<{id:string}>}) {
   try {
+    if (paymentsDisabled()) return NextResponse.json({error:PAYMENTS_DISABLED_MESSAGE},{status:503});
     await requireKioskUnlocked();
     const {id}=await params;
     const order=await queryOne<OrderRow>(`SELECT * FROM orders WHERE id=$1 AND source='KIOSK'`,[id]);

@@ -7,6 +7,7 @@ module.exports = {
     node_args: '--env-file=/var/www/dev.belok.pro/.env --env-file=/var/www/dev.belok.pro/.env.local',
     env: {
       NODE_ENV: 'production', PORT: '3001', HOSTNAME: '127.0.0.1',
+      BELOK_PAYMENTS_DISABLED: 'true', AQSI_WORKER_ENABLED: 'false',
       NODE_EXTRA_CA_CERTS: '/etc/ssl/tbank/russian-trusted-ca-bundle.pem',
     },
     autorestart: true,

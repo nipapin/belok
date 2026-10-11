@@ -67,6 +67,7 @@ const nextConfig: NextConfig = {
   generateBuildId: async () => process.env.GITHUB_SHA || null,
   distDir: process.env.BELOK_TEST_MODE === '1' ? '.next-test' : '.next',
   env: {
+    NEXT_PUBLIC_PAYMENTS_DISABLED: String(process.env.BELOK_PAYMENTS_DISABLED === 'true' || process.env.NODE_ENV === 'development'),
     // Public release metadata only. Both server and browser receive the same
     // values fixed at compilation, regardless of runtime environment files.
     NEXT_PUBLIC_BUILD_REVISION: buildRevision(),

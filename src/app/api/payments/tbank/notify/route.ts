@@ -1,4 +1,5 @@
 import { after, NextRequest, NextResponse } from 'next/server';
+import { paymentsDisabled, PAYMENTS_DISABLED_MESSAGE } from '@/lib/paymentMode';
 import { processAqsiJobs } from '@/lib/aqsiJobs';
 import { verifyTbankNotification } from '@/lib/tbank';
 import { applyTbankPaymentStatus } from '@/lib/tbankPayments';
@@ -32,6 +33,7 @@ async function readNotifyBody(request: NextRequest): Promise<Record<string, unkn
 }
 
 export async function POST(request: NextRequest) {
+  if (paymentsDisabled()) return NextResponse.json({error:PAYMENTS_DISABLED_MESSAGE},{status:503});
   try {
     const body = await readNotifyBody(request);
     if (!body) {

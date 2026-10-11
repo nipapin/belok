@@ -2,15 +2,18 @@
 import { useMemo, useState } from 'react';
 import {createPortal} from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PackagePlus, Search, Save, Plus, Pencil, Trash2, ImagePlus, X, Boxes, AlertTriangle, History, ShieldCheck } from 'lucide-react';
+import { PackagePlus, Search, Plus, Pencil, Trash2, ImagePlus, X, Boxes, AlertTriangle, History, ShieldCheck } from 'lucide-react';
 import RecipeEditor from '@/components/admin/RecipeEditor';
 import AdminSelect from '@/components/admin/AdminSelect';
 import InventoryAdministration from '@/components/admin/InventoryAdministration';
+import StockOperationModal from '@/components/admin/StockOperationModal';
+import StockMovements from '@/components/admin/StockMovements';
+import {inventoryKindLabels, stockMilli, type StockReason} from '@/lib/inventoryStock';
 import './inventory.css';
 
-type Item={ id:string;name:string;kind:'RAW'|'PREPARED'|'PACKAGING';unit:'g'|'ml'|'pcs';quantity:string;minQuantity:string;notes:string;image?:string|null;updatedAt?:string };
+type Item={ id:string;name:string;kind:'RAW'|'PURCHASED'|'PREPARED'|'PACKAGING';unit:'g'|'ml'|'pcs';quantity:string;minQuantity:string;notes:string;image?:string|null;updatedAt?:string };
 const unitLabels={g:'г',ml:'мл',pcs:'шт.'};
-const kindLabels={RAW:'Сырьё',PREPARED:'Полуфабрикат',PACKAGING:'Упаковка'};
+const kindLabels=inventoryKindLabels;
 type StockStatus='green'|'yellow'|'orange'|'red';
 const statusLabels:Record<StockStatus,string>={green:'Достаточно',yellow:'Внимание',orange:'Скоро пополнить',red:'Пополнить'};
 function stockStatus(item:Item):StockStatus {
@@ -24,7 +27,7 @@ function stockStatus(item:Item):StockStatus {
  return 'green';
 }
 
-async function api(method:'GET'|'POST'|'PATCH'|'PUT', body?:unknown):Promise<{items?:Item[];error?:string}> {
+async function api(method:'GET'|'POST'|'PATCH'|'PUT', body?:unknown):Promise<{items?:Item[];item?:Item;error?:string}> {
   const res=await fetch('/api/admin/inventory',{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store'});
   const data=await res.json();
   if(!res.ok) throw new Error(data.error||'Не удалось сохранить');
@@ -47,28 +50,28 @@ export default function InventoryPage(){
   const [name,setName]=useState('');
   const [kind,setKind]=useState<Item['kind']>('RAW');
   const [unit,setUnit]=useState<Item['unit']>('g');
-  const [quantity,setQuantity]=useState('0');
+  const [stockOperation,setStockOperation]=useState<{item:Item;reason:StockReason}|null>(null);
+  const [movementItem,setMovementItem]=useState<Item|null>(null);
+  const [notes,setNotes]=useState('');
   const [minQuantity,setMinQuantity]=useState('0');
-  const [drafts,setDrafts]=useState<Record<string,string>>({});
   const [error,setError]=useState('');
   const [deleteTarget,setDeleteTarget]=useState<Item|null>(null);
   const [administration,setAdministration]=useState<{itemId?:string;itemName?:string}|null>(null);
   const {data,isLoading,isError}=useQuery({queryKey:['admin-inventory'],queryFn:()=>api('GET')});
   const items=data?.items||[];
-  const counts=useMemo(()=>({ALL:items.length,RAW:items.filter(i=>i.kind==='RAW').length,PREPARED:items.filter(i=>i.kind==='PREPARED').length,PACKAGING:items.filter(i=>i.kind==='PACKAGING').length}),[items]);
+  const counts=useMemo(()=>({ALL:items.length,RAW:items.filter(i=>i.kind==='RAW').length,PURCHASED:items.filter(i=>i.kind==='PURCHASED').length,PREPARED:items.filter(i=>i.kind==='PREPARED').length,PACKAGING:items.filter(i=>i.kind==='PACKAGING').length}),[items]);
   const lowCount=items.filter(x=>stockStatus(x)==='red').length;
   const statusCounts=useMemo(()=>({ALL:items.length,green:items.filter(x=>stockStatus(x)==='green').length,yellow:items.filter(x=>stockStatus(x)==='yellow').length,orange:items.filter(x=>stockStatus(x)==='orange').length,red:items.filter(x=>stockStatus(x)==='red').length}),[items]);
-  const filters=[{value:'ALL',label:'Все'},{value:'RAW',label:'Сырьё'},{value:'PREPARED',label:'Полуфабрикаты'},{value:'PACKAGING',label:'Упаковка'}] as const;
+  const filters=[{value:'ALL',label:'Все'},{value:'RAW',label:'Сырьё'},{value:'PURCHASED',label:'Покупная продукция'},{value:'PREPARED',label:'Заготовки'},{value:'PACKAGING',label:'Упаковка'}] as const;
   const filtered=useMemo(()=>items.filter(x=>(filter==='ALL'||x.kind===filter)&&(statusFilter==='ALL'||stockStatus(x)===statusFilter)&&x.name.toLocaleLowerCase('ru').includes(search.toLocaleLowerCase('ru'))),[items,search,filter,statusFilter]);
-  const resetForm=()=>{setShowForm(false);setEditing(null);setName('');setKind('RAW');setUnit('g');setQuantity('0');setMinQuantity('0');setImage('');setError('')};
+  const resetForm=()=>{setShowForm(false);setEditing(null);setName('');setKind('RAW');setUnit('g');setNotes('');setMinQuantity('0');setImage('');setError('')};
   const openCreate=()=>{resetForm();setShowForm(true)};
-  const openEdit=(item:Item)=>{setEditing(item);setName(item.name);setKind(item.kind);setUnit(item.unit);setQuantity(String(Math.trunc(Number(item.quantity))));setMinQuantity(String(Math.trunc(Number(item.minQuantity))));setImage(item.image??'');setShowForm(true);setError('')};
+  const openEdit=(item:Item)=>{setEditing(item);setName(item.name);setKind(item.kind);setUnit(item.unit);setNotes(item.notes??'');setMinQuantity(String(Number(item.minQuantity)));setImage(item.image??'');setShowForm(true);setError('')};
   const uploadImage=async (file:File)=>{setUploading(true);setError('');try{const data=new FormData();data.append('file',file);data.append('folder','products');const res=await fetch('/api/upload',{method:'POST',body:data});const result=await res.json();if(!res.ok)throw Error(result.error??'Ошибка загрузки');setImage(result.url)}catch(e){setError(e instanceof Error?e.message:'Ошибка загрузки')}finally{setUploading(false)}};
-  const save=useMutation({mutationFn:(payload:unknown)=>api(editing?'PUT':'POST',payload),onSuccess:()=>{void qc.invalidateQueries({queryKey:['admin-inventory']});resetForm()},onError:(e:Error)=>setError(e.message)});
+  const save=useMutation({mutationFn:(payload:unknown)=>api(editing?'PUT':'POST',payload),onSuccess:(result)=>{void qc.invalidateQueries({queryKey:['admin-inventory']});resetForm();if(!editing&&result.item)setStockOperation({item:result.item,reason:'OPENING'})},onError:(e:Error)=>setError(e.message)});
   const remove=useMutation({mutationFn:async(id:string)=>{const r=await fetch('/api/admin/inventory?id='+encodeURIComponent(id),{method:'DELETE'});const data=await r.json();if(!r.ok)throw Error(data.error??'Ошибка удаления');return data},onSuccess:()=>{setDeleteTarget(null);void qc.invalidateQueries({queryKey:['admin-inventory']})},onError:(e:Error)=>setError(e.message)});
-  const recount=useMutation({mutationFn:(payload:unknown)=>api('PATCH',payload),onSuccess:()=>{void qc.invalidateQueries({queryKey:['admin-inventory']});setDrafts({});setError('');},onError:(e:Error)=>setError(e.message)});
-  const digitsOnly=(value:string)=>value.replace(/[^0-9]/g,'');
-  const valid=(s:string)=>s.trim()!=='' && Number.isSafeInteger(Number(s)) && Number(s)>=0;
+  const quantityInput=(value:string)=>value.replace(/[^0-9.,]/g,'');
+  const valid=(s:string,measure:Item['unit']=unit)=>{try{stockMilli(s,measure);return true}catch{return false}};
   return <div className="space-y-5">
     <header className="flex items-center justify-between gap-3">
       <h1 className="heading-section m-0">Склад</h1>
@@ -88,7 +91,7 @@ export default function InventoryPage(){
     </label>
     {administration&&<InventoryAdministration itemId={administration.itemId} itemName={administration.itemName} onClose={()=>setAdministration(null)}/>}
     {recipeItem&&<div className="space-y-3"><div className="flex items-center justify-between"><h2 className="font-semibold">Рецептура: {recipeItem.name}</h2><button className="btn-outline px-3 py-2" onClick={()=>setRecipeItem(null)}>Закрыть</button></div><RecipeEditor key={recipeItem.id} ownerKind="PREPARED" ownerId={recipeItem.id} outputUnit={recipeItem.unit}/></div>}
-    {batchItem&&<form className="glass-panel p-4 space-y-3" onSubmit={async e=>{e.preventDefault();setBatchBusy(true);setBatchMessage('');try{const r=await fetch('/api/admin/inventory/batches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({preparedItemId:batchItem.id,quantity:Number(batchAmount)})});const data=await r.json();if(!r.ok)throw Error(data.error??'Ошибка');setBatchMessage('Партия выпущена, остатки обновлены');void qc.invalidateQueries({queryKey:['admin-inventory']});setBatchItem(null)}catch(err){setBatchMessage(err instanceof Error?err.message:'Ошибка')}finally{setBatchBusy(false)}}}><div className="flex justify-between"><h2 className="font-semibold">Выпуск: {batchItem.name}</h2><button type="button" className="btn-ghost" onClick={()=>setBatchItem(null)}>Закрыть</button></div><label className="block text-sm">Объём, {unitLabels[batchItem.unit]}<input className="inventory-field mt-1 w-full" type="text" inputMode="numeric" pattern="[0-9]*" value={batchAmount} onChange={e=>setBatchAmount(digitsOnly(e.target.value))}/></label><button type="submit" className="btn-primary px-5 py-2" disabled={batchBusy||!valid(batchAmount)||Number(batchAmount)===0}>Подтвердить выпуск и списать компоненты</button></form>}
+    {batchItem&&<form className="glass-panel p-4 space-y-3" onSubmit={async e=>{e.preventDefault();setBatchBusy(true);setBatchMessage('');try{const r=await fetch('/api/admin/inventory/batches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({preparedItemId:batchItem.id,quantity:Number(batchAmount.replace(',','.'))})});const data=await r.json();if(!r.ok)throw Error(data.error??'Ошибка');setBatchMessage('Партия выпущена, остатки обновлены');void qc.invalidateQueries({queryKey:['admin-inventory']});setBatchItem(null)}catch(err){setBatchMessage(err instanceof Error?err.message:'Ошибка')}finally{setBatchBusy(false)}}}><div className="flex justify-between"><h2 className="font-semibold">Выпуск: {batchItem.name}</h2><button type="button" className="btn-ghost" onClick={()=>setBatchItem(null)}>Закрыть</button></div><label className="block text-sm">Объём, {unitLabels[batchItem.unit]}<input className="inventory-field mt-1 w-full" type="text" inputMode="decimal" value={batchAmount} onChange={e=>setBatchAmount(quantityInput(e.target.value))}/></label><button type="submit" className="btn-primary px-5 py-2" disabled={batchBusy||!valid(batchAmount,batchItem.unit)||Number(batchAmount.replace(',','.'))===0}>Подтвердить выпуск и списать компоненты</button></form>}
     {batchMessage&&<p role="status" className="text-sm">{batchMessage}</p>}
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 sm:max-w-2xl">
       <div className="min-h-16 sm:min-h-32 rounded-2xl border border-[#174d38] bg-[#174d38] text-white px-4 py-3 sm:p-5 flex flex-row sm:flex-col items-center sm:items-stretch justify-between shadow-sm">
@@ -100,7 +103,7 @@ export default function InventoryPage(){
         <strong className="text-2xl sm:text-3xl font-semibold tabular-nums leading-none">{lowCount}</strong>
       </div>
     </div>
-    {showForm&&createPortal(<div className="inventory-modal-root inventory-overlay-theme"><button type="button" className="inventory-modal-backdrop" aria-label="Закрыть форму" onClick={resetForm}/><form role="dialog" aria-modal="true" aria-label={editing?"Изменить позицию":"Новая складская позиция"} className="inventory-modal-panel space-y-3" onSubmit={e=>{e.preventDefault();setError('');save.mutate({id:editing?.id,name,kind,unit,quantity:Number(quantity),minQuantity:Number(minQuantity),image});}}>
+    {showForm&&createPortal(<div className="inventory-modal-root inventory-overlay-theme"><button type="button" className="inventory-modal-backdrop" aria-label="Закрыть форму" onClick={resetForm}/><form role="dialog" aria-modal="true" aria-label={editing?"Изменить позицию":"Новая складская позиция"} className="inventory-modal-panel space-y-3" onSubmit={e=>{e.preventDefault();setError('');save.mutate({id:editing?.id,name,kind,unit,minQuantity:minQuantity.replace(',','.'),notes,image});}}>
       <div className="flex justify-between items-center"><h2 className="font-semibold">{editing?"Изменить позицию":"Новая складская позиция"}</h2><button type="button" aria-label="Закрыть" onClick={resetForm}><X size={18}/></button></div>
       <div className="inventory-photo-area">
         <label className={`inventory-photo-tile${image?' inventory-photo-tile-filled':''}`}>
@@ -121,10 +124,14 @@ export default function InventoryPage(){
       </div>
       <label className="block text-sm">Название<input className="inventory-field mt-1 w-full" required maxLength={160} value={name} onChange={e=>setName(e.target.value)} placeholder="Например, мука пшеничная"/></label>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="text-sm">Тип<AdminSelect ariaLabel="Тип складской позиции" value={kind} onChange={v=>setKind(v as Item['kind'])} options={Object.entries(kindLabels).map(([value,label])=>({value,label}))}/></label><label className="text-sm">Единица<AdminSelect ariaLabel="Единица измерения" value={unit} onChange={v=>setUnit(v as Item['unit'])} options={Object.entries(unitLabels).map(([value,label])=>({value,label}))}/></label>
-      <label className="text-sm">Сейчас на складе, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="text" inputMode="numeric" pattern="[0-9]*" required value={quantity} onChange={e=>setQuantity(digitsOnly(e.target.value))}/></label><label className="text-sm">Напомнить о пополнении при остатке, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="text" inputMode="numeric" pattern="[0-9]*" required value={minQuantity} onChange={e=>setMinQuantity(digitsOnly(e.target.value))}/></label></div>
+      <label className="text-sm">Напомнить о пополнении при остатке, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="text" inputMode="decimal" required value={minQuantity} onChange={e=>setMinQuantity(quantityInput(e.target.value))}/></label></div>
+      <label className="block text-sm">Примечание<textarea className="inventory-field mt-1" maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)}/></label>
+      {!editing&&<p className="text-sm text-(--lg-text-muted)">Создаём карточку с нулевым остатком. Затем откроется отдельная операция внесения начального остатка.</p>}
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
-      <button disabled={save.isPending||uploading||!name.trim()||!valid(quantity)||!valid(minQuantity)} className="inventory-modal-submit px-5 py-2" type="submit">{save.isPending?'Сохраняем…':editing?'Сохранить изменения':'Создать позицию'}</button>
+      <button disabled={save.isPending||uploading||!name.trim()||!valid(minQuantity)} className="inventory-modal-submit px-5 py-2" type="submit">{save.isPending?'Сохраняем…':editing?'Сохранить изменения':'Создать позицию'}</button>
     </form></div>,document.body)}
+    {stockOperation&&<StockOperationModal key={stockOperation.item.id+stockOperation.reason} item={stockOperation.item} reason={stockOperation.reason} onClose={()=>setStockOperation(null)} onSuccess={()=>{setStockOperation(null);void qc.invalidateQueries({queryKey:['admin-inventory']})}}/>}
+    {movementItem&&<StockMovements itemId={movementItem.id} itemName={movementItem.name} onClose={()=>setMovementItem(null)}/>}
     {!showForm&&error&&<p role="alert" className="text-rose-600 text-sm">{error}</p>}
     <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-3 min-w-0">
       <div className="hidden md:flex items-center flex-wrap gap-1 rounded-2xl border border-[#dce4df] bg-[#edf1ee] p-1" role="group" aria-label="Тип складской позиции">
@@ -167,14 +174,18 @@ export default function InventoryPage(){
           </span>
         </div>
         <div className="p-3 flex flex-col gap-3 flex-1">
-          <div><div className="flex items-start justify-between gap-2"><h3 className="font-semibold leading-tight">{item.name}</h3>{item.updatedAt&&<time className="shrink-0 text-[10px] text-(--lg-text-muted) tabular-nums text-right" dateTime={item.updatedAt} title={new Date(item.updatedAt).toLocaleString('ru-RU')}>{new Date(item.updatedAt).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</time>}</div><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Math.trunc(Number(item.minQuantity)).toLocaleString('ru')} {unitLabels[item.unit]}</p></div>
-          <form className="flex items-end gap-2" onSubmit={e=>{e.preventDefault();setError('');recount.mutate({id:item.id,quantity:Number(drafts[item.id])});}}>
-            <label className="text-xs flex-1 min-w-0">Сейчас на складе, {unitLabels[item.unit]}<input aria-label={`Остаток: ${item.name}`} className="inventory-field mt-1" type="text" inputMode="numeric" pattern="[0-9]*" required value={drafts[item.id]??String(Math.trunc(Number(item.quantity)))} onChange={e=>setDrafts(d=>({...d,[item.id]:digitsOnly(e.target.value)}))}/></label>
-            <button className="btn-primary p-2.5" type="submit" aria-label={`Сохранить остаток: ${item.name}`} disabled={recount.isPending||drafts[item.id]===undefined||!valid(drafts[item.id])||Number(drafts[item.id])===Math.trunc(Number(item.quantity))}><Save size={18}/></button>
-          </form>
+          <div><div className="flex items-start justify-between gap-2"><h3 className="font-semibold leading-tight">{item.name}</h3>{item.updatedAt&&<time className="shrink-0 text-[10px] text-(--lg-text-muted) tabular-nums text-right" dateTime={item.updatedAt} title={new Date(item.updatedAt).toLocaleString('ru-RU')}>{new Date(item.updatedAt).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</time>}</div><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Number(item.minQuantity).toLocaleString('ru',{maximumFractionDigits:3})} {unitLabels[item.unit]}</p></div>
+          <p className="text-xl font-semibold tabular-nums">{Number(item.quantity).toLocaleString('ru-RU',{maximumFractionDigits:3})} <span className="text-sm font-normal">{unitLabels[item.unit]}</span></p>
+          <div className="grid grid-cols-2 gap-2">
+            {item.kind!=='PREPARED'&&<button type="button" className="btn-outline px-2 py-2 text-xs" onClick={()=>setStockOperation({item,reason:'RECEIPT'})}>Приход</button>}
+            <button type="button" className="btn-outline px-2 py-2 text-xs" onClick={()=>setStockOperation({item,reason:'WRITE_OFF'})}>Списание</button>
+            <button type="button" className="btn-outline px-2 py-2 text-xs" onClick={()=>setStockOperation({item,reason:'RECOUNT'})}>Инвентаризация</button>
+            {Number(item.quantity)===0&&<button type="button" className="btn-outline px-2 py-2 text-xs" onClick={()=>setStockOperation({item,reason:'OPENING'})}>Начальный остаток</button>}
+          </div>
           {item.kind==='PREPARED'&&<div className="flex flex-wrap gap-2"><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setRecipeItem(item);setBatchItem(null)}}>Техкарта</button><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setBatchItem(item);setRecipeItem(null);setBatchAmount('1')}}>Выпустить партию</button></div>}
           <div className="mt-auto pt-2 border-t border-(--lg-ring)">
-            <button type="button" className="mb-2 inline-flex items-center gap-1 text-xs text-(--lg-text-muted) hover:underline" onClick={()=>{setAdministration({itemId:item.id,itemName:item.name});window.scrollTo({top:0,behavior:'smooth'})}}><History size={14}/> История изменений</button>
+            <button type="button" className="mb-2 inline-flex items-center gap-1 text-xs text-(--lg-text-muted) hover:underline" onClick={()=>{setAdministration({itemId:item.id,itemName:item.name});window.scrollTo({top:0,behavior:'smooth'})}}><History size={14}/> Аудит</button>
+            <button type="button" className="mb-2 ml-3 inline-flex items-center gap-1 text-xs text-(--lg-text-muted) hover:underline" onClick={()=>setMovementItem(item)}><History size={14}/> Движения</button>
             {deleteTarget?.id===item.id ? (
               <div className="flex items-center gap-2" role="group" aria-label={`Удалить ${item.name}?`}>
                 <button type="button" className="btn-outline flex-1 min-w-0 px-3 py-2 text-sm" disabled={remove.isPending} onClick={()=>setDeleteTarget(null)}>Отмена</button>

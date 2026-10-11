@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { paymentsDisabled } from '../src/lib/paymentMode';
 import { processAqsiJobs } from '../src/lib/aqsiJobs';
 import { processAqsiCatalog } from '../src/lib/aqsiCatalog';
 import { pool } from '../src/lib/db';
@@ -8,6 +9,11 @@ let stopping = false;
 process.on('SIGINT', () => { stopping = true; });
 process.on('SIGTERM', () => { stopping = true; });
 async function main() {
+  if (paymentsDisabled()) {
+    console.log('Payment operations disabled; aQsi worker not started.');
+    await pool.end();
+    return;
+  }
   while (!stopping) {
     try { await processAqsiJobs(); await processAqsiCashOrders(); await processAqsiCatalog(); }
     catch { console.error('aQsi worker: tick failed; pending jobs retained'); }

@@ -1,4 +1,5 @@
 import { after, NextRequest, NextResponse } from 'next/server';
+import { paymentsDisabled, PAYMENTS_DISABLED_MESSAGE } from '@/lib/paymentMode';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/adminAuth';
 import { query, queryOne } from '@/lib/db';
@@ -31,6 +32,7 @@ export async function GET() {
   } catch(error) {return failure(error)}
 }
 export async function PUT(request:NextRequest) {
+  if (paymentsDisabled()) return NextResponse.json({error:PAYMENTS_DISABLED_MESSAGE},{status:503});
   try {
     await requireAdmin();
     const parsed=schema.safeParse(await request.json());
@@ -51,6 +53,7 @@ export async function PUT(request:NextRequest) {
   } catch(error) {return failure(error)}
 }
 export async function POST(request:NextRequest) {
+  if (paymentsDisabled()) return NextResponse.json({error:PAYMENTS_DISABLED_MESSAGE},{status:503});
   try {
     await requireAdmin();
     const body=await request.json();

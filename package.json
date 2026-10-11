@@ -11,6 +11,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "aqsi:worker": "node --conditions=react-server --import tsx scripts/aqsi-worker.ts",
     "test:aqsi": "node --import tsx --test scripts/test-aqsi.mts",
+    "test:payments-disabled": "node --conditions=react-server --import tsx --test scripts/test-payments-disabled.mts",
     "test:aqsi:integration": "node --conditions=react-server --import tsx --test scripts/test-aqsi-integration.mts",
     "icons:generate": "tsx scripts/generate-icons.ts",
     "push:keys": "tsx scripts/generate-vapid-keys.ts",
@@ -19,7 +20,9 @@
     "test:admin-dashboard": "tsx --test scripts/test-admin-dashboard.mts",
     "test:product-options": "tsx --test scripts/test-product-options.mts",
     "test:menu-search": "tsx --test scripts/test-menu-search.mts",
-    "test:product-options:integration": "node scripts/test-product-options-integration.mjs"
+    "test:product-options:integration": "node scripts/test-product-options-integration.mjs",
+    "test:inventory": "node --import tsx --test scripts/test-inventory-stock.mts",
+    "test:inventory:integration": "node --import tsx --test scripts/test-inventory-operations.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1104.0",

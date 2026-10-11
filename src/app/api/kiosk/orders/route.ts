@@ -1,4 +1,5 @@
 import { after, NextRequest, NextResponse } from 'next/server';
+import { paymentsDisabled, PAYMENTS_DISABLED_MESSAGE } from '@/lib/paymentMode';
 import { createHash } from 'node:crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, withTransaction } from '@/lib/db';
@@ -168,6 +169,7 @@ export async function POST(request: NextRequest) {
     }
     const needsBank = total > 0 && requestedMethod === 'SBP';
     const needsTerminal = total > 0 && requestedMethod === 'CARD';
+    if ((needsBank || needsTerminal) && paymentsDisabled()) return NextResponse.json({error:PAYMENTS_DISABLED_MESSAGE,notCreated:true},{status:503});
     const aqsi = await getAqsiConfig();
     const needsCashOrder=total>0 && requestedMethod==='CASH' && aqsiConfigured(aqsi) && aqsi.cashOrdersEnabled;
     if (needsTerminal && (!aqsiConfigured(aqsi) || !aqsi.receiptsEnabled || !fiscalConfigured(aqsi))) {

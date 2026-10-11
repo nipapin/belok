@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { paymentsDisabled, PAYMENTS_DISABLED_MESSAGE } from '@/lib/paymentMode';
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, withTransaction } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
@@ -204,6 +205,7 @@ export async function POST(request: NextRequest) {
     }
 
     const needsBank = paymentMethod === 'CARD' || paymentMethod === 'SBP';
+    if (needsBank && paymentsDisabled()) return NextResponse.json({error:PAYMENTS_DISABLED_MESSAGE},{status:503});
     if (needsBank && total > 0 && total < SBP_MIN_RUBLES) {
       return NextResponse.json(
         { error: `Онлайн-оплата принимает платежи от ${SBP_MIN_RUBLES} ₽. Спишите бонусы или добавьте товары.` },

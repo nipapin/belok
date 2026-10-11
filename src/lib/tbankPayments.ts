@@ -1,4 +1,5 @@
 import { query, queryOne, withTransaction } from '@/lib/db';
+import { requirePaymentsEnabled } from '@/lib/paymentMode';
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import { notifyKitchenNewOrder } from '@/lib/orderNotify';
 import { enqueueReceipt } from '@/lib/aqsiJobs';
@@ -28,6 +29,7 @@ export async function startTbankPayment(order: {
   dailyNumber?: number | null;
   method: 'card' | 'sbp';
 }): Promise<{ paymentId: string; paymentUrl: string | null; payload: string | null; image: string | null }> {
+  requirePaymentsEnabled();
   const amountKopecks = Math.round(order.total * 100);
   const ticket =
     order.dailyNumber != null && order.dailyNumber > 0 ? `#${order.dailyNumber}` : order.id.slice(0, 8);
@@ -78,6 +80,7 @@ export async function applyTbankPaymentStatus(
   orderId: string,
   bankStatus: string
 ): Promise<AppliedBankOutcome> {
+  requirePaymentsEnabled();
   const status = bankStatus.toUpperCase();
 
   if (PAID_STATUSES.has(status)) {
@@ -128,6 +131,7 @@ export async function syncSbpPayment(order: OrderRow): Promise<{
   payload: string | null;
   image: string | null;
 }> {
+  requirePaymentsEnabled();
   if (order.paymentStatus !== 'PENDING' || !order.tbankPaymentId) {
     return { paymentStatus: order.paymentStatus, bankStatus: null, payload: null, image: null };
   }

@@ -1,4 +1,5 @@
 import 'server-only';
+import { paymentsDisabled } from '@/lib/paymentMode';
 import { pool, query, queryOne } from '@/lib/db';
 import { aqsiBulk, aqsiRequest } from '@/lib/aqsi';
 import { aqsiConfigured, fiscalConfigured, getAqsiConfig } from '@/lib/aqsiConfig';
@@ -32,6 +33,7 @@ async function catalog(): Promise<Catalog> {
 // Verify actual entities through documented GET methods rather than guessing
 // the undocumented response format of bulk-task status endpoints.
 export async function processAqsiCatalog() {
+  if (paymentsDisabled()) return;
   const config = await getAqsiConfig();
   if (!aqsiConfigured(config) || !config.catalogEnabled || !fiscalConfigured(config)) return;
   const client = await pool.connect();

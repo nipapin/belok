@@ -1,4 +1,5 @@
 'use client';
+import { paymentsDisabled } from '@/lib/paymentMode';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Banknote, CreditCard, Loader2, Minus, Plus, QrCode, Trash2 } from 'lucide-react';
@@ -118,7 +119,7 @@ export default function KioskApp() {
   const [email, setEmail] = useState('');
   const [loyalty, setLoyalty] = useState<KioskLoyalty | null>(null);
   const [redeemBonuses, setRedeemBonuses] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<KioskPayMethod>('SBP');
+  const [paymentMethod, setPaymentMethod] = useState<KioskPayMethod>(paymentsDisabled() ? 'CASH' : 'SBP');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [recoveringOrder,setRecoveringOrder]=useState(false);
@@ -326,7 +327,7 @@ export default function KioskApp() {
       setEmail('');
       setLoyalty(null);
       setRedeemBonuses(false);
-      setPaymentMethod('SBP');
+      setPaymentMethod(paymentsDisabled() ? 'CASH' : 'SBP');
       setSubmitError('');
       setPayOrder(null);
       setPayFailed(false);
@@ -392,7 +393,7 @@ export default function KioskApp() {
     setEmail('');
     setLoyalty(null);
     setRedeemBonuses(false);
-    setPaymentMethod('SBP');
+    setPaymentMethod(paymentsDisabled() ? 'CASH' : 'SBP');
     setSubmitError('');
     setPayOrder(null);
     setPayFailed(false);
@@ -768,7 +769,7 @@ export default function KioskApp() {
                 type="button"
                 className={`kiosk-rise ${paymentMethod === 'CARD' ? 'btn-primary' : 'btn-outline'} aspect-square w-full flex-col gap-4 !rounded-3xl text-3xl disabled:opacity-40`}
                 style={{ animationDelay: '240ms' }}
-                disabled={!session.cardEnabled}
+                disabled={paymentsDisabled() || !session.cardEnabled}
                 title={!session.cardEnabled ? 'Оплата картой временно недоступна' : undefined}
                 onClick={() => {
                   setPaymentMethod('CARD');
@@ -782,6 +783,7 @@ export default function KioskApp() {
                 type="button"
                 className={`kiosk-rise ${paymentMethod === 'SBP' ? 'btn-primary' : 'btn-outline'} aspect-square w-full flex-col gap-4 !rounded-3xl text-3xl`}
                 style={{ animationDelay: '280ms' }}
+                disabled={paymentsDisabled()}
                 onClick={() => {
                   setPaymentMethod('SBP');
                   setSubmitError('');

@@ -1,4 +1,5 @@
 import 'server-only';
+import { paymentsDisabled } from '@/lib/paymentMode';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { pool, query, queryOne, withTransaction } from '@/lib/db';
@@ -14,6 +15,7 @@ interface RemoteOrder {
 }
 
 export async function enqueueCashOrder(client:PoolClient,orderId:string,deviceId:number) {
+  if (paymentsDisabled()) return;
   await client.query(`INSERT INTO aqsi_cash_orders (id,"orderId","deviceId") VALUES ($1,$2,$3) ON CONFLICT ("orderId") DO NOTHING`,[randomUUID(),orderId,deviceId]);
 }
 
@@ -70,6 +72,7 @@ async function reconcile(job:CashJob) {
 }
 
 export async function processAqsiCashOrders() {
+  if (paymentsDisabled()) return;
   if(!process.env.AQSI_API_KEY?.trim()) return;
   const client=await pool.connect();
   try {

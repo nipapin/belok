@@ -1,6 +1,6 @@
-import type { ComboSelection } from '@/lib/combos';
 'use client';
 
+import type { ComboSelection } from '@/lib/combos';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 

@@ -111,7 +111,7 @@ def main():
 
         # Validate the release while the current dev process keeps serving requests.
         env = os.environ.copy()
-        env.update(PORT='3002', HOSTNAME='127.0.0.1', NODE_ENV='production')
+        env.update(PORT='3002', HOSTNAME='127.0.0.1', NODE_ENV='production', BELOK_PAYMENTS_DISABLED='true', AQSI_WORKER_ENABLED='false')
         with open(release / 'preview.log', 'wb') as log:
             preview = subprocess.Popen([
                 NODE, f'--env-file={CHECKOUT}/.env', f'--env-file={CHECKOUT}/.env.local',

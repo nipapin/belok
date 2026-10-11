@@ -1,4 +1,5 @@
 import 'server-only';
+import { requirePaymentsEnabled } from '@/lib/paymentMode';
 import { gzipSync } from 'node:zlib';
 
 const BASE = 'https://api.aqsi.ru/pub';
@@ -10,6 +11,7 @@ export class AqsiRequestError extends Error {
 // Never retry a money/receipt POST after a lost response: this API does not
 // document a caller-supplied idempotency key for device operations.
 export async function aqsiRequest<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+  requirePaymentsEnabled();
   const raw = process.env.AQSI_API_KEY?.trim();
   if (!raw) throw new AqsiRequestError('API-ключ aQsi не настроен', false);
   const key = raw.startsWith('Application ') ? raw : `Application ${raw}`;

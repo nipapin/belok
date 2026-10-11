@@ -1,4 +1,5 @@
 import 'server-only';
+import { paymentsDisabled, requirePaymentsEnabled } from '@/lib/paymentMode';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { pool, query, queryOne, withTransaction } from '@/lib/db';
@@ -16,6 +17,7 @@ export interface AqsiJob {
 }
 
 export async function enqueueCard(client: PoolClient, orderId: string, total: number, deviceId: number) {
+  requirePaymentsEnabled();
   await client.query(`INSERT INTO aqsi_jobs (id,"orderId",kind,"deviceId",payload)
     VALUES ($1,$2,'CARD',$3,$4) ON CONFLICT ("orderId",kind) DO NOTHING`,
     [randomUUID(),orderId,deviceId,JSON.stringify({deviceId,amount:Math.round(total*100),mode:'card_only',ttlMillis:120_000,printCount:0})]);
@@ -24,6 +26,7 @@ export async function enqueueCard(client: PoolClient, orderId: string, total: nu
 // Insert in the same transaction that commits payment success. A process crash
 // or repeated bank notification cannot lose the receipt or enqueue it twice.
 export async function enqueueReceipt(client: PoolClient, orderId: string) {
+  if (paymentsDisabled()) return;
   const config = await getAqsiConfig();
   if (!config.deviceId) return;
   await client.query(`INSERT INTO aqsi_jobs (id,"orderId",kind,"deviceId")
@@ -94,6 +97,7 @@ async function applyOperation(job: AqsiJob, operation: AqsiOperation) {
 }
 
 export async function processAqsiJobs() {
+  if (paymentsDisabled()) return;
   if (!process.env.AQSI_API_KEY?.trim()) return;
   const client = await pool.connect();
   try {
@@ -165,6 +169,7 @@ export async function aqsiOrderState(orderId: string) {
 }
 
 export async function retryAqsiReceipt(jobId: string): Promise<boolean> {
+  requirePaymentsEnabled();
   return withTransaction(async client=>{
     // Serialize with the worker. Only a definitive failure may be resubmitted;
     // rebuild the receipt from the paid order and the current saved settings.
@@ -177,6 +182,7 @@ export async function retryAqsiReceipt(jobId: string): Promise<boolean> {
 }
 
 export async function cancelAqsiCard(orderId: string) {
+  requirePaymentsEnabled();
   const client = await pool.connect();
   try {
     await client.query('SELECT pg_advisory_lock(784146,20)');

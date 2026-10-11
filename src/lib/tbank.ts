@@ -1,4 +1,5 @@
 import 'server-only';
+import { paymentsDisabled, requirePaymentsEnabled } from '@/lib/paymentMode';
 import { createHash } from 'node:crypto';
 import { getPublicAppOrigin } from '@/lib/push';
 
@@ -19,10 +20,12 @@ export class TbankError extends Error {
 }
 
 export function isTbankConfigured(): boolean {
+  if (paymentsDisabled()) return false;
   return Boolean(process.env.TBANK_TERMINAL_KEY?.trim() && process.env.TBANK_PASSWORD);
 }
 
 function credentials(): { terminalKey: string; password: string } {
+  requirePaymentsEnabled();
   const terminalKey = process.env.TBANK_TERMINAL_KEY?.trim();
   const password = process.env.TBANK_PASSWORD;
   if (!terminalKey || password == null || password === '') {
@@ -71,7 +74,7 @@ function redirectDueDate(minutesFromNow: number): string {
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}+03:00`;
 }
 
-if (process.env.TBANK_INSECURE_TLS === 'true') {
+if (!paymentsDisabled() && process.env.TBANK_INSECURE_TLS === 'true') {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 }
 

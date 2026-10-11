@@ -1,4 +1,5 @@
 import 'server-only';
+import { paymentsDisabled } from '@/lib/paymentMode';
 import { getAppSetting } from '@/lib/appSettings';
 
 export interface AqsiConfig {
@@ -18,6 +19,7 @@ export async function getAqsiConfig(): Promise<AqsiConfig> {
 }
 
 export function aqsiConfigured(config: AqsiConfig): boolean {
+  if (paymentsDisabled()) return false;
   return config.enabled && Number.isInteger(config.deviceId) && config.deviceId > 0 && Boolean(process.env.AQSI_API_KEY?.trim());
 }
 

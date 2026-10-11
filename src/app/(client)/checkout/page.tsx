@@ -1,4 +1,5 @@
 'use client';
+import { paymentsDisabled, PAYMENTS_DISABLED_MESSAGE } from '@/lib/paymentMode';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,7 +24,7 @@ export default function CheckoutPage() {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryTime, setDeliveryTime] = useState(ASAP_TIME);
   const [contactPhone, setContactPhone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<Extract<OrderPaymentMethod, 'CASH' | 'SBP'>>('SBP');
+  const [paymentMethod, setPaymentMethod] = useState<Extract<OrderPaymentMethod, 'CASH' | 'SBP'>>(paymentsDisabled() ? 'CASH' : 'SBP');
   const [bonusUsed, setBonusUsed] = useState(0);
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
@@ -275,6 +276,7 @@ export default function CheckoutPage() {
       {total > 0 && (
         <div className="mb-6">
           <h2 className="mb-3 text-base font-semibold text-(--lg-text)">Оплата</h2>
+          {paymentsDisabled() && <p role="status" className="mb-3 text-sm text-(--lg-text-muted)">{PAYMENTS_DISABLED_MESSAGE} Заказ не передаётся на кассу.</p>}
           <div className="grid grid-cols-2 items-start gap-2">
             <div className="min-w-0">
               <button
@@ -294,6 +296,7 @@ export default function CheckoutPage() {
             <button
               type="button"
               className={`${choiceClass(paymentMethod === 'SBP')} w-full`}
+              disabled={paymentsDisabled()}
               onClick={() => setPaymentMethod('SBP')}
             >
               <QrCode className="size-5" strokeWidth={1.75} />
