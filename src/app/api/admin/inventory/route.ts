@@ -9,7 +9,7 @@ const units = ['g', 'ml', 'pcs'] as const;
 const kinds = ['RAW', 'PREPARED', 'PACKAGING'] as const;
 const validQuantity = (value: unknown) => {
   const n = Number(value);
-  return value !== '' && value !== null && value !== undefined && Number.isFinite(n) && n >= 0 && Math.round(n * 1000) === n * 1000 && n <= 999999999;
+  return value !== '' && value !== null && value !== undefined && Number.isFinite(n) && n >= 0 && Number.isSafeInteger(n) && n <= 999999999;
 };
 const errorResponse = (error: unknown) => {
   if ((error as Error).message === 'UNAUTHORIZED') return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });
