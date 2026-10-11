@@ -7,7 +7,8 @@ export type ReportRow = {
 };
 export type ManagerReport = {
   rows: ReportRow[]; page: number; count: number;
-  summary: { orders: number; quantity: number; total: number; paid: number };
+  summary: { orders: number; quantity: number; total: number; paid: number;
+    cashTotal: number; cashPaid: number; nonCashTotal: number; nonCashPaid: number; otherTotal: number; otherPaid: number };
 };
 
 export function reportPeriod(from: string, to: string) {

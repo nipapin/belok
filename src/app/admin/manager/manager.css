@@ -21,6 +21,9 @@
 .manager-stat { background: white; border: 1px solid #dce4df; border-radius: 18px; padding: 22px; display: grid; gap: 12px; }
 .manager-stat:first-child { background: #174d38; color: white; border-color: #174d38; }
 .manager-stat span { font-size: 13px; }
+.manager-payment-breakdown { display: grid; gap: 10px; border-top: 1px solid currentColor; padding-top: 14px; font-size: 12px; }
+.manager-payment-breakdown > div { display: flex; justify-content: space-between; align-items: start; gap: 8px; flex-wrap: wrap; }
+.manager-payment-breakdown dd { font-weight: 650; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .manager-stat strong { font-size: clamp(24px,2.5vw,34px); font-weight: 700; font-variant-numeric: tabular-nums; }
 .manager-links a { display: grid; align-content: start; gap: 12px; padding: 22px; border: 1px solid #dce4df; border-radius: 18px; background: white; }
 .manager-links a > svg { color: #195d40; }

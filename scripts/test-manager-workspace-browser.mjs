@@ -39,7 +39,7 @@ try {
     if (path === '/api/admin/inventory/availability') return void respond({ dishes: [{ id: 'dish', name: 'Боул', state: 'STOP', portions: 0, reasons: ['Не хватает: Мука'] }, { id: 'drink', name: 'Сок', state: 'UNCONFIGURED', portions: null, reasons: ['Не задан расход на одну порцию'] }] });
     if (path === '/api/admin/reports') {
       requests.push(url.searchParams);
-      return void respond({ page: Number(url.searchParams.get('page')), count: 51, summary: { orders: 25, quantity: 70, total: 15000, paid: 12000 }, rows: [{ id: 'line', orderId: 'order', dailyNumber: 42, createdAt: '2026-10-10T22:00:00Z', productName: 'Боул', variantName: null, quantity: 2, unitPrice: 300, orderTotal: 600, paymentMethod: 'CASH', paymentStatus: 'SUCCEEDED', status: 'COMPLETED', comment: 'Без лука' }] });
+      return void respond({ page: Number(url.searchParams.get('page')), count: 51, summary: { orders: 25, quantity: 70, total: 15000, paid: 12000, cashTotal: 6000, cashPaid: 5000, nonCashTotal: 9000, nonCashPaid: 7000, otherTotal: 0, otherPaid: 0 }, rows: [{ id: 'line', orderId: 'order', dailyNumber: 42, createdAt: '2026-10-10T22:00:00Z', productName: 'Боул', variantName: null, quantity: 2, unitPrice: 300, orderTotal: 600, paymentMethod: 'CASH', paymentStatus: 'SUCCEEDED', status: 'COMPLETED', comment: 'Без лука' }] });
     }
     if (path === '/api/products') return void respond({ products: [{ id: 'dish', name: 'Боул', price: 300, image: null, categoryId: 'cat', category: { id: 'cat', name: 'Блюда' }, ingredients: [], variants: [], isAvailable: !stockStop }] });
     if (path === '/api/products/categories') return void respond({ categories: [{ id: 'cat', name: 'Блюда', _count: { products: 1 } }] });

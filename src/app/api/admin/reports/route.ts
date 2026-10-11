@@ -35,6 +35,12 @@ export async function GET(request: Request) {
         (SELECT COALESCE(sum(quantity),0)::int FROM selected_items) AS quantity,
         (SELECT COALESCE(sum(total),0)::float8 FROM selected_orders) AS total,
         (SELECT COALESCE(sum(total),0)::float8 FROM selected_orders WHERE "paymentStatus"::text='SUCCEEDED') AS paid,
+        (SELECT COALESCE(sum(total),0)::float8 FROM selected_orders WHERE "paymentMethod"::text='CASH') AS "cashTotal",
+        (SELECT COALESCE(sum(total),0)::float8 FROM selected_orders WHERE "paymentMethod"::text='CASH' AND "paymentStatus"::text='SUCCEEDED') AS "cashPaid",
+        (SELECT COALESCE(sum(total),0)::float8 FROM selected_orders WHERE "paymentMethod"::text IN ('CARD','SBP')) AS "nonCashTotal",
+        (SELECT COALESCE(sum(total),0)::float8 FROM selected_orders WHERE "paymentMethod"::text IN ('CARD','SBP') AND "paymentStatus"::text='SUCCEEDED') AS "nonCashPaid",
+        (SELECT COALESCE(sum(total),0)::float8 FROM selected_orders WHERE COALESCE("paymentMethod"::text,'') NOT IN ('CASH','CARD','SBP')) AS "otherTotal",
+        (SELECT COALESCE(sum(total),0)::float8 FROM selected_orders WHERE COALESCE("paymentMethod"::text,'') NOT IN ('CASH','CARD','SBP') AND "paymentStatus"::text='SUCCEEDED') AS "otherPaid",
         (SELECT count(*)::int FROM selected_items) AS count`, values);
       // A bounded export keeps a multi-year request from exhausting server memory.
       if (exportCsv && summary.rows[0].count > 100000) return null;

@@ -56,6 +56,9 @@ test('real report, recipe list and availability SQL work against PostgreSQL', as
     assert.equal(report.summary.orders, 2);
     assert.equal(report.summary.total, 650, 'Order total is not multiplied by item count');
     assert.equal(report.summary.paid, 500);
+    assert.equal(report.summary.cashTotal, 500); assert.equal(report.summary.cashPaid, 500);
+    assert.equal(report.summary.nonCashTotal, 150); assert.equal(report.summary.nonCashPaid, 0);
+    assert.equal(report.summary.otherTotal, 0);
     assert.equal(report.summary.quantity, 4);
     assert.equal(report.rows.length, 3);
     assert.equal(report.rows.find((r: reports.ReportRow) => r.orderId === 'first').comment, 'Без лука');
