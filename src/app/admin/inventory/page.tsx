@@ -104,10 +104,22 @@ export default function InventoryPage(){
       <label className="block text-sm">Название<input className="inventory-field mt-1 w-full" required maxLength={160} value={name} onChange={e=>setName(e.target.value)} placeholder="Например, мука пшеничная"/></label>
       <div className="grid grid-cols-2 gap-3"><label className="text-sm">Тип<AdminSelect ariaLabel="Тип складской позиции" value={kind} onChange={v=>setKind(v as Item['kind'])} options={Object.entries(kindLabels).map(([value,label])=>({value,label}))}/></label><label className="text-sm">Единица<AdminSelect ariaLabel="Единица измерения" value={unit} onChange={v=>setUnit(v as Item['unit'])} options={Object.entries(unitLabels).map(([value,label])=>({value,label}))}/></label>
       <label className="text-sm">Сейчас на складе, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="number" min="0" step="1" required value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><label className="text-sm">Напомнить о пополнении при остатке, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="number" min="0" step="1" required value={minQuantity} onChange={e=>setMinQuantity(e.target.value)}/></label></div>
-      <div className="flex items-center gap-3">
-        {image && <div className="h-20 w-20 overflow-hidden rounded-xl border border-(--lg-ring)"><img src={image} alt="" className="h-full w-full object-cover"/></div>}
-        <label className="inventory-modal-photo-button inline-flex cursor-pointer items-center gap-2 px-4 py-2"><ImagePlus size={17}/>{uploading?'Загрузка…':image?'Заменить фото':'Добавить фото'}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploading} onChange={e=>{const file=e.target.files?.[0];if(file)void uploadImage(file);e.currentTarget.value=''}}/></label>
-        {image&&<button type="button" className="text-sm text-(--lg-text-muted)" onClick={()=>setImage('')}>Убрать фото</button>}
+      <div className="inventory-photo-area">
+        <label className={`inventory-photo-tile${image?' inventory-photo-tile-filled':''}`}>
+          {image ? (
+            <img src={image} alt="" className="inventory-photo-preview"/>
+          ) : (
+            <span className="inventory-photo-placeholder">
+              <span className="inventory-photo-symbol"><ImagePlus size={24} strokeWidth={1.7}/></span>
+              <span className="inventory-photo-title">Добавить фото</span>
+              <span className="inventory-photo-hint">JPEG, PNG, WebP или GIF</span>
+            </span>
+          )}
+          {image&&<span className="inventory-photo-replace"><ImagePlus size={19}/> Заменить фото</span>}
+          {uploading&&<span className="inventory-photo-loading">Загрузка фото…</span>}
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploading} onChange={e=>{const file=e.target.files?.[0];if(file)void uploadImage(file);e.currentTarget.value=''}}/>
+        </label>
+        {image&&<button type="button" className="inventory-photo-remove" aria-label="Убрать фото" onClick={()=>setImage('')}><X size={18}/></button>}
       </div>
       {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       <button disabled={save.isPending||uploading||!name.trim()||!valid(quantity)||!valid(minQuantity)} className="inventory-modal-submit px-5 py-2" type="submit">{save.isPending?'Сохраняем…':editing?'Сохранить изменения':'Создать позицию'}</button>
