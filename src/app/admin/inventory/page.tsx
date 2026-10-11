@@ -143,7 +143,7 @@ export default function InventoryPage(){
         options={([{value:'ALL',label:'Все состояния'},...(['green','yellow','orange','red'] as const).map(v=>({value:v,label:statusLabels[v]}))]).map(x=>({value:x.value,label:`${x.label} · ${statusCounts[x.value as keyof typeof statusCounts]}`}))}/>
     </div>
 
-    {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="glass-panel p-8 text-center"><PackagePlus className="mx-auto mb-3" size={30}/><p>{search||filter!=='ALL'||statusFilter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
+    {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="flex min-h-[240px] flex-col items-center justify-center gap-3 py-12 text-center text-[#61726b]"><PackagePlus className="mb-1 opacity-65" size={56} strokeWidth={1.3}/><p className="text-sm font-medium text-[#52635b]">{search||filter!=='ALL'||statusFilter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
       {filtered.map(item=><article key={item.id} className={`glass-panel inventory-status-card inventory-card-${stockStatus(item)} min-w-0 overflow-hidden flex flex-col`}>
         <div className="relative h-36 bg-(--lg-fill) overflow-hidden">
