@@ -1,7 +1,7 @@
-export const inventoryKinds = ['RAW', 'PURCHASED', 'PREPARED', 'PACKAGING'] as const;
+export const inventoryKinds = ['UNSPECIFIED', 'RAW', 'PURCHASED', 'PREPARED', 'PACKAGING'] as const;
 export type InventoryKind = (typeof inventoryKinds)[number];
 export type InventoryUnit = 'g' | 'ml' | 'pcs';
-export const inventoryKindLabels = {RAW: 'Сырьё', PURCHASED: 'Покупная продукция', PREPARED: 'Заготовка', PACKAGING: 'Упаковка'};
+export const inventoryKindLabels = {UNSPECIFIED: 'Не определён', RAW: 'Сырьё', PURCHASED: 'Товары для перепродажи', PREPARED: 'Заготовка', PACKAGING: 'Упаковка и расходники'};
 export const inventoryUnitLabels = {g: 'г', ml: 'мл', pcs: 'шт.'};
 export const stockReasonLabels = {OPENING: 'Начальный остаток', RECEIPT: 'Приход', WRITE_OFF: 'Списание', RECOUNT: 'Инвентаризация'};
 export type StockReason = keyof typeof stockReasonLabels;

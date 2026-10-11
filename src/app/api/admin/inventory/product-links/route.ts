@@ -20,7 +20,7 @@ export async function PUT(request:NextRequest){
  const p=await client.query<{isCombo:boolean}>(`SELECT COALESCE("isCombo",false) AS "isCombo" FROM products WHERE id=$1 FOR UPDATE`,[data.productId]);
  if(!p.rowCount||p.rows[0].isCombo)throw Error('INVALID_PRODUCT');
  if(!data.itemId){await client.query('DELETE FROM inventory_product_links WHERE product_id=$1',[data.productId]);return;}
- const i=await client.query<{unit:string}>(`SELECT unit FROM inventory_items WHERE id::text=$1 AND is_active=true AND kind IN ('RAW','PURCHASED','PACKAGING')`,[data.itemId]);
+ const i=await client.query<{unit:string}>(`SELECT unit FROM inventory_items WHERE id::text=$1 AND is_active=true AND kind IN ('UNSPECIFIED','RAW','PURCHASED','PACKAGING') FOR SHARE`,[data.itemId]);
  if(!i.rowCount)throw Error('INVALID_ITEM');
  try{stockMilli(data.quantity,i.rows[0].unit as InventoryUnit);}catch{throw Error('INVALID_QUANTITY');}
  await client.query(`INSERT INTO inventory_product_links(product_id,item_id,quantity) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET item_id=EXCLUDED.item_id,quantity=EXCLUDED.quantity,updated_at=NOW()`,[data.productId,data.itemId,amount]);

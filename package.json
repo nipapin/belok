@@ -22,7 +22,8 @@
     "test:menu-search": "tsx --test scripts/test-menu-search.mts",
     "test:product-options:integration": "node scripts/test-product-options-integration.mjs",
     "test:inventory": "node --import tsx --test scripts/test-inventory-stock.mts",
-    "test:inventory:integration": "node --import tsx --test scripts/test-inventory-operations.mts"
+    "test:inventory:integration": "node --import tsx --test scripts/test-inventory-operations.mts",
+    "test:inventory:metadata": "node --import tsx --test scripts/test-inventory-metadata.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1104.0",
