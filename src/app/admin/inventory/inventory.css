@@ -134,3 +134,83 @@
 @keyframes inventory-modal-enter {from {opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:639px){.inventory-modal-panel{padding:18px;border-radius:20px}}
 @media(prefers-reduced-motion:reduce){.inventory-modal-panel,.inventory-drawer-panel{animation:none}}
+
+
+/*
+ * React portals render under document.body rather than inside .admin-surface.
+ * Restore admin's LIGHT design tokens at the portal root so shared controls
+ * cannot silently fall back to the storefront's dark glass theme.
+ */
+.inventory-overlay-theme {
+  color-scheme: light;
+  --lg-text: #202b28;
+  --lg-text-muted: #63726a;
+  --lg-ring: #dce4df;
+  --lg-ring-strong: #b5c7bd;
+  --lg-fill: #ffffff;
+  --lg-fill-hover: #f3f7f4;
+  --lg-fill-active: #edf4ee;
+  --lg-shadow: 0 2px 9px rgba(21, 47, 31, .07);
+  --lg-shadow-strong: 0 5px 16px rgba(21, 47, 31, .11);
+  --lg-blur: 0px;
+  --lg-backdrop-sat: 100%;
+  --lg-backdrop-bright: 1;
+  color: #202b28;
+}
+.inventory-modal-panel .inventory-modal-photo-button {
+  min-height: 44px;
+  border: 1px solid #d5e0d8;
+  border-radius: 14px;
+  background: #f4f7f5;
+  color: #26382d;
+  box-shadow: 0 2px 8px rgba(15, 50, 29, .06);
+  font-size: 13px;
+  font-weight: 650;
+  transition: background-color 150ms, border-color 150ms;
+}
+.inventory-modal-panel .inventory-modal-photo-button:hover {
+  background: #e8f0ea;
+  border-color: #afc5b5;
+}
+.inventory-modal-panel .inventory-modal-submit {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #242a27;
+  border-radius: 999px;
+  background: #242a27;
+  color: #ffffff;
+  box-shadow: 0 3px 12px rgba(13, 39, 24, .15);
+  font-size: 14px;
+  font-weight: 650;
+  transition: background-color 150ms, box-shadow 150ms;
+}
+.inventory-modal-panel .inventory-modal-submit:not(:disabled):hover {
+  background: #394740;
+  box-shadow: 0 5px 16px rgba(13, 39, 24, .2);
+}
+.inventory-modal-panel .inventory-modal-submit:disabled {
+  cursor: not-allowed;
+  border-color: #d9e0db;
+  background: #e6eae7;
+  color: #65716a;
+  box-shadow: none;
+  opacity: 1;
+}
+.inventory-modal-panel .inventory-modal-photo-button:focus-visible,
+.inventory-modal-panel .inventory-modal-submit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(43, 82, 57, .14);
+}
+.inventory-modal-panel .inventory-select-menu {
+  border-color: #dce4df !important;
+  box-shadow: 0 8px 24px rgba(22, 44, 32, .12);
+}
+.inventory-modal-panel .inventory-select-option {
+  color: #202b28;
+}
+.inventory-modal-panel .inventory-select-option:hover,
+.inventory-modal-panel .inventory-select-option:focus-visible {
+  background: #edf3ee;
+}
