@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import {createPortal} from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PackagePlus, Search, Save, Plus, Pencil, Trash2, ImagePlus, X, Boxes, AlertTriangle, History, ShieldCheck } from 'lucide-react';
 import RecipeEditor from '@/components/admin/RecipeEditor';
@@ -61,12 +62,12 @@ export default function InventoryPage(){
   const filtered=useMemo(()=>items.filter(x=>(filter==='ALL'||x.kind===filter)&&(statusFilter==='ALL'||stockStatus(x)===statusFilter)&&x.name.toLocaleLowerCase('ru').includes(search.toLocaleLowerCase('ru'))),[items,search,filter,statusFilter]);
   const resetForm=()=>{setShowForm(false);setEditing(null);setName('');setKind('RAW');setUnit('g');setQuantity('0');setMinQuantity('0');setImage('');setError('')};
   const openCreate=()=>{resetForm();setShowForm(true)};
-  const openEdit=(item:Item)=>{setEditing(item);setName(item.name);setKind(item.kind);setUnit(item.unit);setQuantity(item.quantity);setMinQuantity(item.minQuantity);setImage(item.image??'');setShowForm(true);setError('');window.scrollTo({top:0,behavior:'smooth'})};
+  const openEdit=(item:Item)=>{setEditing(item);setName(item.name);setKind(item.kind);setUnit(item.unit);setQuantity(String(Math.trunc(Number(item.quantity))));setMinQuantity(String(Math.trunc(Number(item.minQuantity))));setImage(item.image??'');setShowForm(true);setError('')};
   const uploadImage=async (file:File)=>{setUploading(true);setError('');try{const data=new FormData();data.append('file',file);data.append('folder','products');const res=await fetch('/api/upload',{method:'POST',body:data});const result=await res.json();if(!res.ok)throw Error(result.error??'Ошибка загрузки');setImage(result.url)}catch(e){setError(e instanceof Error?e.message:'Ошибка загрузки')}finally{setUploading(false)}};
   const save=useMutation({mutationFn:(payload:unknown)=>api(editing?'PUT':'POST',payload),onSuccess:()=>{void qc.invalidateQueries({queryKey:['admin-inventory']});resetForm()},onError:(e:Error)=>setError(e.message)});
   const remove=useMutation({mutationFn:async(id:string)=>{const r=await fetch('/api/admin/inventory?id='+encodeURIComponent(id),{method:'DELETE'});const data=await r.json();if(!r.ok)throw Error(data.error??'Ошибка удаления');return data},onSuccess:()=>{setDeleteTarget(null);void qc.invalidateQueries({queryKey:['admin-inventory']})},onError:(e:Error)=>setError(e.message)});
   const recount=useMutation({mutationFn:(payload:unknown)=>api('PATCH',payload),onSuccess:()=>{void qc.invalidateQueries({queryKey:['admin-inventory']});setDrafts({});setError('');},onError:(e:Error)=>setError(e.message)});
-  const valid=(s:string)=>s.trim()!=='' && Number.isFinite(Number(s)) && Number(s)>=0 && Math.round(Number(s)*1000)===Number(s)*1000;
+  const valid=(s:string)=>s.trim()!=='' && Number.isSafeInteger(Number(s)) && Number(s)>=0;
   return <div className="space-y-5">
     <header className="flex items-center justify-between gap-3">
       <h1 className="heading-section m-0">Склад</h1>
@@ -98,18 +99,18 @@ export default function InventoryPage(){
         <strong className="text-2xl sm:text-3xl font-semibold tabular-nums leading-none">{lowCount}</strong>
       </div>
     </div>
-    {showForm&&<form className="glass-panel p-4 space-y-3" onSubmit={e=>{e.preventDefault();setError('');save.mutate({id:editing?.id,name,kind,unit,quantity:Number(quantity),minQuantity:Number(minQuantity),image});}}>
+    {showForm&&createPortal(<div className="inventory-modal-root"><button type="button" className="inventory-modal-backdrop" aria-label="Закрыть форму" onClick={resetForm}/><form role="dialog" aria-modal="true" aria-label={editing?"Изменить позицию":"Новая складская позиция"} className="inventory-modal-panel space-y-3" onSubmit={e=>{e.preventDefault();setError('');save.mutate({id:editing?.id,name,kind,unit,quantity:Number(quantity),minQuantity:Number(minQuantity),image});}}>
       <div className="flex justify-between items-center"><h2 className="font-semibold">{editing?"Изменить позицию":"Новая складская позиция"}</h2><button type="button" aria-label="Закрыть" onClick={resetForm}><X size={18}/></button></div>
       <label className="block text-sm">Название<input className="inventory-field mt-1 w-full" required maxLength={160} value={name} onChange={e=>setName(e.target.value)} placeholder="Например, мука пшеничная"/></label>
       <div className="grid grid-cols-2 gap-3"><label className="text-sm">Тип<AdminSelect ariaLabel="Тип складской позиции" value={kind} onChange={v=>setKind(v as Item['kind'])} options={Object.entries(kindLabels).map(([value,label])=>({value,label}))}/></label><label className="text-sm">Единица<AdminSelect ariaLabel="Единица измерения" value={unit} onChange={v=>setUnit(v as Item['unit'])} options={Object.entries(unitLabels).map(([value,label])=>({value,label}))}/></label>
-      <label className="text-sm">Сейчас на складе, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="number" min="0" step="0.001" required value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><label className="text-sm">Напомнить о пополнении при остатке, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="number" min="0" step="0.001" required value={minQuantity} onChange={e=>setMinQuantity(e.target.value)}/></label></div>
+      <label className="text-sm">Сейчас на складе, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="number" min="0" step="1" required value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><label className="text-sm">Напомнить о пополнении при остатке, {unitLabels[unit]}<input className="inventory-field mt-1 w-full" type="number" min="0" step="1" required value={minQuantity} onChange={e=>setMinQuantity(e.target.value)}/></label></div>
       <div className="flex items-center gap-3">
         {image && <div className="h-20 w-20 overflow-hidden rounded-xl border border-(--lg-ring)"><img src={image} alt="" className="h-full w-full object-cover"/></div>}
         <label className="btn-outline inline-flex cursor-pointer items-center gap-2 px-4 py-2"><ImagePlus size={17}/>{uploading?'Загрузка…':image?'Заменить фото':'Добавить фото'}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploading} onChange={e=>{const file=e.target.files?.[0];if(file)void uploadImage(file);e.currentTarget.value=''}}/></label>
         {image&&<button type="button" className="text-sm text-(--lg-text-muted)" onClick={()=>setImage('')}>Убрать фото</button>}
       </div>
       <button disabled={save.isPending||uploading||!name.trim()||!valid(quantity)||!valid(minQuantity)} className="btn-primary px-5 py-2" type="submit">{save.isPending?'Сохраняем…':editing?'Сохранить изменения':'Создать позицию'}</button>
-    </form>}
+    </form></div>,document.body)}
     {error&&<p role="alert" className="text-rose-600 text-sm">{error}</p>}
     <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-3 min-w-0">
       <div className="hidden md:flex items-center flex-wrap gap-1 rounded-2xl border border-[#dce4df] bg-[#edf1ee] p-1" role="group" aria-label="Тип складской позиции">
@@ -142,7 +143,7 @@ export default function InventoryPage(){
     </div>
 
     {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="glass-panel p-8 text-center"><PackagePlus className="mx-auto mb-3" size={30}/><p>{search||filter!=='ALL'||statusFilter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
       {filtered.map(item=><article key={item.id} className={`glass-panel inventory-status-card inventory-card-${stockStatus(item)} min-w-0 overflow-hidden flex flex-col`}>
         <div className="relative h-36 bg-(--lg-fill) overflow-hidden">
           {item.image?<img src={item.image} alt="" loading="lazy" className="h-full w-full object-cover"/>:<div className="h-full flex items-center justify-center text-(--lg-text-muted)"><PackagePlus size={30}/></div>}
@@ -152,10 +153,10 @@ export default function InventoryPage(){
           </span>
         </div>
         <div className="p-3 flex flex-col gap-3 flex-1">
-          <div><div className="flex items-start justify-between gap-2"><h3 className="font-semibold leading-tight">{item.name}</h3>{item.updatedAt&&<time className="shrink-0 text-[10px] text-(--lg-text-muted) tabular-nums text-right" dateTime={item.updatedAt} title={new Date(item.updatedAt).toLocaleString('ru-RU')}>{new Date(item.updatedAt).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</time>}</div><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Number(item.minQuantity).toLocaleString('ru')} {unitLabels[item.unit]}</p></div>
+          <div><div className="flex items-start justify-between gap-2"><h3 className="font-semibold leading-tight">{item.name}</h3>{item.updatedAt&&<time className="shrink-0 text-[10px] text-(--lg-text-muted) tabular-nums text-right" dateTime={item.updatedAt} title={new Date(item.updatedAt).toLocaleString('ru-RU')}>{new Date(item.updatedAt).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</time>}</div><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Math.trunc(Number(item.minQuantity)).toLocaleString('ru')} {unitLabels[item.unit]}</p></div>
           <form className="flex items-end gap-2" onSubmit={e=>{e.preventDefault();setError('');recount.mutate({id:item.id,quantity:Number(drafts[item.id])});}}>
-            <label className="text-xs flex-1 min-w-0">Сейчас на складе, {unitLabels[item.unit]}<input aria-label={`Остаток: ${item.name}`} className="inventory-field mt-1" type="number" step=".001" min="0" required value={drafts[item.id]??item.quantity} onChange={e=>setDrafts(d=>({...d,[item.id]:e.target.value}))}/></label>
-            <button className="btn-primary p-2.5" type="submit" aria-label={`Сохранить остаток: ${item.name}`} disabled={recount.isPending||drafts[item.id]===undefined||!valid(drafts[item.id])||Number(drafts[item.id])===Number(item.quantity)}><Save size={18}/></button>
+            <label className="text-xs flex-1 min-w-0">Сейчас на складе, {unitLabels[item.unit]}<input aria-label={`Остаток: ${item.name}`} className="inventory-field mt-1" type="number" step="1" min="0" required value={drafts[item.id]??String(Math.trunc(Number(item.quantity)))} onChange={e=>setDrafts(d=>({...d,[item.id]:e.target.value}))}/></label>
+            <button className="btn-primary p-2.5" type="submit" aria-label={`Сохранить остаток: ${item.name}`} disabled={recount.isPending||drafts[item.id]===undefined||!valid(drafts[item.id])||Number(drafts[item.id])===Math.trunc(Number(item.quantity))}><Save size={18}/></button>
           </form>
           {item.kind==='PREPARED'&&<div className="flex flex-wrap gap-2"><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setRecipeItem(item);setBatchItem(null)}}>Техкарта</button><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setBatchItem(item);setRecipeItem(null);setBatchAmount('1')}}>Выпустить партию</button></div>}
           <div className="mt-auto pt-2 border-t border-(--lg-ring)">
