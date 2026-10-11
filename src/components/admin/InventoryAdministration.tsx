@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
+import {createPortal} from 'react-dom';
 import {History,ShieldCheck,X} from 'lucide-react';
 import AdminSelect from '@/components/admin/AdminSelect';
 type Event={id:number;action:string;at:string;actorName:string|null;actorEmail:string|null;before:Record<string,unknown>|null;after:Record<string,unknown>|null};
@@ -8,6 +9,9 @@ const roles=[{value:'SUPERADMIN',label:'Суперадмин'},{value:'MANAGER',
 const fields:{key:string;label:string}[]=[{key:'name',label:'Название'},{key:'quantity',label:'Остаток'},{key:'min_quantity',label:'Минимум'},{key:'kind',label:'Тип'},{key:'unit',label:'Единица'},{key:'image',label:'Фото'},{key:'reason',label:'Причина'},{key:'delta',label:'Изменение'}];
 export default function InventoryAdministration({itemId,itemName,onClose}:{itemId?:string;itemName?:string;onClose:()=>void}){
  const [tab,setTab]=useState<'history'|'access'>('history');
+ const [mounted,setMounted]=useState(false);
+ useEffect(()=>{setMounted(true);return()=>setMounted(false)},[]);
+ useEffect(()=>{const prev=document.body.style.overflow;document.body.style.overflow='hidden';const key=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};document.addEventListener('keydown',key);return()=>{document.body.style.overflow=prev;document.removeEventListener('keydown',key)}},[onClose]);
  const [events,setEvents]=useState<Event[]>([]);
  const [users,setUsers]=useState<User[]>([]);
  const [error,setError]=useState('');
@@ -16,7 +20,10 @@ export default function InventoryAdministration({itemId,itemName,onClose}:{itemI
  useEffect(()=>{let live=true;setLoading(true);setError('');const url=tab==='history'?'/api/admin/inventory/audit'+(itemId?'?itemId='+encodeURIComponent(itemId):''):'/api/admin/inventory/access';
  fetch(url).then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error??'Не удалось загрузить');return data}).then(data=>{if(!live)return;if(tab==='history')setEvents(data.events??[]);else setUsers(data.users??[])}).catch(e=>{if(live)setError(e.message)}).finally(()=>{if(live)setLoading(false)});return()=>{live=false}},[tab,itemId]);
  const update=async(userId:string,role:string)=>{setBusy(true);setError('');try{const r=await fetch('/api/admin/inventory/access',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId,role})});const d=await r.json();if(!r.ok)throw Error(d.error??'Не удалось сохранить');setUsers(v=>v.map(u=>u.id===userId?{...u,role}:u))}catch(e){setError(e instanceof Error?e.message:'Ошибка')}finally{setBusy(false)}};
- return <section className="glass-panel p-4 space-y-3" aria-label={itemId?'История позиции':'Управление складом'}>
+ if(!mounted)return null;
+ return createPortal(<div className="fixed inset-0 z-[200] flex justify-end">
+  <button type="button" className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" aria-label="Закрыть панель" onClick={onClose}/>
+  <section role="dialog" aria-modal="true" aria-label={itemId?'История позиции':'Управление складом'} className="relative z-10 flex h-full w-full flex-col gap-4 overflow-y-auto bg-[#f7f9f7] p-4 shadow-2xl sm:max-w-[480px] sm:p-6">
   <div className="flex items-center justify-between gap-2"><h2 className="font-semibold">{itemId?'История: '+itemName:'Управление складом'}</h2><button type="button" className="btn-outline p-2" aria-label="Закрыть" onClick={onClose}><X size={17}/></button></div>
   {!itemId&&<div className="flex flex-wrap gap-2">
    <button type="button" className={tab==='history'?'btn-primary px-3 py-2 text-sm':'btn-outline px-3 py-2 text-sm'} onClick={()=>setTab('history')}><History size={15} className="inline mr-1"/>История</button>
@@ -39,5 +46,6 @@ export default function InventoryAdministration({itemId,itemName,onClose}:{itemI
     <div className="w-[170px] shrink-0"><AdminSelect ariaLabel={'Права '+u.email} value={u.role??'MANAGER'} onChange={v=>{if(!busy)void update(u.id,v)}} options={roles}/></div>
    </div>)}
   </div>}
- </section>;
+  </section>
+ </div>,document.body);
 }
