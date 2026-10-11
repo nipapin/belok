@@ -20,7 +20,7 @@ const errorResponse = (error: unknown) => {
 export async function GET() {
   try {
     await requireInventoryPermission('view');
-    const items = await query(`SELECT id,name,kind,unit,quantity::text AS quantity,min_quantity::text AS "minQuantity",image,notes,updated_at AS "updatedAt",is_active AS "isActive" FROM inventory_items ORDER BY name COLLATE "default"`);
+    const items = await query(`SELECT id,name,kind,unit,quantity::text AS quantity,min_quantity::text AS "minQuantity",image,notes,updated_at AS "updatedAt",is_active AS "isActive" FROM inventory_items WHERE is_active=true ORDER BY name COLLATE "default"`);
     return NextResponse.json({ items });
   } catch (error) { return errorResponse(error); }
 }
@@ -77,10 +77,11 @@ export async function DELETE(request: NextRequest){
   if(!id)return NextResponse.json({error:'Не указан ID'},{status:400});
   const rows=await withTransaction(async client=>{
    await client.query("SELECT set_config('belok.actor_user_id',$1,true)",[actor.id]);
-   const result=await client.query(`DELETE FROM inventory_items WHERE id=$1 AND quantity=0 RETURNING id`,[id]);
+   // Hide used positions while preserving their movements, recipes and audit trail.
+   const result=await client.query(`UPDATE inventory_items SET is_active=false,updated_at=NOW() WHERE id=$1 AND quantity=0 AND is_active=true RETURNING id`,[id]);
    return result.rows;
   });
-  if(!rows.length)return NextResponse.json({error:'Сначала обнулите остаток; использованные в операциях позиции удалить нельзя'},{status:409});
+  if(!rows.length)return NextResponse.json({error:'Сначала спишите весь остаток или проведите инвентаризацию до нуля. После удаления история сохранится.'},{status:409});
   return NextResponse.json({ok:true});
  }catch(e){
   if((e as {code?:string}).code==='23503')return NextResponse.json({error:'Позиция используется в рецептах, товарах или журнале движений. Удаление запрещено.'},{status:409});

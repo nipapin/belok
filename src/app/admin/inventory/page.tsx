@@ -186,9 +186,11 @@ export default function InventoryPage(){
           {item.kind==='PREPARED'&&<div className="flex flex-wrap gap-2"><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setRecipeItem(item);setBatchItem(null)}}>Техкарта</button><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setBatchItem(item);setRecipeItem(null);setBatchAmount('1')}}>Выпустить партию</button></div>}
           <div className="mt-auto pt-2 border-t border-(--lg-ring)">
             {deleteTarget?.id===item.id ? (
+              <div className="space-y-2"><p className="text-xs text-(--lg-text-muted)">Убрать из каталога? История сохранится. Остаток должен быть нулевым.</p>
               <div className="flex items-center gap-2" role="group" aria-label={`Удалить ${item.name}?`}>
                 <button type="button" className="btn-outline flex-1 min-w-0 px-3 py-2 text-sm" disabled={remove.isPending} onClick={()=>setDeleteTarget(null)}>Отмена</button>
                 <button type="button" className="flex-1 min-w-0 rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60" disabled={remove.isPending} onClick={()=>remove.mutate(item.id)}>{remove.isPending?'Удаляем…':'Удалить'}</button>
+              </div>
               </div>
             ) : (
               <div className="flex gap-2">

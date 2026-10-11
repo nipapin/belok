@@ -49,5 +49,12 @@ test('migrations and transactional stock operations in isolated PostgreSQL',asyn
     const audit=await db.query("SELECT count(*)::int AS count FROM inventory_audit_events WHERE action='MOVEMENT' AND actor_user_id='tester'");
     assert.equal(audit.rows[0].count,7,'movement audit retains the authenticated actor');
     await assert.rejects(db.exec('DELETE FROM inventory_audit_events'),/append-only/);
+    const nonempty=await db.query('UPDATE inventory_items SET is_active=false WHERE id=$1 AND quantity=0 AND is_active=true RETURNING id',[raw]);
+    assert.equal(nonempty.rows.length,0,'nonzero stock cannot be archived');
+    const archived=await db.query('UPDATE inventory_items SET is_active=false,updated_at=NOW() WHERE id=$1 AND quantity=0 AND is_active=true RETURNING id',[goods]);
+    assert.equal(archived.rows.length,1,'used zero-stock item can be removed from the catalog');
+    assert.equal((await db.query('SELECT id FROM inventory_items WHERE id=$1 AND is_active=true',[goods])).rows.length,0);
+    assert.equal((await db.query('SELECT id FROM inventory_movements WHERE item_id=$1',[goods])).rows.length,2,'archival preserves movements');
+    await assert.rejects(apply(operation(goods,'RECEIPT','1')),/ITEM_NOT_FOUND/);
   }finally{await db.close();}
 });
