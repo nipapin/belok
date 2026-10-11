@@ -2,12 +2,13 @@
 import { useMemo, useState } from 'react';
 import {createPortal} from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PackagePlus, Search, Plus, Pencil, Trash2, ImagePlus, X, Boxes, AlertTriangle, History, ShieldCheck } from 'lucide-react';
+import { PackagePlus, Search, Plus, Pencil, Trash2, ImagePlus, X, Boxes, AlertTriangle, ShieldCheck, ArrowDownLeft, ArrowUpRight, ClipboardCheck } from 'lucide-react';
 import RecipeEditor from '@/components/admin/RecipeEditor';
 import AdminSelect from '@/components/admin/AdminSelect';
 import InventoryAdministration from '@/components/admin/InventoryAdministration';
 import StockOperationModal from '@/components/admin/StockOperationModal';
 import StockMovements from '@/components/admin/StockMovements';
+import InventoryCardMenu from '@/components/admin/InventoryCardMenu';
 import {inventoryKindLabels, stockMilli, type StockReason} from '@/lib/inventoryStock';
 import './inventory.css';
 
@@ -164,28 +165,26 @@ export default function InventoryPage(){
     </div>
 
     {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="flex min-h-[240px] flex-col items-center justify-center gap-3 py-12 text-center text-[#61726b]"><PackagePlus className="mb-1 opacity-65" size={56} strokeWidth={1.3}/><p className="text-sm font-medium text-[#52635b]">{search||filter!=='ALL'||statusFilter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+    <div className="inventory-card-grid grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {filtered.map(item=><article key={item.id} className={`glass-panel inventory-status-card inventory-card-${stockStatus(item)} min-w-0 overflow-hidden flex flex-col`}>
-        <div className="relative h-36 bg-(--lg-fill) overflow-hidden">
+        <InventoryCardMenu name={item.name} onAudit={()=>setAdministration({itemId:item.id,itemName:item.name})} onMovements={()=>setMovementItem(item)}/>
+        <div className="relative h-32 bg-(--lg-fill) overflow-hidden">
           {item.image?<img src={item.image} alt="" loading="lazy" className="h-full w-full object-cover"/>:<div className="h-full flex items-center justify-center text-(--lg-text-muted)"><PackagePlus size={30}/></div>}
-          <span className="absolute top-2 right-2 rounded-full px-2 py-1 text-xs bg-white/90 text-slate-700">{kindLabels[item.kind]}</span>
           <span className={`inventory-status-indicator inventory-status-${stockStatus(item)} absolute left-3 top-3`} title={statusLabels[stockStatus(item)]} aria-label={statusLabels[stockStatus(item)]}>
             <span className="inventory-status-dot" aria-hidden="true"/><span>{statusLabels[stockStatus(item)]}</span>
           </span>
         </div>
         <div className="p-3 flex flex-col gap-3 flex-1">
-          <div><div className="flex items-start justify-between gap-2"><h3 className="font-semibold leading-tight">{item.name}</h3>{item.updatedAt&&<time className="shrink-0 text-[10px] text-(--lg-text-muted) tabular-nums text-right" dateTime={item.updatedAt} title={new Date(item.updatedAt).toLocaleString('ru-RU')}>{new Date(item.updatedAt).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</time>}</div><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Number(item.minQuantity).toLocaleString('ru',{maximumFractionDigits:3})} {unitLabels[item.unit]}</p></div>
+          <div><div className="flex items-start justify-between gap-2"><h3 className="font-semibold leading-tight break-words min-w-0">{item.name}</h3>{item.updatedAt&&<time className="shrink-0 text-[10px] text-(--lg-text-muted) tabular-nums text-right" dateTime={item.updatedAt} title={new Date(item.updatedAt).toLocaleString('ru-RU')}>{new Date(item.updatedAt).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</time>}</div><p className="inventory-card-kind">{kindLabels[item.kind]}</p><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Number(item.minQuantity).toLocaleString('ru',{maximumFractionDigits:3})} {unitLabels[item.unit]}</p></div>
           <p className="text-xl font-semibold tabular-nums">{Number(item.quantity).toLocaleString('ru-RU',{maximumFractionDigits:3})} <span className="text-sm font-normal">{unitLabels[item.unit]}</span></p>
-          <div className="grid grid-cols-2 gap-2">
-            {item.kind!=='PREPARED'&&<button type="button" className="btn-outline px-2 py-2 text-xs" onClick={()=>setStockOperation({item,reason:'RECEIPT'})}>Приход</button>}
-            <button type="button" className="btn-outline px-2 py-2 text-xs" onClick={()=>setStockOperation({item,reason:'WRITE_OFF'})}>Списание</button>
-            <button type="button" className="btn-outline px-2 py-2 text-xs" onClick={()=>setStockOperation({item,reason:'RECOUNT'})}>Инвентаризация</button>
-            {Number(item.quantity)===0&&<button type="button" className="btn-outline px-2 py-2 text-xs" onClick={()=>setStockOperation({item,reason:'OPENING'})}>Начальный остаток</button>}
+          <div className="inventory-card-actions">
+            {item.kind!=='PREPARED'&&<button type="button" onClick={()=>setStockOperation({item,reason:'RECEIPT'})}><ArrowDownLeft size={14}/>Приход</button>}
+            <button type="button" className={item.kind==='PREPARED'?'inventory-card-action-wide':undefined} onClick={()=>setStockOperation({item,reason:'WRITE_OFF'})}><ArrowUpRight size={14}/>Списание</button>
+            <button type="button" className="inventory-card-action-wide" onClick={()=>setStockOperation({item,reason:'RECOUNT'})}><ClipboardCheck size={14}/>Инвентаризация</button>
+            {Number(item.quantity)===0&&<button type="button" className="inventory-card-action-wide" onClick={()=>setStockOperation({item,reason:'OPENING'})}><Plus size={14}/>Начальный остаток</button>}
           </div>
           {item.kind==='PREPARED'&&<div className="flex flex-wrap gap-2"><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setRecipeItem(item);setBatchItem(null)}}>Техкарта</button><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setBatchItem(item);setRecipeItem(null);setBatchAmount('1')}}>Выпустить партию</button></div>}
           <div className="mt-auto pt-2 border-t border-(--lg-ring)">
-            <button type="button" className="mb-2 inline-flex items-center gap-1 text-xs text-(--lg-text-muted) hover:underline" onClick={()=>{setAdministration({itemId:item.id,itemName:item.name});window.scrollTo({top:0,behavior:'smooth'})}}><History size={14}/> Аудит</button>
-            <button type="button" className="mb-2 ml-3 inline-flex items-center gap-1 text-xs text-(--lg-text-muted) hover:underline" onClick={()=>setMovementItem(item)}><History size={14}/> Движения</button>
             {deleteTarget?.id===item.id ? (
               <div className="flex items-center gap-2" role="group" aria-label={`Удалить ${item.name}?`}>
                 <button type="button" className="btn-outline flex-1 min-w-0 px-3 py-2 text-sm" disabled={remove.isPending} onClick={()=>setDeleteTarget(null)}>Отмена</button>
@@ -193,8 +192,8 @@ export default function InventoryPage(){
               </div>
             ) : (
               <div className="flex gap-2">
-                <button type="button" className="btn-outline flex-1 px-3 py-2 inline-flex justify-center items-center gap-1 text-sm" onClick={()=>openEdit(item)}><Pencil size={15}/> Изменить</button>
-                <button type="button" aria-label={`Удалить ${item.name}`} className="btn-outline px-3 py-2 text-rose-700" onClick={()=>{setError('');setDeleteTarget(item)}}><Trash2 size={16}/></button>
+                <button type="button" className="inventory-card-edit" onClick={()=>openEdit(item)}><Pencil size={14}/> Изменить</button>
+                <button type="button" aria-label={`Удалить ${item.name}`} className="inventory-card-delete" onClick={()=>{setError('');setDeleteTarget(item)}}><Trash2 size={15}/></button>
               </div>
             )}
           </div>
