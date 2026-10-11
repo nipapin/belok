@@ -63,6 +63,8 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  generateBuildId: async () => process.env.GITHUB_SHA || null,
   env: {
     NEXT_PUBLIC_BUILD_REVISION: buildRevision(),
     NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),

@@ -1,0 +1,203 @@
+#!/usr/bin/python3
+"""Restricted SSH receiver for GitHub's prebuilt production release (no build or npm)."""
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import tarfile
+import time
+import urllib.request
+
+ROOT = Path('/var/www/belok-prod-releases')
+CURRENT = Path('/var/www/belok-prod-current')
+CHECKOUT = Path('/var/www/belok.pro')
+CONFIG = '/etc/belok-prod/ecosystem.config.json'
+PORT = 3000
+PREVIEW_PORT = 3003
+LOCK_FILE = Path('/var/lock/belok-prod-deploy.lock')
+NODE = '/root/.nvm/versions/node/v24.14.1/bin/node'
+PM2 = '/root/.nvm/versions/node/v24.14.1/bin/pm2'
+TBANK_CA_BUNDLE = Path('/etc/ssl/tbank/russian-trusted-ca-bundle.pem')
+
+
+def load_settings():
+    global ROOT, CURRENT, CHECKOUT, CONFIG, NODE, PM2, PORT, PREVIEW_PORT, TBANK_CA_BUNDLE
+    settings = json.loads(Path('/etc/belok-prod/settings.json').read_text())
+    CHECKOUT = Path(settings['checkout'])
+    NODE, PM2 = settings['node'], settings['pm2']
+    PORT, PREVIEW_PORT = int(settings['port']), int(settings['previewPort'])
+    TBANK_CA_BUNDLE = Path(settings['caBundle'])
+    if PORT == PREVIEW_PORT or not all(1 <= p <= 65535 for p in [PORT, PREVIEW_PORT]):
+        raise RuntimeError('Invalid production/preview ports')
+
+
+def env_files():
+    return [f'--env-file={CHECKOUT / name}' for name in ['.env', '.env.local', '.env.production', '.env.production.local'] if (CHECKOUT / name).is_file()]
+
+
+def configure_tbank_tls():
+    if not TBANK_CA_BUNDLE.is_file() or not TBANK_CA_BUNDLE.read_bytes().strip():
+        raise RuntimeError(f'T-Bank CA certificates are missing or empty: {TBANK_CA_BUNDLE}')
+    # Node reads additional CAs only on startup. Cover preview, PM2 and rollback.
+    os.environ['NODE_EXTRA_CA_CERTS'] = str(TBANK_CA_BUNDLE)
+    probe = """
+const tls = require('node:tls');
+const socket = tls.connect({
+  host: 'securepay.tinkoff.ru', port: 443,
+  servername: 'securepay.tinkoff.ru', rejectUnauthorized: true,
+}, () => {
+  console.log('T-Bank TLS certificate verified');
+  socket.end();
+});
+socket.setTimeout(15000, () => socket.destroy(new Error('TLS handshake timed out')));
+socket.on('error', (error) => { console.error(error.message); process.exitCode = 1; });
+"""
+    try:
+        subprocess.run([NODE, '-e', probe], check=True, timeout=20)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        raise RuntimeError('T-Bank TLS verification failed; current release remains active') from error
+
+
+def pm2(*args):
+    subprocess.run([PM2, *args], check=True, stdout=subprocess.DEVNULL, timeout=45)
+
+
+def health(port, sha=None):
+    for _ in range(20):
+        try:
+            with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/products', timeout=3) as response:
+                data = json.load(response)
+                if isinstance(data.get('products'), list) and data['products']:
+                    if sha:
+                        with urllib.request.urlopen(f'http://127.0.0.1:{port}/_next/static/{sha}/_buildManifest.js', timeout=3) as manifest:
+                            if manifest.status != 200:
+                                raise RuntimeError('Build manifest unavailable')
+                    return
+        except Exception:
+            pass
+        time.sleep(1)
+    raise RuntimeError('Release health check failed')
+
+
+def switch(target):
+    temporary = CURRENT.with_name(CURRENT.name + '.new')
+    temporary.unlink(missing_ok=True)
+    temporary.symlink_to(target, target_is_directory=True)
+    os.replace(temporary, CURRENT)
+
+
+def main():
+    import fcntl
+    load_settings()
+    os.environ['PATH'] = str(Path(NODE).parent) + ':' + os.environ.get('PATH', '')
+    command = os.environ.get('SSH_ORIGINAL_COMMAND', '')
+    match = re.fullmatch(r'deploy ([a-f0-9]{40})', command)
+    if not match:
+        raise RuntimeError('Only deploy <commit SHA> is allowed')
+    sha = match[1]
+    ROOT.mkdir(mode=0o700, exist_ok=True)
+    with open(LOCK_FILE, 'w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        configure_tbank_tls()
+        release = ROOT / sha
+        if release.exists():
+            raise RuntimeError('Release already exists; use a new commit')
+        release.mkdir(mode=0o700)
+        archive = release / 'incoming.tar.gz'
+        size = 0
+        with open(archive, 'wb') as output:
+            while chunk := sys.stdin.buffer.read(1024 * 1024):
+                size += len(chunk)
+                if size > 256 * 1024 * 1024:
+                    raise RuntimeError('Release archive exceeds limit')
+                output.write(chunk)
+        extract_release(archive, release)
+        archive.unlink()
+        if (release / 'REVISION').read_text().strip() != sha or not (release / 'server.js').is_file():
+            raise RuntimeError('Release revision or entry point is invalid')
+        uploads = release / 'public/uploads'
+        if uploads.exists():
+            if any(p.name != '.gitkeep' for p in uploads.iterdir()):
+                raise RuntimeError('Release must not contain uploaded files')
+            (uploads / '.gitkeep').unlink(missing_ok=True)
+            uploads.rmdir()
+        # Database migrations are intentionally NOT run automatically.
+        # Apply them only after checking _migrations and taking a backup.
+        (CHECKOUT / 'public/uploads').mkdir(exist_ok=True)
+        uploads.symlink_to(CHECKOUT / 'public/uploads', target_is_directory=True)
+
+        # Validate the release while the current production process keeps serving requests.
+        configured = json.loads(Path(CONFIG).read_text())['apps'][0]['env']
+        env = {**os.environ, **{k: str(v) for k, v in configured.items()}}
+        env.update(PORT=str(PREVIEW_PORT), HOSTNAME='127.0.0.1', NODE_ENV='production', AQSI_WORKER_ENABLED='false')
+        with open(release / 'preview.log', 'wb') as log:
+            preview = subprocess.Popen([
+                NODE, *env_files(),
+                str(release / 'server.js'),
+            ], cwd=release, env=env, stdout=log, stderr=subprocess.STDOUT)
+            try:
+                health(PREVIEW_PORT, sha)
+                if preview.poll() is not None:
+                    raise RuntimeError('Preview exited')
+            finally:
+                preview.terminate()
+                try:
+                    preview.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    preview.kill()
+                    preview.wait()
+        old_target = CURRENT.resolve() if CURRENT.is_symlink() else None
+        old_processes = json.loads(subprocess.check_output([PM2, 'jlist'], text=True))
+        old_dev = next(p['pm2_env'] for p in old_processes if p['name'] == 'belok')
+        old_config = {'apps': [{
+            'name': 'belok', 'cwd': old_dev['pm_cwd'], 'script': old_dev['pm_exec_path'],
+            'args': old_dev.get('args', []), 'interpreter': old_dev.get('exec_interpreter', NODE),
+            'node_args': old_dev.get('node_args', []),
+            'env': {
+                **old_dev.get('env', {}),
+                **{k: old_dev[k] for k in ['PORT', 'HOSTNAME', 'NODE_ENV', 'AQSI_WORKER_ENABLED'] if k in old_dev},
+                'NODE_EXTRA_CA_CERTS': str(TBANK_CA_BUNDLE),
+            },
+        }]}
+        fallback = release / 'previous-process.json'
+        fallback.write_text(json.dumps(old_config))
+        fallback.chmod(0o600)
+        try:
+            switch(release)
+            if old_dev['pm_exec_path'] != str(CURRENT / 'server.js'):
+                pm2('delete', 'belok')
+            pm2('startOrReload', CONFIG, '--only', 'belok', '--update-env')
+            health(PORT, sha)
+            pm2('save')
+        except Exception:
+            if old_target:
+                switch(old_target)
+                pm2('startOrReload', CONFIG, '--only', 'belok', '--update-env')
+            else:
+                CURRENT.unlink(missing_ok=True)
+                pm2('delete', 'belok')
+                pm2('startOrReload', str(fallback), '--only', 'belok', '--update-env')
+            health(PORT)
+            pm2('save')
+            raise
+        print(f'Deployed production release {sha}; menu health check passed', flush=True)
+
+
+def extract_release(archive, release):
+    with tarfile.open(archive) as package:
+        members = package.getmembers()
+        if len(members) > 50_000 or sum(m.size for m in members) > 1024 * 1024 * 1024:
+            raise RuntimeError('Expanded release exceeds limit')
+        if any(part.startswith('.env') for m in members for part in Path(m.name).parts):
+            raise RuntimeError('Environment files cannot be deployed')
+        package.extractall(release, filter='data')
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as error:
+        print(f'Production deployment failed: {type(error).__name__}: {error}', file=sys.stderr)
+        sys.exit(1)
