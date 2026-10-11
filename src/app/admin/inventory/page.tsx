@@ -70,13 +70,13 @@ export default function InventoryPage(){
   return <div className="space-y-5">
     <header className="flex items-center justify-between gap-3">
       <h1 className="heading-section m-0">Склад</h1>
-      <button type="button" className="btn-primary hidden sm:inline-flex items-center gap-2 px-4 py-2" onClick={openCreate}><Plus size={17}/>Добавить позицию</button>
       <div className="hidden sm:flex items-center gap-2">
         <button type="button" className="btn-outline inline-flex items-center gap-2 px-3 py-2 text-sm" onClick={()=>setAdministration({})}><ShieldCheck size={17}/> История и доступы</button>
+        <button type="button" className="btn-primary inline-flex items-center gap-2 px-4 py-2" onClick={openCreate}><Plus size={17}/>Добавить позицию</button>
       </div>
       <div className="flex sm:hidden items-center gap-2">
         <button type="button" className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#dce4df] bg-white" aria-label="История и доступы" onClick={()=>setAdministration({})}><ShieldCheck size={19}/></button>
-        <button type="button" className="flex sm:hidden h-11 w-11 items-center justify-center rounded-xl bg-[#242528] text-white" aria-label="Добавить позицию" onClick={openCreate}><Plus size={21}/></button>
+        <button type="button" className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#242528] text-white" aria-label="Добавить позицию" onClick={openCreate}><Plus size={21}/></button>
       </div>
     </header>
     <label className="inventory-search inventory-search-mobile flex md:hidden w-full min-h-11 items-center gap-2 rounded-2xl border border-[#dce4df] bg-white px-3 text-[#52625c]">
