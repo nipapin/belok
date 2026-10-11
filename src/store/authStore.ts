@@ -9,6 +9,7 @@ interface User {
   name: string | null;
   avatarUrl: string | null;
   role: string;
+  staffRoles?: string[] | null;
   bonusBalance: number;
   totalSpent: number;
   loyaltyLevel: {

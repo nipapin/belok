@@ -40,7 +40,7 @@ function toNum(v: unknown): number | null {
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const products = await fetchProductsWithRelations();
     return NextResponse.json({ products });
   } catch (e) {
@@ -52,7 +52,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const body = (await request.json()) as CreateProductBody;
     if (body.spicinessLevel !== undefined && !isSpicinessLevel(body.spicinessLevel)) {
       return NextResponse.json({ error: 'Острота должна быть целым числом от 0 до 3' }, { status: 400 });

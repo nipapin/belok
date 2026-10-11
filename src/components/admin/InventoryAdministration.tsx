@@ -1,4 +1,6 @@
 'use client';
+import {hasPermission} from '@/lib/roles';
+import {useAuthStore} from '@/store/authStore';
 import {useEffect,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {History,ShieldCheck,X} from 'lucide-react';
@@ -8,6 +10,8 @@ type User={id:string;email:string;name:string|null;role:string|null};
 const roles=[{value:'SUPERADMIN',label:'Суперадмин'},{value:'MANAGER',label:'Управляющий'},{value:'STOCK',label:'Склад'},{value:'VIEWER',label:'Просмотр'}];
 const fields:{key:string;label:string}[]=[{key:'name',label:'Название'},{key:'quantity',label:'Остаток'},{key:'min_quantity',label:'Минимум'},{key:'kind',label:'Тип'},{key:'unit',label:'Единица'},{key:'image',label:'Фото'},{key:'reason',label:'Причина'},{key:'delta',label:'Изменение'}];
 export default function InventoryAdministration({itemId,itemName,onClose}:{itemId?:string;itemName?:string;onClose:()=>void}){
+ const user=useAuthStore(s=>s.user);
+ const canAccess=hasPermission(user,'inventory_access');
  const [tab,setTab]=useState<'history'|'access'>('history');
  const [mounted,setMounted]=useState(false);
  const [visible,setVisible]=useState(false);
@@ -28,7 +32,7 @@ export default function InventoryAdministration({itemId,itemName,onClose}:{itemI
   <div className="inventory-drawer-header"><h2 className="font-semibold text-lg text-[#202b28]">{itemId?'История: '+itemName:'Управление складом'}</h2><button type="button" className="inventory-drawer-close" aria-label="Закрыть" onClick={onClose}><X size={17}/></button></div>
   {!itemId&&<div className="inventory-drawer-tabs">
    <button type="button" className={tab==='history'?'inventory-drawer-tab inventory-drawer-tab-active':'inventory-drawer-tab'} onClick={()=>setTab('history')}><History size={15} className="inline mr-1"/>История</button>
-   <button type="button" className={tab==='access'?'inventory-drawer-tab inventory-drawer-tab-active':'inventory-drawer-tab'} onClick={()=>setTab('access')}><ShieldCheck size={15} className="inline mr-1"/>Доступы</button>
+   {canAccess&&<button type="button" className={tab==='access'?'inventory-drawer-tab inventory-drawer-tab-active':'inventory-drawer-tab'} onClick={()=>setTab('access')}><ShieldCheck size={15} className="inline mr-1"/>Доступы</button>}
   </div>}
   {error&&<p role="alert" className="text-sm text-rose-700">{error}</p>}
   {loading?<p className="text-sm text-(--lg-text-muted)">Загрузка…</p>:tab==='history'||itemId?

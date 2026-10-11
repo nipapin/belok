@@ -1,4 +1,6 @@
 'use client';
+import { hasPermission } from '@/lib/roles';
+import { useAuthStore } from '@/store/authStore';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {createPortal} from 'react-dom';
@@ -36,6 +38,9 @@ async function api(method:'GET'|'POST'|'PATCH'|'PUT', body?:unknown):Promise<{it
   return data;
 }
 export default function InventoryPage(){
+  const user=useAuthStore(s=>s.user);
+  const canCatalog=hasPermission(user,'inventory_catalog');
+  const canAudit=hasPermission(user,'audit');
   const qc=useQueryClient();
   const [search,setSearch]=useState('');
   const [filter,setFilter]=useState<'ALL'|Item['kind']>('ALL');
@@ -79,12 +84,12 @@ export default function InventoryPage(){
     <header className="flex items-center justify-between gap-3">
       <h1 className="heading-section m-0">Склад</h1>
       <div className="hidden sm:flex items-center gap-2">
-        <button type="button" className="btn-outline inline-flex items-center gap-2 px-3 py-2 text-sm" onClick={()=>setAdministration({})}><ShieldCheck size={17}/> История и доступы</button>
-        <button type="button" className="btn-primary inline-flex items-center gap-2 px-4 py-2" onClick={openCreate}><Plus size={17}/>Добавить позицию</button>
+        {canAudit&&<button type="button" className="btn-outline inline-flex items-center gap-2 px-3 py-2 text-sm" onClick={()=>setAdministration({})}><ShieldCheck size={17}/> История и доступы</button>}
+        {canCatalog&&<button type="button" className="btn-primary inline-flex items-center gap-2 px-4 py-2" onClick={openCreate}><Plus size={17}/>Добавить позицию</button>}
       </div>
       <div className="flex sm:hidden items-center gap-2">
-        <button type="button" className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#dce4df] bg-white" aria-label="История и доступы" onClick={()=>setAdministration({})}><ShieldCheck size={19}/></button>
-        <button type="button" className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#242528] text-white" aria-label="Добавить позицию" onClick={openCreate}><Plus size={21}/></button>
+        {canAudit&&<button type="button" className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#dce4df] bg-white" aria-label="История и доступы" onClick={()=>setAdministration({})}><ShieldCheck size={19}/></button>}
+        {canCatalog&&<button type="button" className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#242528] text-white" aria-label="Добавить позицию" onClick={openCreate}><Plus size={21}/></button>}
       </div>
     </header>
     <label className="inventory-search inventory-search-mobile flex md:hidden w-full min-h-11 items-center gap-2 rounded-2xl border border-[#dce4df] bg-white px-3 text-[#52625c]">
@@ -93,7 +98,7 @@ export default function InventoryPage(){
       {search&&<button type="button" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}
     </label>
     {administration&&<InventoryAdministration itemId={administration.itemId} itemName={administration.itemName} onClose={()=>setAdministration(null)}/>}
-    {recipeItem&&<div className="space-y-3"><div className="flex items-center justify-between"><h2 className="font-semibold">Рецептура: {recipeItem.name}</h2><button className="btn-outline px-3 py-2" onClick={()=>setRecipeItem(null)}>Закрыть</button></div><RecipeEditor key={recipeItem.id} ownerKind="PREPARED" ownerId={recipeItem.id} outputUnit={recipeItem.unit}/></div>}
+    {recipeItem&&<div className="space-y-3"><div className="flex items-center justify-between"><h2 className="font-semibold">Рецептура: {recipeItem.name}</h2><button className="btn-outline px-3 py-2" onClick={()=>setRecipeItem(null)}>Закрыть</button></div><RecipeEditor key={recipeItem.id} ownerKind="PREPARED" ownerId={recipeItem.id} outputUnit={recipeItem.unit} readOnly={!canCatalog}/></div>}
     {batchItem&&<form className="glass-panel p-4 space-y-3" onSubmit={async e=>{e.preventDefault();setBatchBusy(true);setBatchMessage('');try{const r=await fetch('/api/admin/inventory/batches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({preparedItemId:batchItem.id,quantity:Number(batchAmount.replace(',','.'))})});const data=await r.json();if(!r.ok)throw Error(data.error??'Ошибка');setBatchMessage('Партия выпущена, остатки обновлены');void qc.invalidateQueries({queryKey:['admin-inventory']});setBatchItem(null)}catch(err){setBatchMessage(err instanceof Error?err.message:'Ошибка')}finally{setBatchBusy(false)}}}><div className="flex justify-between"><h2 className="font-semibold">Выпуск: {batchItem.name}</h2><button type="button" className="btn-ghost" onClick={()=>setBatchItem(null)}>Закрыть</button></div><label className="block text-sm">Объём, {unitLabels[batchItem.unit]}<input className="inventory-field mt-1 w-full" type="text" inputMode="decimal" value={batchAmount} onChange={e=>setBatchAmount(quantityInput(e.target.value))}/></label><button type="submit" className="btn-primary px-5 py-2" disabled={batchBusy||!valid(batchAmount,batchItem.unit)||Number(batchAmount.replace(',','.'))===0}>Подтвердить выпуск и списать компоненты</button></form>}
     {batchMessage&&<p role="status" className="text-sm">{batchMessage}</p>}
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 sm:max-w-2xl">
@@ -170,7 +175,7 @@ export default function InventoryPage(){
     {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="flex min-h-[240px] flex-col items-center justify-center gap-3 py-12 text-center text-[#61726b]"><PackagePlus className="mb-1 opacity-65" size={56} strokeWidth={1.3}/><p className="text-sm font-medium text-[#52635b]">{search||filter!=='ALL'||statusFilter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
     <div className="inventory-card-grid grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {filtered.map(item=><article key={item.id} className={`glass-panel inventory-status-card inventory-card-${stockStatus(item)} min-w-0 overflow-hidden flex flex-col`}>
-        <InventoryCardMenu name={item.name} onAudit={()=>setAdministration({itemId:item.id,itemName:item.name})} onMovements={()=>setMovementItem(item)}/>
+        <InventoryCardMenu canAudit={canAudit} name={item.name} onAudit={()=>setAdministration({itemId:item.id,itemName:item.name})} onMovements={()=>setMovementItem(item)}/>
         <div className="relative h-32 bg-(--lg-fill) overflow-hidden">
           {item.image?<img src={item.image} alt="" loading="lazy" className="h-full w-full object-cover"/>:<div className="h-full flex items-center justify-center text-(--lg-text-muted)"><PackagePlus size={30}/></div>}
           <span className={`inventory-status-indicator inventory-status-${stockStatus(item)} absolute left-3 top-3`} title={statusLabels[stockStatus(item)]} aria-label={statusLabels[stockStatus(item)]}>
@@ -187,7 +192,7 @@ export default function InventoryPage(){
             {Number(item.quantity)===0&&<button type="button" className="inventory-card-action-wide" onClick={()=>setStockOperation({item,reason:'OPENING'})}><Plus size={14}/>Начальный остаток</button>}
           </div>
           {item.kind==='PREPARED'&&<div className="flex flex-wrap gap-2"><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setRecipeItem(item);setBatchItem(null)}}>Техкарта</button><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setBatchItem(item);setRecipeItem(null);setBatchAmount('1')}}>Выпустить партию</button></div>}
-          <div className="mt-auto pt-2 border-t border-(--lg-ring)">
+          {canCatalog&&<div className="mt-auto pt-2 border-t border-(--lg-ring)">
             {deleteTarget?.id===item.id ? (
               <div className="space-y-2"><p className="text-xs text-(--lg-text-muted)">Убрать из каталога? История сохранится. Остаток должен быть нулевым.</p>
               <div className="flex items-center gap-2" role="group" aria-label={`Удалить ${item.name}?`}>
@@ -201,7 +206,7 @@ export default function InventoryPage(){
                 <button type="button" aria-label={`Удалить ${item.name}`} className="inventory-card-delete" onClick={()=>{setError('');setDeleteTarget(item)}}><Trash2 size={15}/></button>
               </div>
             )}
-          </div>
+          </div>}
         </div>
       </article>)}
     </div>}

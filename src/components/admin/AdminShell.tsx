@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
+import { canAccessPage, hasPermission, isStaff, staffHome, displayRoles } from '@/lib/roles';
 import { brandMark } from "@/lib/brand";
 import { fetchAdminOrders } from "@/lib/adminDashboard";
 import AdminNewOrderWatcher from "@/components/admin/AdminNewOrderWatcher";
@@ -54,6 +55,8 @@ const menuGroups = [
       { label: "Ингредиенты", icon: ChefHat, path: "/admin/ingredients" },
       { label: "Склад", icon: Warehouse, path: "/admin/inventory" },
       { label: "Техкарты", icon: ClipboardList, path: "/admin/recipes" },
+      { label: "Стоп-лист", icon: UtensilsCrossed, path: "/admin/availability" },
+      { label: "Кухонная доска", icon: ClipboardList, path: "/order-board" },
       { label: "Кухня · приготовление", icon: ChefHat, path: "/kitchen" },
       { label: "Кухня · техкарты", icon: ChefHat, path: "/admin/kitchen" },
       { label: "Хиты", icon: Flame, path: "/admin/hits" },
@@ -64,6 +67,7 @@ const menuGroups = [
     items: [
       { label: "Пользователи", icon: Users, path: "/admin/users" },
       { label: "Сотрудники", icon: UserRoundCog, path: "/admin/employees" },
+      { label: "Журнал доступа", icon: ClipboardList, path: "/admin/audit" },
       { label: "Уведомления", icon: Bell, path: "/admin/notifications" },
       { label: "Главная сайта", icon: Home, path: "/admin/home" },
       { label: "Приветствие", icon: Sparkles, path: "/admin/walkthrough" },
@@ -99,7 +103,7 @@ export default function AdminShell({
     queryFn: fetchAdminOrders,
     refetchInterval: 10_000,
     refetchIntervalInBackground: true,
-    enabled: !isLoading && user?.role === "ADMIN",
+    enabled: !isLoading && hasPermission(user, 'orders'),
   });
   const pendingCount = (ordersData?.orders ?? []).filter(
     (o) => o.status === "PENDING",
@@ -119,10 +123,10 @@ export default function AdminShell({
   useEffect(() => {
     void fetchUser();
   }, [fetchUser]);
-  const isUnauthorized = !isLoading && (!user || user.role !== "ADMIN");
+  const isUnauthorized = !isLoading && (!user || !isStaff(user) || !canAccessPage(user, pathname));
   useEffect(() => {
-    if (isUnauthorized) router.replace("/");
-  }, [isUnauthorized, router]);
+    if (isUnauthorized) router.replace(user && isStaff(user) ? staffHome(user) : "/");
+  }, [isUnauthorized, router, user]);
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
   }, [pathname]);
@@ -159,7 +163,7 @@ export default function AdminShell({
         </div>
       </div>
       <nav className="admin-grouped-nav" aria-label="Разделы админки">
-        {menuGroups.map((group) => (
+        {menuGroups.map(group => ({...group, items: group.items.filter(item => canAccessPage(user, item.path))})).filter(group => group.items.length).map((group) => (
           <div key={group.label} className="admin-nav-group">
             <p className="admin-nav-label">{group.label}</p>
             {group.items.map(({ icon: Icon, ...item }) => (
@@ -190,7 +194,7 @@ export default function AdminShell({
           {(user?.name || user?.email || "А").slice(0, 1).toUpperCase()}
         </span>
         <div>
-          <strong>{user?.name || "Администратор"}</strong>
+          <strong>{user?.name || (user ? displayRoles(user) : "Сотрудник")}</strong>
           <span>{user?.email || user?.phone}</span>
         </div>
         <button
@@ -218,7 +222,7 @@ export default function AdminShell({
       <aside className="admin-desktop-sidebar">{navigation}</aside>
       <header className="admin-header-bar admin-workspace-header">
         <Link
-          href="/admin"
+          href={user ? staffHome(user) : "/admin"}
           className="admin-mobile-brand"
           aria-label="Belok — обзор"
         >
@@ -234,6 +238,7 @@ export default function AdminShell({
           aria-label="Информация о версии приложения"
           aria-expanded={versionOpen}
           aria-controls="admin-build-version-details"
+          disabled={!hasPermission(user, 'settings')}
           onClick={() => setVersionPanel({ pathname, open: !versionOpen })}
         >
           {process.env.NODE_ENV === "development" ||
@@ -254,14 +259,14 @@ export default function AdminShell({
               <MoreHorizontal size={22} />
             </button>
           )}
-          <Link
+          {hasPermission(user, 'orders') && <Link
             href="/admin/orders"
             className={`admin-icon-button admin-header-orders ${editingProduct ? "admin-editor-orders" : ""}`}
             aria-label={`Заказы, ожидают подтверждения: ${pendingCount}`}
           >
             <Bell size={19} />
             {pendingCount > 0 && <span className="admin-notification-dot" />}
-          </Link>
+          </Link>}
           <Link href="/" className="admin-site-link">
             <ExternalLink size={16} aria-hidden="true" />
             <span>На сайт</span>
@@ -275,7 +280,7 @@ export default function AdminShell({
         className="admin-workspace-main"
         inert={mobileOpen || undefined}
       >
-        <AdminNewOrderWatcher />
+        {hasPermission(user, 'orders') && <AdminNewOrderWatcher />}
         {versionOpen && <div id="admin-build-version-details"><AdminBuildVersion /></div>}
         {children}
       </main>
@@ -285,7 +290,7 @@ export default function AdminShell({
           aria-label="Основная навигация админки"
           inert={mobileOpen || undefined}
         >
-          {mobileItems.map(({ icon: Icon, ...item }) => (
+          {mobileItems.filter(item => canAccessPage(user, item.path)).map(({ icon: Icon, ...item }) => (
             <Link
               key={item.path}
               href={item.path}

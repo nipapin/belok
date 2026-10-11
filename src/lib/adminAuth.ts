@@ -1,9 +1,9 @@
 import { getCurrentUser } from './auth';
+import { hasPermission, type Permission } from './roles';
 
-export async function requireAdmin() {
+/** Default remains restricted to legacy admins and owners; never broadens existing guards. */
+export async function requireAdmin(permission: Permission = 'settings') {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'ADMIN') {
-    throw new Error('UNAUTHORIZED');
-  }
-  return user;
+  if (!hasPermission(user, permission)) throw new Error('UNAUTHORIZED');
+  return user!;
 }

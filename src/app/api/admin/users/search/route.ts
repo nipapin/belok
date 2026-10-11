@@ -18,7 +18,7 @@ interface SearchRow {
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('people');
   } catch {
     return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });
   }

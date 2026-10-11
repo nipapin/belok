@@ -5,7 +5,7 @@ import { query } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const [resolved, stored] = await Promise.all([getHitsConfig(), getStoredHitsConfig()]);
     return NextResponse.json({ ...resolved, pinnedIds: stored.productIds });
   } catch (e) {
@@ -16,7 +16,7 @@ export async function GET() {
 }
 export async function PUT(request:NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const body=await request.json().catch(()=>null);
     if (!body || typeof body !== 'object') return NextResponse.json({error:'Некорректные данные'},{status:400});
     const next=sanitizeHitsConfig(body);

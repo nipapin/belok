@@ -1,5 +1,6 @@
 "use client";
 
+import { isStaff, hasPermission, staffHome } from '@/lib/roles';
 import { MenuLabel } from "@/types";
 import { Home, LayoutDashboard, QrCode, ScanLine, ShoppingCart, User, UtensilsCrossed } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
@@ -54,11 +55,11 @@ export default function BottomNav() {
       ];
     }
 
-    if (user.role === "ADMIN") {
+    if (isStaff(user)) {
       return [
         ...base,
-        { id: "scan", label: MenuLabel.SCAN, icon: ScanLine, path: "/admin/loyalty" },
-        { id: "admin", label: MenuLabel.ADMIN, icon: LayoutDashboard, path: "/admin" },
+        ...(hasPermission(user, 'cashier') ? [{ id: "scan", label: MenuLabel.SCAN, icon: ScanLine, path: "/admin/loyalty" }] : []),
+        { id: "admin", label: MenuLabel.ADMIN, icon: LayoutDashboard, path: staffHome(user) },
       ];
     }
 
@@ -180,7 +181,7 @@ export default function BottomNav() {
         </nav>
       </div>
 
-      {user && user.role !== "ADMIN" && (
+      {user && !isStaff(user) && (
         <UserQrModal
           open={qrOpen}
           onClose={() => setQrOpen(false)}

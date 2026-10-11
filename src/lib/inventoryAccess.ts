@@ -1,3 +1,4 @@
+import {hasPermission, effectiveRoles} from './roles';
 import {getCurrentUser} from '@/lib/auth';
 import {queryOne} from '@/lib/db';
 
@@ -11,7 +12,12 @@ const allowed:Record<InventoryRole,InventoryPermission[]>={
 };
 export async function requireInventoryPermission(permission:InventoryPermission){
  const user=await getCurrentUser();
- if(!user||user.role!=='ADMIN')throw Error('UNAUTHORIZED');
+ if(!user)throw Error('UNAUTHORIZED');
+ if(!effectiveRoles(user).includes('ADMIN')) {
+  const permissions = {view:'inventory',catalog:'inventory_catalog',stock:'inventory_stock',produce:'inventory_produce',manage_access:'inventory_access',audit:'audit'} as const;
+  if(!hasPermission(user, permissions[permission]))throw Error('FORBIDDEN');
+  return user;
+ }
  const assigned=await queryOne<{access_role:InventoryRole}>(`SELECT access_role FROM inventory_access WHERE user_id=$1`,[user.id]);
  // Migration-safe fallback: existing admins can operate inventory but cannot grant privileges.
  const role=assigned?.access_role??'MANAGER';

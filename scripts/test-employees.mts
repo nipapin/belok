@@ -13,6 +13,7 @@ test('users and employees partition all accounts by USER role without changing a
   const db = new PGlite();
   try {
     await db.exec(`CREATE TABLE users(id text PRIMARY KEY,email text,"emailVerifiedAt" timestamp,phone text,name text,"avatarUrl" text,role text,"bonusBalance" int,"totalSpent" numeric,"loyaltyLevelId" text,"createdAt" timestamp,"updatedAt" timestamp,"passwordHash" text);
+      CREATE TABLE app_settings(key text PRIMARY KEY,value jsonb,"updatedAt" timestamp DEFAULT NOW());
       CREATE TABLE loyalty_levels(id text,name text,"minSpent" numeric,"cashbackPercent" numeric,"discountPercent" numeric,"sortOrder" int);
       CREATE TABLE orders(id text,"userId" text);
       INSERT INTO users(id,role,name,"createdAt","passwordHash") VALUES('guest','USER','Гость',NOW(),'private'),('admin','ADMIN','Администратор',NOW(),'private'),('manager','MANAGER','Управляющий',NOW(),'private');`);
@@ -35,6 +36,13 @@ test('users and employees partition all accounts by USER role without changing a
     assert.equal((await get('?scope=invalid')).status, 400);
     assert.ok(employees.users.every((u: object) => !('passwordHash' in u)));
     assert.equal((await db.query('SELECT COUNT(*)::int AS count FROM users')).rows[0].count, 3);
+    await db.query(`INSERT INTO app_settings(key,value) VALUES('employee_roles:guest','{"roles":["COOK"]}'::jsonb),('employee_roles:admin','{"roles":["USER"]}'::jsonb)`);
+    const reassignedGuests = await (await get('?scope=users')).json();
+    assert.deepEqual(reassignedGuests.users.map((u: {id:string})=>u.id), ['admin']);
+    const reassignedEmployees = await (await get('?scope=employees')).json();
+    assert.deepEqual(reassignedEmployees.users.map((u: {id:string})=>u.id).sort(), ['guest','manager']);
+    assert.equal((await db.query("SELECT role FROM users WHERE id='guest'")).rows[0].role, 'USER');
+    assert.equal((await db.query("SELECT role FROM users WHERE id='admin'")).rows[0].role, 'ADMIN');
     authorized = false; assert.equal((await get('?scope=employees')).status, 403);
   } finally { await db.close(); }
 });

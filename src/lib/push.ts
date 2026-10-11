@@ -290,7 +290,8 @@ export async function tryNotifyUser(
 export async function tryNotifyAdmins(payload: PushPayload): Promise<void> {
   try {
     const rows = await query<{ id: string }>(
-      `SELECT id FROM "users" WHERE role = 'ADMIN'`
+      `SELECT u.id FROM users u LEFT JOIN app_settings a ON a.key='employee_roles:' || u.id
+       WHERE (a.key IS NULL AND u.role='ADMIN') OR a.value->'roles' ?| ARRAY['OWNER','MANAGER','CASHIER']`
     );
     await sendPushToUserIds(
       rows.map((r) => r.id),

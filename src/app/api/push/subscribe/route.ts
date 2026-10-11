@@ -1,3 +1,4 @@
+import { hasPermission, staffHome } from '@/lib/roles';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { tryNotifyUser, upsertSubscription } from '@/lib/push';
@@ -38,13 +39,13 @@ export async function POST(req: NextRequest) {
   });
 
   if (body?.welcome === true && (await getNotificationSettings()).autoPushWelcome) {
-    const isAdmin = user.role === 'ADMIN';
+    const isAdmin = hasPermission(user, 'orders');
     void tryNotifyUser(user.id, {
       title: 'Уведомления включены',
       body: isAdmin
         ? 'Так придёт оповещение, когда кто-то оформит заказ.'
         : 'Так мы сообщим, когда заказ будет готов.',
-      url: isAdmin ? '/admin/orders' : '/',
+      url: isAdmin ? staffHome(user) : '/',
       tag: 'push-enabled',
     });
   }

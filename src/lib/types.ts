@@ -32,6 +32,7 @@ export interface UserRow {
   name: string | null;
   avatarUrl: string | null;
   role: Role;
+  staffRoles?: import('./roles').StaffRole[] | null;
   bonusBalance: number;
   totalSpent: number;
   loyaltyLevelId: string | null;

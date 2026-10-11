@@ -11,7 +11,7 @@ function isUploadFolder(value: string): value is UploadFolder {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
 
     const formData = await request.formData();
     const file = formData.get('file') as File;

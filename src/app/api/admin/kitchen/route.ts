@@ -4,7 +4,7 @@ import { readKitchenCards } from '@/lib/kitchenStorage';
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     return NextResponse.json({ cards: await readKitchenCards() }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if ((error as Error).message === 'UNAUTHORIZED')

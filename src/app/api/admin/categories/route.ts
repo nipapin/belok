@@ -10,7 +10,7 @@ interface CategoryWithCountRow extends CategoryRow {
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const rows = await query<CategoryWithCountRow>(
       `SELECT
          c.*,
@@ -49,7 +49,7 @@ interface CreateCategoryBody {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const body = (await request.json()) as CreateCategoryBody;
     const id = uuidv4();
     const maxRow = await queryOne<{ max: number | string | null }>(

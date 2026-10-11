@@ -1,5 +1,7 @@
 "use client";
 
+import { isStaff, hasPermission, staffHome } from "@/lib/roles";
+
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
@@ -269,9 +271,9 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {user.role === "ADMIN" ? (
+        {isStaff(user) ? (
           <>
-            <button
+            {hasPermission(user, 'cashier') && <button
               type="button"
               onClick={() => router.push("/admin/loyalty")}
               className="profile-scan-cta mb-3 flex w-full cursor-pointer items-center gap-4 rounded-3xl p-5 text-left"
@@ -285,11 +287,11 @@ export default function ProfilePage() {
                   Начислить бонусы клиенту по QR-коду
                 </span>
               </span>
-            </button>
+            </button>}
 
             <button
               type="button"
-              onClick={() => router.push("/admin")}
+              onClick={() => router.push(staffHome(user))}
               className="glass-panel-strong lg-interactive mb-4 flex w-full cursor-pointer items-center gap-3 border border-(--lg-ring) p-4 text-left"
             >
               <LayoutDashboard className="size-5 shrink-0 text-(--lg-text)" strokeWidth={1.75} />

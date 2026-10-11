@@ -15,7 +15,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const { id } = await params;
     const body = (await request.json()) as UpdateCategoryBody;
 
@@ -54,7 +54,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const { id } = await params;
     await query(`DELETE FROM "categories" WHERE id = $1`, [id]);
     return NextResponse.json({ success: true });

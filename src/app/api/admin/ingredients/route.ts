@@ -10,7 +10,7 @@ interface IngredientWithCountRow extends IngredientRow {
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const rows = await query<IngredientWithCountRow>(
       `SELECT
          i.*,
@@ -47,7 +47,7 @@ interface CreateIngredientBody {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const body = (await request.json()) as CreateIngredientBody;
     const id = uuidv4();
     const ingredient = await queryOne<IngredientRow>(

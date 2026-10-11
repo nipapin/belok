@@ -8,7 +8,7 @@ import {
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('orders');
     const settings = await getNotificationSettings();
     return NextResponse.json({ settings });
   } catch (e) {

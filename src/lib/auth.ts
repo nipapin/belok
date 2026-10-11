@@ -1,3 +1,4 @@
+import { loadStaffRoles } from './staffAccess';
 import { randomBytes } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
 import type { NextRequest } from 'next/server';
@@ -193,6 +194,7 @@ export async function getCurrentUser(): Promise<UserWithLoyalty | null> {
     name: row.name,
     avatarUrl: row.avatarUrl,
     role: row.role,
+    staffRoles: await loadStaffRoles(row.id),
     bonusBalance: row.bonusBalance,
     totalSpent: row.totalSpent,
     loyaltyLevelId: row.loyaltyLevelId,
@@ -243,6 +245,7 @@ export async function getUserWithLoyaltyById(id: string): Promise<UserWithLoyalt
     name: row.name,
     avatarUrl: row.avatarUrl,
     role: row.role,
+    staffRoles: await loadStaffRoles(row.id),
     bonusBalance: row.bonusBalance,
     totalSpent: row.totalSpent,
     loyaltyLevelId: row.loyaltyLevelId,

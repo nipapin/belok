@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { staffRoles, effectiveRoles, displayRoles, roleLabels, hasPermission, canAssignRoles } from '@/lib/roles';
+import { useAuthStore } from '@/store/authStore';
 import Modal from '@/components/ui/Modal';
 
 interface User {
@@ -11,6 +13,7 @@ interface User {
   name: string | null;
   email: string | null;
   role: string;
+  staffRoles?: string[] | null;
   bonusBalance: number;
   totalSpent: number;
   loyaltyLevel: { id: string; name: string } | null;
@@ -18,9 +21,10 @@ interface User {
   createdAt: string;
 }
 
-const roleLabel = (role: string) => role === 'USER' ? 'Гость' : role === 'ADMIN' ? 'Администратор' : role;
+const roleLabel = (role: string) => roleLabels[role] ?? role;
 
 export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees' }) {
+  const actor = useAuthStore(s => s.user);
   const employees = scope === 'employees';
   const queryClient = useQueryClient();
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -39,7 +43,7 @@ export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees
       return data as { users: User[] };
     },
   });
-  const roles = [...new Set((data?.users ?? []).map(user => user.role))];
+  const roles = [...new Set((data?.users ?? []).flatMap(user => [...effectiveRoles(user)]))];
 
   const { data: settingsData } = useQuery({
     queryKey: ['admin-settings'],
@@ -51,8 +55,8 @@ export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees
     const list: User[] = data?.users ?? [];
     const q = search.trim().toLowerCase();
     return list.filter((user) => {
-      if (employees ? user.role === 'USER' : user.role !== 'USER') return false;
-      if (roleFilter !== 'ALL' && user.role !== roleFilter) return false;
+      if (employees ? effectiveRoles(user).every(role => role === 'USER') : effectiveRoles(user).some(role => role !== 'USER')) return false;
+      if (roleFilter !== 'ALL' && !effectiveRoles(user).includes(roleFilter)) return false;
       if (levelFilter !== 'ALL' && user.loyaltyLevel?.id !== levelFilter) return false;
       if (!q) return true;
       const name = (user.name ?? '').toLowerCase();
@@ -68,7 +72,7 @@ export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Не удалось сохранить изменения');
+      if (!res.ok) { const data = await res.json(); throw new Error(data.error ?? 'Не удалось сохранить изменения'); }
       return res.json();
     },
     onSuccess: () => {
@@ -80,7 +84,7 @@ export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees
   return (
     <div>
       <h1 className="heading-section mb-2">{employees ? 'Сотрудники' : 'Пользователи'}</h1>
-      <p className="mb-6 text-sm text-(--lg-text-muted)">{employees ? 'Все аккаунты с ролью, отличной от USER.' : 'Гости кафе с ролью USER.'}</p>
+      <p className="mb-6 text-sm text-(--lg-text-muted)">{employees ? 'Рабочие роли и доступ сотрудников.' : 'Клиенты кафе. Здесь можно назначить сотруднику рабочие роли.'}</p>
 
       <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
         <input
@@ -143,12 +147,12 @@ export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees
                   <td>
                     <span
                       className={
-                        user.role === 'ADMIN'
+                        hasPermission(user, 'settings')
                           ? 'rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800'
                           : 'admin-chip-neutral'
                       }
                     >
-                      {roleLabel(user.role)}
+                      {displayRoles(user)}
                     </span>
                   </td>
                   <td>{user.loyaltyLevel?.name || '—'}</td>
@@ -164,7 +168,8 @@ export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees
                         setBonusAdjustment('');
                         setBonusReason('');
                       }}
-                      aria-label="Изменить"
+                      disabled={!actor || !canAssignRoles(actor, user, user.staffRoles ?? null)}
+                aria-label="Изменить"
                     >
                       <Pencil className="size-4" />
                     </button>
@@ -192,6 +197,7 @@ export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees
                   setBonusAdjustment('');
                   setBonusReason('');
                 }}
+                disabled={!actor || !canAssignRoles(actor, user, user.staffRoles ?? null)}
                 aria-label="Изменить"
               >
                 <Pencil className="size-4" />
@@ -200,12 +206,12 @@ export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees
             <div className="mt-3 flex flex-wrap gap-2">
               <span
                 className={
-                  user.role === 'ADMIN'
+                  hasPermission(user, 'settings')
                     ? 'rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800'
                     : 'admin-chip-neutral'
                 }
               >
-                {roleLabel(user.role)}
+                {displayRoles(user)}
               </span>
               {user.loyaltyLevel?.name ? (
                 <span className="admin-chip-neutral text-xs font-medium">{user.loyaltyLevel.name}</span>
@@ -243,7 +249,9 @@ export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees
               className="btn-primary px-5 py-2 text-sm"
               disabled={updateMutation.isPending}
               onClick={() => {
-                const body: Record<string, unknown> = { role: editUser?.role };
+                const original = data?.users.find(user => user.id === editUser?.id);
+                const body: Record<string, unknown> = {};
+                if (JSON.stringify(original?.staffRoles ?? null) !== JSON.stringify(editUser?.staffRoles ?? null)) body.staffRoles = editUser?.staffRoles ?? null;
                 if (bonusAdjustment) {
                   const adj = parseFloat(bonusAdjustment);
                   body.bonusBalance = (editUser?.bonusBalance || 0) + adj;
@@ -269,20 +277,22 @@ export default function AdminPeoplePage({ scope }: { scope: 'users' | 'employees
                 </>
               ) : null}
             </p>
-            <label className="text-sm font-medium text-(--lg-text)">
-              Роль
-              <select
-                className="select-pill mt-1"
-                value={editUser.role}
-                onChange={(e) =>
-                  setEditUser(editUser ? { ...editUser, role: e.target.value } : null)
-                }
-              >
-                <option value="USER">Клиент</option>
-                <option value="ADMIN">Администратор</option>
-                {!['USER', 'ADMIN'].includes(editUser.role) && <option value={editUser.role}>{roleLabel(editUser.role)}</option>}
-              </select>
-            </label>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-2 text-sm font-medium">Роли и доступ</legend>
+              <p className="text-xs text-(--lg-text-muted)">Исходная роль: {roleLabel(editUser.role)}. Она сохраняется; выбранные рабочие роли определяют доступ.</p>
+              {hasPermission(actor, 'settings') && <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={editUser.staffRoles == null} onChange={e => setEditUser({...editUser, staffRoles: e.target.checked ? null : ['USER']})} />
+                Сохранить исходный доступ
+              </label>}
+              {staffRoles.filter(role => hasPermission(actor, 'settings') || !['OWNER','MANAGER'].includes(role)).map(role => <label key={role} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={editUser.staffRoles?.includes(role) ?? false} onChange={e => {
+                  const current = editUser.staffRoles ?? [];
+                  const next = e.target.checked ? role === 'USER' ? ['USER'] : [...current.filter(r => r !== 'USER'), role] : current.filter(r => r !== role);
+                  setEditUser({...editUser, staffRoles: next.length ? next : ['USER']});
+                }} />{roleLabel(role)}
+              </label>)}
+              <p className="text-xs text-(--lg-text-muted)">Рабочие роли можно совмещать. «Клиент» снимает рабочий доступ. Чтобы ограничить текущего администратора, выберите для него роль повара или другого сотрудника.</p>
+            </fieldset>
             <label className="text-sm font-medium text-(--lg-text)">
               Корректировка бонусов (+/−)
               <input

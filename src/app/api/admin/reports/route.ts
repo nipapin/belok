@@ -5,7 +5,7 @@ import { reportCsv, reportPeriod, type ReportRow } from '@/lib/managerReports';
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    await requireAdmin('reports');
     const p = new URL(request.url).searchParams;
     let period;
     try { period = reportPeriod(p.get('from') ?? '', p.get('to') ?? ''); }

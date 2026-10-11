@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, Check, CheckCheck, ChefHat, Clock3, Expand, Loader2, LockKeyhole, Moon, Radio, Sun, Undo2, Volume2, VolumeX } from 'lucide-react';
 import KioskPinPad from '@/components/kiosk/KioskPinPad';
@@ -41,10 +42,10 @@ function timeLabel(value: string) {
   return new Date(value).toLocaleTimeString('ru-RU', { timeZone: 'Europe/Kaliningrad', hour: '2-digit', minute: '2-digit' });
 }
 
-function OrderCard({ order, fresh, now, acknowledge, advance, markItem, busy }: { order: BoardOrder; fresh: boolean; now: number; acknowledge: () => void; advance: (status: 'PREPARING' | 'READY' | 'COMPLETED') => void; markItem: (item: BoardOrder['items'][number], action: 'prepare' | 'undo') => void; busy: boolean }) {
+function OrderCard({ order, fresh, now, acknowledge, advance, markItem, busy, canComplete }: { order: BoardOrder; fresh: boolean; now: number; acknowledge: () => void; advance: (status: 'PREPARING' | 'READY' | 'COMPLETED') => void; markItem: (item: BoardOrder['items'][number], action: 'prepare' | 'undo') => void; busy: boolean; canComplete: boolean }) {
   const minutes = Math.max(0, Math.floor((now - new Date(order.createdAt).getTime()) / 60_000));
   const ageLabel = minutes < 60 ? `${minutes} мин` : `${Math.floor(minutes / 60)} ч ${minutes % 60} мин`;
-  const action = order.status in actions ? actions[order.status as keyof typeof actions] : null;
+  const action = (order.status !== 'READY' || canComplete) && order.status in actions ? actions[order.status as keyof typeof actions] : null;
   if (order.status === 'PENDING') return <article data-order-id={order.id} className={`board-card board-new-card ${fresh ? 'board-card-fresh' : ''}`}>
     <button className="board-order-action board-accept" type="button" disabled={busy} onClick={() => advance('PREPARING')}>
       <strong className="board-ticket">Заказ {orderTicket(order).replace('#', '№')}</strong>
@@ -78,7 +79,7 @@ function OrderCard({ order, fresh, now, acknowledge, advance, markItem, busy }: 
         {order.deliveryAddress && <p>{order.deliveryAddress}</p>}
         {order.deliveryTime && <p>Доставка: {order.deliveryTime === 'ASAP' ? 'как можно быстрее' : new Date(order.deliveryTime).toLocaleString('ru-RU', { timeZone: 'Europe/Kaliningrad', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>}
       </div>}
-      <footer className="board-card-footer"><span>{order.total} ₽ · {order.paymentStatus === 'SUCCEEDED' ? 'Оплачен' : `К оплате · ${paymentMethodLabel(order.paymentMethod) ?? ''}`}</span>
+      <footer className="board-card-footer">{canComplete && <span>{order.total} ₽ · {order.paymentStatus === 'SUCCEEDED' ? 'Оплачен' : `К оплате · ${paymentMethodLabel(order.paymentMethod) ?? ''}`}</span>}
         {fresh && <button onClick={acknowledge} type="button">Просмотрено ✓</button>}
       </footer>
       {action && <button className={`board-order-action board-order-action-${order.status.toLowerCase()}`} type="button" disabled={busy} onClick={() => advance(action.status)}>{busy ? <Loader2 size={18} className="animate-spin" /> : action.label}</button>}
@@ -87,7 +88,7 @@ function OrderCard({ order, fresh, now, acknowledge, advance, markItem, busy }: 
 }
 
 export default function OrderBoard() {
-  const [session, setSession] = useState<{ configured: boolean; unlocked: boolean } | null>(null);
+  const [session, setSession] = useState<{ configured: boolean; unlocked: boolean; canComplete?: boolean; staff?: boolean; canAvailability?: boolean } | null>(null);
   const [orders, setOrders] = useState<BoardOrder[]>([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -146,7 +147,7 @@ export default function OrderBoard() {
         const saved = JSON.parse(localStorage.getItem(ACKNOWLEDGED_KEY) || '[]') as unknown;
         if (Array.isArray(saved)) acknowledged.current = new Set(saved.filter((id): id is string => typeof id === 'string'));
       } catch { /* Audio still works when browser storage is unavailable. */ }
-      const response = await fetch('/api/kiosk/session', { cache: 'no-store' });
+      const response = await fetch('/api/order-board/session', { cache: 'no-store' });
       if (!response.ok) throw new Error();
       try { setTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'); }
       catch { /* Keep the default theme when browser storage is unavailable. */ }
@@ -283,6 +284,7 @@ export default function OrderBoard() {
 
   async function lockScreen() {
     try {
+      if (session?.staff) await fetch('/api/auth/logout', {method:'POST'});
       const response = await fetch('/api/order-board', { method: 'DELETE' });
       if (!response.ok) throw new Error();
       soundConfig.current.enabled = false; setSoundEnabled(false); seen.current = null; attention.current.clear(); newQueue.current.clear(); playback.current?.stop();
@@ -385,6 +387,8 @@ export default function OrderBoard() {
       <div className="board-brand">бело́к</div>
       <div className={`board-connection ${error || (lastSync && now - lastSync > 15000) ? 'board-disconnected' : ''}`}><Radio size={17} />{error ? 'Нет соединения' : lastSync ? 'На связи' : 'Подключаемся'}<small>{lastSync ? `Обновлено ${timeLabel(new Date(lastSync).toISOString())}` : 'Получаем заказы'}</small></div>
       <div className="board-controls">
+        {session.canAvailability && <Link href="/admin/availability">Стоп-лист</Link>}
+        {session.staff && <Link href="/kitchen">Техкарты</Link>}
         <button className={soundEnabled ? 'board-sound-active' : 'board-sound-off'} onClick={() => {
           if (soundEnabled) { soundConfig.current.enabled = false; setSoundEnabled(false); playback.current?.stop(); }
           else void enableSound();
@@ -414,10 +418,10 @@ export default function OrderBoard() {
         const Icon = column.icon;
         return <section key={column.id} className={`board-column board-column-${column.id}`}>
           <div className="board-column-heading"><Icon size={19} /><h2>{column.title}</h2>
-            {column.id === 'ready' && <button className="board-complete-all" type="button" title="Отметить все готовые заказы выданными" aria-label="Выдать все готовые заказы" disabled={!group.length || completingAll || updatingIds.size > 0} onClick={() => void completeAllReady()}>{completingAll ? <Loader2 size={18} className="animate-spin" /> : <CheckCheck size={18} />}</button>}
+            {column.id === 'ready' && session.canComplete !== false && <button className="board-complete-all" type="button" title="Отметить все готовые заказы выданными" aria-label="Выдать все готовые заказы" disabled={!group.length || completingAll || updatingIds.size > 0} onClick={() => void completeAllReady()}>{completingAll ? <Loader2 size={18} className="animate-spin" /> : <CheckCheck size={18} />}</button>}
             <strong>{group.length}</strong></div>
           <div className="board-column-scroll">
-            {group.map((order) => <OrderCard key={order.id} order={order} fresh={freshIds.has(order.id)} now={now} acknowledge={() => acknowledge([order.id])} advance={(status) => { if (!bulkBusy.current) void advanceOrder(order, status); }} markItem={(item, action) => void markItem(order, item, action)} busy={updatingIds.has(order.id) || completingAll} />)}
+            {group.map((order) => <OrderCard canComplete={session?.canComplete !== false} key={order.id} order={order} fresh={freshIds.has(order.id)} now={now} acknowledge={() => acknowledge([order.id])} advance={(status) => { if (!bulkBusy.current) void advanceOrder(order, status); }} markItem={(item, action) => void markItem(order, item, action)} busy={updatingIds.has(order.id) || completingAll} />)}
             {!group.length && <div className="board-empty"><Icon size={34} /><p>{lastSync ? 'Пока нет заказов' : 'Загружаем заказы…'}</p></div>}
           </div>
         </section>;

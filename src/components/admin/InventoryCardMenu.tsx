@@ -2,7 +2,7 @@
 import {useEffect, useRef} from 'react';
 import {History, ListTree, MoreHorizontal} from 'lucide-react';
 
-export default function InventoryCardMenu({name,onAudit,onMovements}:{name:string;onAudit:()=>void;onMovements:()=>void}) {
+export default function InventoryCardMenu({name,onAudit,onMovements,canAudit=true}:{name:string;canAudit?:boolean;onAudit:()=>void;onMovements:()=>void}) {
   const ref=useRef<HTMLDetailsElement>(null);
   useEffect(()=>{
     const outside=(event:PointerEvent)=>{if(ref.current&&!ref.current.contains(event.target as Node))ref.current.open=false;};
@@ -15,7 +15,7 @@ export default function InventoryCardMenu({name,onAudit,onMovements}:{name:strin
   return <details ref={ref} className="inventory-card-menu">
     <summary aria-label={'Дополнительные действия: '+name} title="Дополнительные действия"><MoreHorizontal size={19}/></summary>
     <div className="inventory-card-menu-options">
-      <button type="button" onClick={()=>select(onAudit)}><History size={15}/>Аудит</button>
+      {canAudit&&<button type="button" onClick={()=>select(onAudit)}><History size={15}/>Аудит</button>}
       <button type="button" onClick={()=>select(onMovements)}><ListTree size={15}/>Движения</button>
     </div>
   </details>;

@@ -5,14 +5,14 @@ import {stockMilli, stockDecimal, type InventoryUnit} from '@/lib/inventoryStock
 export const dynamic='force-dynamic';
 const fail=(e:unknown)=>{if((e as Error).message==='UNAUTHORIZED')return NextResponse.json({error:'Нет доступа'},{status:403});console.error('Product stock link',e);return NextResponse.json({error:'Не удалось открыть складскую привязку. Проверьте миграцию dev.'},{status:500});};
 export async function GET(request:NextRequest){
- try{await requireAdmin();const productId=request.nextUrl.searchParams.get('productId');
+ try{await requireAdmin('menu');const productId=request.nextUrl.searchParams.get('productId');
  if(!productId)return NextResponse.json({error:'Укажите продукт'},{status:400});
  const rows=await query<{itemId:string;quantity:string}>(`SELECT item_id::text AS "itemId",quantity::text AS quantity FROM inventory_product_links WHERE product_id=$1`,[productId]);
  return NextResponse.json({link:rows[0]??null});
  }catch(e){return fail(e);}
 }
 export async function PUT(request:NextRequest){
- try{await requireAdmin();const data=await request.json() as {productId?:string;itemId?:string|null;quantity?:number};
+ try{await requireAdmin('menu');const data=await request.json() as {productId?:string;itemId?:string|null;quantity?:number};
  if(!data.productId||typeof data.productId!=='string')return NextResponse.json({error:'Укажите продукт'},{status:400});
  let amount='0';
  if(data.itemId)try{const milli=stockMilli(data.quantity,'g');if(milli<=0)throw Error('INVALID_QUANTITY');amount=stockDecimal(milli);}catch{return NextResponse.json({error:'Некорректное количество'},{status:400});}

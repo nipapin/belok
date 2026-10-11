@@ -24,7 +24,8 @@
     "test:inventory": "node --import tsx --test scripts/test-inventory-stock.mts",
     "test:inventory:integration": "node --import tsx --test scripts/test-inventory-operations.mts",
     "test:inventory:metadata": "node --import tsx --test scripts/test-inventory-metadata.mts",
-    "deploy:manual": "git pull && npm ci --no-fund --no-audit && npm run build && pm2 startOrReload ecosystem.config.js --only belok --update-env && pm2 save"
+    "deploy:manual": "git pull && npm ci --no-fund --no-audit && npm run build && pm2 startOrReload ecosystem.config.js --only belok --update-env && pm2 save",
+    "test:roles": "node --import tsx --test scripts/test-roles.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1104.0",

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAuthStore } from '@/store/authStore';
+import { canSetOrderStatus } from '@/lib/roles';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -55,6 +57,7 @@ function paymentLabel(status: string) {
 }
 
 export default function AdminOrderDetailPage() {
+  const user = useAuthStore(s=>s.user);
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -77,7 +80,7 @@ export default function AdminOrderDetailPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
-      }).then((r) => r.json()),
+      }).then(async (r) => {const data = await r.json();if(!r.ok)throw Error(data.error??'Не удалось изменить статус');return data;}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-order', id] });
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
@@ -215,12 +218,13 @@ export default function AdminOrderDetailPage() {
           onChange={(e) => updateStatus.mutate(e.target.value)}
           aria-label="Статус заказа"
         >
-          {Object.entries(ORDER_STATUS_LABELS).map(([key, val]) => (
+          {Object.entries(ORDER_STATUS_LABELS).filter(([key])=>canSetOrderStatus(user,order,key)).map(([key, val]) => (
             <option key={key} value={key}>
               {val.label}
             </option>
           ))}
         </select>
+        {updateStatus.isError && <p role="alert" className="text-sm text-rose-700">{updateStatus.error.message}</p>}
       </section>
     </div>
   );

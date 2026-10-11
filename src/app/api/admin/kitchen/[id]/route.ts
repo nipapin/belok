@@ -5,7 +5,7 @@ import { saveKitchenCard } from '@/lib/kitchenStorage';
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const { id } = await context.params;
     const result = kitchenCardSchema.safeParse(await request.json().catch(() => null));
     if (!result.success) return NextResponse.json(

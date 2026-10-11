@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireAdmin('cashier');
     const { userId } = await params;
 
     const trimmed = userId.trim();

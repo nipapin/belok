@@ -14,7 +14,7 @@ interface AwardBody {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('cashier');
 
     const body = (await request.json().catch(() => null)) as AwardBody | null;
     const userId = body?.userId?.toString().trim();

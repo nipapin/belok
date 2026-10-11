@@ -17,7 +17,7 @@ interface IncomingLevel {
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('cashier');
     const rows = await query<LevelWithCountRow>(
       `SELECT
          l.*,

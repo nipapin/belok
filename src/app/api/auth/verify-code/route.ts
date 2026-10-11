@@ -1,3 +1,4 @@
+import { loadStaffRoles } from '@/lib/staffAccess';
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import {
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     if (!user.emailVerifiedAt) {
       sets.push(`"emailVerifiedAt" = NOW()`);
     }
-    if (isAdminEmail && user.role !== 'ADMIN') {
+    if (isAdminEmail && user.role === 'USER' && !user.emailVerifiedAt && await loadStaffRoles(user.id) === null) {
       params.push('ADMIN');
       sets.push(`"role" = $${params.length}`);
     }

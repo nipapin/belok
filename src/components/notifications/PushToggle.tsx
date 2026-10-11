@@ -1,5 +1,6 @@
 "use client";
 
+import { hasPermission } from "@/lib/roles";
 import { Bell, BellOff, Loader2, Smartphone } from "lucide-react";
 import Switch from "@/components/ui/Switch";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
@@ -21,7 +22,7 @@ export default function PushToggle({
 }: PushToggleProps) {
   const { status, busy, error, enable, disable } = usePushSubscription();
   const haptic = useHaptic();
-  const isAdmin = useAuthStore((s) => s.user?.role === "ADMIN");
+  const isAdmin = useAuthStore((s) => hasPermission(s.user, 'orders'));
 
   const isOn = status === "subscribed";
   const showSwitch =

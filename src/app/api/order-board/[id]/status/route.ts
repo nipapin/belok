@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { query, queryOne } from '@/lib/db';
-import { KioskUnauthorizedError, requireKioskUnlocked } from '@/lib/kioskAuth';
+import { KioskUnauthorizedError } from '@/lib/kioskAuth';
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 import { getPublicAppOrigin, tryNotifyUser } from '@/lib/push';
+import { requireBoardAccess } from '@/lib/orderBoardAccess';
 import type { OrderStatus } from '@/lib/types';
 
 const transitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
@@ -19,13 +20,14 @@ const notifications = {
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireKioskUnlocked();
+    const access = await requireBoardAccess();
     const { id } = await params;
     const body = await request.json().catch(() => null) as { status?: unknown } | null;
     const status = body?.status;
     if (status !== 'PREPARING' && status !== 'READY' && status !== 'COMPLETED') {
       return NextResponse.json({ error: 'Недопустимый статус' }, { status: 400 });
     }
+    if (status === 'COMPLETED' && !access.canComplete) return NextResponse.json({error:'Выдача доступна кассиру и управляющему'},{status:403});
     // The conditional update prevents two screens from moving the same order
     // twice or resurrecting a cancelled/completed order.
     const rows = await query<{ id: string; status: OrderStatus; userId: string | null; paymentStatus: string }>(

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { withTransaction } from '@/lib/db';
-import { KioskUnauthorizedError, requireKioskUnlocked } from '@/lib/kioskAuth';
+import { KioskUnauthorizedError } from '@/lib/kioskAuth';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 import { getPublicAppOrigin, tryNotifyUser } from '@/lib/push';
+import { requireBoardAccess } from '@/lib/orderBoardAccess';
 import type { OrderStatus } from '@/lib/types';
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string; itemId: string }> }) {
   try {
-    await requireKioskUnlocked();
+    await requireBoardAccess();
     const { id, itemId } = await params;
     const body = await request.json().catch(() => null) as { action?: unknown; preparedQuantity?: unknown } | null;
     const expected = body?.preparedQuantity;

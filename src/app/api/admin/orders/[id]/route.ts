@@ -7,6 +7,7 @@ import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import { fetchAdminOrderById } from '@/lib/queries/adminOrders';
 import { isTbankAlreadyVoided, tbankCancel, TbankError } from '@/lib/tbank';
 import type { OrderStatus, PaymentStatus } from '@/lib/types';
+import { hasPermission, canSetOrderStatus } from '@/lib/roles';
 import { cancelAqsiCard } from '@/lib/aqsiJobs';
 import { cashOrderCancellationBlocked } from '@/lib/aqsiCashOrders';
 
@@ -57,7 +58,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireAdmin('orders');
     const { id } = await params;
     const order = await fetchAdminOrderById(id);
     if (!order) {
@@ -74,7 +75,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const actor = await requireAdmin('orders');
     const { id } = await params;
     const body = (await request.json().catch(() => null)) as { status?: unknown } | null;
     const status = body?.status;
@@ -93,6 +94,9 @@ export async function PUT(
       paymentMethod:string|null;
       source:string;
     }>(`SELECT status, "userId", "tbankPaymentId", "paymentStatus", "paymentMethod",source FROM "orders" WHERE id = $1`, [id]);
+
+    if (!before) return NextResponse.json({error:'Заказ не найден'},{status:404});
+    if (!canSetOrderStatus(actor, before, status)) return NextResponse.json({error:status === 'CANCELLED' ? 'Возврат доступен владельцу и управляющему' : 'Недопустимый переход статуса'},{status:403});
 
     if(before?.source==='KIOSK' && before.paymentMethod==='CASH' && (status==='CANCELLED' || (status==='COMPLETED' && before.paymentStatus!=='SUCCEEDED')) && await cashOrderCancellationBlocked(id,status==='CANCELLED')) {
       return NextResponse.json({error:status==='CANCELLED' ? 'Сначала отмените неоплаченный заказ на aQsi. Для оплаченного заказа оформите возврат на кассе.' : 'Дождитесь наличной оплаты и подтверждения чека от aQsi'},{status:409});
@@ -128,7 +132,13 @@ export async function PUT(
       }
     }
 
-    await query(`UPDATE "orders" SET status = $1 WHERE id = $2`, [status, id]);
+    if (!hasPermission(actor, 'refund')) {
+      const changed = await query(`UPDATE orders SET status=$1, "updatedAt"=NOW()
+        WHERE id=$2 AND status=$3 AND "paymentStatus"=$4 RETURNING id`, [status,id,before.status,before.paymentStatus]);
+      if (!changed.length) return NextResponse.json({error:'Заказ уже изменён. Обновите список.'},{status:409});
+    } else {
+      await query(`UPDATE "orders" SET status = $1 WHERE id = $2`, [status, id]);
+    }
 
     if (before && before.status !== status) {
       try {

@@ -1,3 +1,4 @@
+import { hasPermission } from '@/lib/roles';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
@@ -19,7 +20,7 @@ export async function GET(
     if (!order) {
       return NextResponse.json({ error: 'Заказ не найден' }, { status: 404 });
     }
-    if (order.userId !== user.id && user.role !== 'ADMIN') {
+    if (order.userId !== user.id && !hasPermission(user, 'orders')) {
       return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });
     }
 

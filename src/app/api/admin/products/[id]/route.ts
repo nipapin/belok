@@ -45,7 +45,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const { id } = await params;
     const product = await fetchProductById(id);
     if (!product) {
@@ -64,7 +64,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const { id } = await params;
     const body = (await request.json()) as UpdateProductBody;
     if (body.spicinessLevel !== undefined && !isSpicinessLevel(body.spicinessLevel)) {
@@ -172,7 +172,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const { id } = await params;
     const existing = await queryOne<ProductRow>(`SELECT * FROM "products" WHERE id = $1`, [id]);
     if (!existing) {

@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { getAppSetting, setAppSetting } from '@/lib/appSettings';
-import { authCookieBaseOptions } from '@/lib/auth';
+import { hasPermission, isStaff } from './roles';
+import { authCookieBaseOptions, getCurrentUser } from '@/lib/auth';
 import {
   isValidKioskCookie,
   KIOSK_COOKIE,
@@ -53,6 +54,11 @@ export async function isKioskUnlocked(): Promise<boolean> {
 }
 
 export async function requireKioskUnlocked(): Promise<void> {
+  const user = await getCurrentUser();
+  if (isStaff(user) || user?.staffRoles != null) {
+    if (!hasPermission(user, 'cashier')) throw new KioskUnauthorizedError();
+    return;
+  }
   if (!(await isKioskUnlocked())) {
     throw new KioskUnauthorizedError();
   }

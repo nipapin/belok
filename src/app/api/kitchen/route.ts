@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('kitchen');
     const cards = (await readKitchenCards()).filter(card => card.published)
       .map(card => ({ ...card, sourceText: '' }));
     return NextResponse.json({ cards }, { headers: { 'Cache-Control': 'private, no-store' } });

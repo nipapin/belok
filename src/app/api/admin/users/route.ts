@@ -11,11 +11,12 @@ interface UserListRow extends UserRow {
   ll_discountPercent: number | null;
   ll_sortOrder: number | null;
   order_count: string;
+  staff_roles: string[] | null;
 }
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    await requireAdmin('people');
     const scope = new URL(request.url).searchParams.get('scope') ?? 'all';
     if (!['all', 'users', 'employees'].includes(scope)) return NextResponse.json({ error: 'Некорректный раздел' }, { status: 400 });
 
@@ -24,6 +25,7 @@ export async function GET(request: Request) {
          u."id", u."email", u."emailVerifiedAt", u."phone", u."name",
          u."avatarUrl", u."role", u."bonusBalance", u."totalSpent", u."loyaltyLevelId",
          u."createdAt", u."updatedAt",
+         a.value->'roles' AS staff_roles,
          l."id"          AS "ll_id",
          l."name"        AS "ll_name",
          l."minSpent"    AS "ll_minSpent",
@@ -32,8 +34,9 @@ export async function GET(request: Request) {
          l."sortOrder"   AS "ll_sortOrder",
          (SELECT COUNT(*) FROM "orders" o WHERE o."userId" = u."id") AS order_count
        FROM "users" u
+       LEFT JOIN app_settings a ON a.key = 'employee_roles:' || u.id
        LEFT JOIN "loyalty_levels" l ON l."id" = u."loyaltyLevelId"
-       WHERE ($1='all' OR ($1='users' AND u.role::text='USER') OR ($1='employees' AND u.role::text<>'USER'))
+       WHERE ($1='all' OR ($1='users' AND COALESCE(a.value->'roles', jsonb_build_array(u.role::text)) = '["USER"]'::jsonb) OR ($1='employees' AND COALESCE(a.value->'roles', jsonb_build_array(u.role::text)) <> '["USER"]'::jsonb))
        ORDER BY u."createdAt" DESC`, [scope]
     );
 
@@ -45,6 +48,7 @@ export async function GET(request: Request) {
       name: r.name,
       avatarUrl: r.avatarUrl,
       role: r.role,
+      staffRoles: r.staff_roles,
       bonusBalance: r.bonusBalance,
       totalSpent: r.totalSpent,
       loyaltyLevelId: r.loyaltyLevelId,

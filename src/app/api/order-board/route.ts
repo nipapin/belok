@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { KioskUnauthorizedError, requireKioskUnlocked } from '@/lib/kioskAuth';
+import { KioskUnauthorizedError } from '@/lib/kioskAuth';
+import { requireBoardAccess } from '@/lib/orderBoardAccess';
 import type { OrderRow, OrderItemRow, OrderItemCustomizationRow } from '@/lib/types';
 import { KIOSK_COOKIE } from '@/lib/kioskCookie';
 import { formatVariantTitle } from '@/lib/productTitle';
 
 export async function GET() {
   try {
-    await requireKioskUnlocked();
+    const access = await requireBoardAccess();
     // Online orders enter the kitchen only after payment; cash can be prepared immediately.
     const orders = await query<OrderRow>(
       `SELECT id, "dailyNumber", status, source, fulfillment, "paymentMethod",
@@ -34,6 +35,9 @@ export async function GET() {
     return NextResponse.json({
       orders: orders.map((order) => ({
         ...order,
+        total: access.canComplete ? order.total : undefined,
+        paymentStatus: access.canComplete ? order.paymentStatus : undefined,
+        paymentMethod: access.canComplete ? order.paymentMethod : undefined,
         items: items.filter((item) => item.orderId === order.id).map((item) => ({
           id: item.id, name: formatVariantTitle(item.name, item.variantName), quantity: item.quantity, preparedQuantity: item.preparedQuantity,
           customizations: customizations.filter((c) => c.orderItemId === item.id)

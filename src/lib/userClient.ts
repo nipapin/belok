@@ -11,6 +11,7 @@ export function toClientUser(user: UserWithLoyalty) {
     name: user.name,
     avatarUrl: user.avatarUrl,
     role: user.role,
+    staffRoles: user.staffRoles ?? null,
     bonusBalance: user.bonusBalance,
     totalSpent: user.totalSpent,
     loyaltyLevel: user.loyaltyLevel,

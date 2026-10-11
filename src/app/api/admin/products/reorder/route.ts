@@ -5,7 +5,7 @@ import { parseReorderItems } from '@/lib/reorder';
 
 export async function PUT(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('menu');
     const body = await request.json().catch(() => null);
     const items = parseReorderItems(body?.items ?? body);
     if (!items) {

@@ -18,7 +18,7 @@ interface OrderUserRow {
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('orders');
 
     const orders = await query<OrderRow & OrderUserRow>(
       `SELECT
