@@ -28,7 +28,7 @@ try {
     const response = await fetch(`${base}/api/order-board`, { headers: { cookie: `belok_kiosk=${cookie}` } });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('cache-control'), 'private, no-store');
-    const statusRequest = (status) => fetch(`${base}/api/order-board/nonexistent-test-order/status`, { method: 'PATCH', headers: { cookie: `belok_kiosk=${cookie}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+    const statusRequest = (status, orderId = 'nonexistent-test-order') => fetch(`${base}/api/order-board/${orderId}/status`, { method: 'PATCH', headers: { cookie: `belok_kiosk=${cookie}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
     assert.equal((await statusRequest('CANCELLED')).status, 400, 'Kitchen cannot cancel or refund orders');
     assert.equal((await statusRequest('PREPARING')).status, 404, 'Valid transition query must handle a missing ID without modifying real orders');
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kaliningrad' }).format(new Date());
@@ -68,8 +68,19 @@ try {
         assert.equal((await mark('prepare', -1)).status, 400);
         assert.equal((await mark('prepare', Number.MAX_SAFE_INTEGER)).status, 400);
         assert.equal((await mark('prepare', 0)).status, 409, 'New orders must be accepted before item preparation');
-        await pool.query(`UPDATE orders SET status='PREPARING' WHERE id=$1`, [orderId]);
+        const accepted = await statusRequest('PREPARING', orderId);
+        assert.equal(accepted.status, 200, 'Accepting a new cash order must execute the enum status update');
+        assert.equal((await accepted.json()).order.status, 'PREPARING');
+        assert.equal((await pool.query('SELECT status FROM orders WHERE id=$1', [orderId])).rows[0].status, 'PREPARING');
+        assert.equal((await statusRequest('PREPARING', orderId)).status, 409, 'Accepting twice cannot advance the order again');
+        assert.equal((await statusRequest('PREPARING', otherOrderId)).status, 200);
         assert.equal((await mark('prepare', 0, otherOrderId)).status, 409, 'Items cannot be marked through another order');
+        for (const status of ['READY', 'COMPLETED']) {
+          const advanced = await statusRequest(status, otherOrderId);
+          assert.equal(advanced.status, 200, `Status API must advance a cash order to ${status}`);
+          assert.equal((await advanced.json()).order.status, status);
+        }
+        assert.equal((await statusRequest('PREPARING', otherOrderId)).status, 409, 'Completed orders cannot be reopened');
         const simultaneous = await Promise.all([mark('prepare', 0), mark('prepare', 0)]);
         assert.deepEqual(simultaneous.map((response) => response.status).sort(), [200, 409], 'Concurrent clicks/retries mark only one unit');
         const currentBoard = await fetch(`${base}/api/order-board`, { headers: { cookie: `belok_kiosk=${cookie}` } });

@@ -29,11 +29,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // The conditional update prevents two screens from moving the same order
     // twice or resurrecting a cancelled/completed order.
     const rows = await query<{ id: string; status: OrderStatus; userId: string | null; paymentStatus: string }>(
-      `UPDATE "orders" SET status = $1, "updatedAt" = CURRENT_TIMESTAMP
+      `UPDATE "orders" SET status = $1::"OrderStatus", "updatedAt" = CURRENT_TIMESTAMP
        WHERE id = $2 AND status::text = ANY($3::text[])
          AND (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Kaliningrad')::date
              = (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Kaliningrad')::date
-         AND ($1 = 'COMPLETED' OR "paymentStatus" = 'SUCCEEDED' OR ("paymentStatus" = 'PENDING'
+         AND ($1::"OrderStatus" = 'COMPLETED' OR "paymentStatus" = 'SUCCEEDED' OR ("paymentStatus" = 'PENDING'
               AND ("paymentMethod" IN ('CASH', 'BONUS') OR "paymentMethod" IS NULL)))
        RETURNING id, status, "userId", "paymentStatus"`, [status, id, transitions[status]]
     );
