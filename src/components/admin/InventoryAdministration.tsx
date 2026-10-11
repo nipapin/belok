@@ -22,7 +22,7 @@ export default function InventoryAdministration({itemId,itemName,onClose}:{itemI
  fetch(url).then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error??'Не удалось загрузить');return data}).then(data=>{if(!live)return;if(tab==='history')setEvents(data.events??[]);else setUsers(data.users??[])}).catch(e=>{if(live)setError(e.message)}).finally(()=>{if(live)setLoading(false)});return()=>{live=false}},[tab,itemId]);
  const update=async(userId:string,role:string)=>{setBusy(true);setError('');try{const r=await fetch('/api/admin/inventory/access',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId,role})});const d=await r.json();if(!r.ok)throw Error(d.error??'Не удалось сохранить');setUsers(v=>v.map(u=>u.id===userId?{...u,role}:u))}catch(e){setError(e instanceof Error?e.message:'Ошибка')}finally{setBusy(false)}};
  if(!mounted)return null;
- return createPortal(<div className="inventory-drawer-root" data-visible={visible}>
+ return createPortal(<div className="inventory-drawer-root inventory-overlay-theme" data-visible={visible}>
   <button type="button" className="inventory-drawer-backdrop" aria-label="Закрыть панель" onClick={onClose}/>
   <section role="dialog" aria-modal="true" aria-label={itemId?'История позиции':'Управление складом'} className="inventory-drawer-panel">
   <div className="inventory-drawer-header"><h2 className="font-semibold text-lg text-[#202b28]">{itemId?'История: '+itemName:'Управление складом'}</h2><button type="button" className="inventory-drawer-close" aria-label="Закрыть" onClick={onClose}><X size={17}/></button></div>
