@@ -109,9 +109,10 @@ export default function InventoryPage(){
         <label className="btn-outline inline-flex cursor-pointer items-center gap-2 px-4 py-2"><ImagePlus size={17}/>{uploading?'Загрузка…':image?'Заменить фото':'Добавить фото'}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploading} onChange={e=>{const file=e.target.files?.[0];if(file)void uploadImage(file);e.currentTarget.value=''}}/></label>
         {image&&<button type="button" className="text-sm text-(--lg-text-muted)" onClick={()=>setImage('')}>Убрать фото</button>}
       </div>
+      {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
       <button disabled={save.isPending||uploading||!name.trim()||!valid(quantity)||!valid(minQuantity)} className="btn-primary px-5 py-2" type="submit">{save.isPending?'Сохраняем…':editing?'Сохранить изменения':'Создать позицию'}</button>
     </form></div>,document.body)}
-    {error&&<p role="alert" className="text-rose-600 text-sm">{error}</p>}
+    {!showForm&&error&&<p role="alert" className="text-rose-600 text-sm">{error}</p>}
     <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-3 min-w-0">
       <div className="hidden md:flex items-center flex-wrap gap-1 rounded-2xl border border-[#dce4df] bg-[#edf1ee] p-1" role="group" aria-label="Тип складской позиции">
         {filters.map(option=><button type="button" key={option.value} aria-pressed={filter===option.value} className={filter===option.value?"inline-flex items-center gap-2 rounded-xl bg-white shadow-sm px-3 py-2.5 text-sm font-semibold text-[#202b28]":"inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-[#52625c] hover:bg-white/60"} onClick={()=>setFilter(option.value)}>
