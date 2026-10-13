@@ -24,6 +24,11 @@ export function revenueStats(orders: DashboardOrder[], from: string, to: string)
     const writeOffs = list.filter(order => order.isWriteOff && order.status !== 'CANCELLED');
     return {
       ...orderMetrics(list),
+      paymentCounts: {
+        cash: list.filter(order => order.paymentMethod === 'CASH').length,
+        nonCash: list.filter(order => ['CARD', 'SBP'].includes(order.paymentMethod ?? '')).length,
+        other: list.filter(order => !['CASH', 'CARD', 'SBP'].includes(order.paymentMethod ?? '')).length,
+      },
       writeOffCount: writeOffs.length,
       writeOffTotal: writeOffs.reduce((sum, order) => sum + Number(order.total), 0),
     };

@@ -44,3 +44,24 @@ test('working hours are 08:00 inclusive to 21:00 exclusive in cafe timezone', ()
   assert.equal(stats.hourly[12].count, 1);
   assert.equal(stats.outsideHours, 2);
 });
+
+test('daily payment counts cover all orders while revenue only includes paid sales', () => {
+  const stats = revenueStats([
+    order({}), order({ paymentMethod: 'CARD', total: 200 }),
+    order({ paymentMethod: 'SBP', paymentStatus: 'PENDING' }),
+    order({ paymentMethod: 'CASH', isWriteOff: true }),
+    order({ paymentMethod: 'CARD', status: 'CANCELLED' }),
+    order({ paymentMethod: 'BONUS', total: 25 }),
+    order({ paymentMethod: null, createdAt: '2026-10-14T06:00:00Z' }),
+  ], '2026-10-13', '2026-10-15');
+  assert.deepEqual(stats.summary.paymentCounts, { cash: 2, nonCash: 3, other: 2 });
+  assert.deepEqual(stats.daily[0].paymentCounts, { cash: 2, nonCash: 3, other: 1 });
+  assert.deepEqual(stats.daily[2].paymentCounts, { cash: 0, nonCash: 0, other: 0 });
+  assert.equal(stats.daily[0].paid, 725);
+  for (const day of stats.daily) {
+    assert.equal(Object.values(day.paymentCounts).reduce((a, b) => a + b, 0), day.count);
+  }
+  for (const key of ['cash', 'nonCash', 'other'] as const) {
+    assert.equal(stats.daily.reduce((sum, day) => sum + day.paymentCounts[key], 0), stats.summary.paymentCounts[key]);
+  }
+});
