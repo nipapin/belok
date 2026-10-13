@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 
 const base=process.env.BASE_URL||'http://127.0.0.1:3018';
@@ -24,6 +25,8 @@ try {
   });
   await page.goto(base+'/kiosk',{waitUntil:'networkidle2'});
   await page.waitForSelector('[aria-label^="Версия киоска"]');
+  const version=JSON.parse(readFileSync('package.json','utf8')).version;
+  assert.equal(await page.$eval('[aria-label^="Версия киоска"]',el=>el.textContent),version);
   assert.ok(await page.$eval('[aria-label^="Версия киоска"]',el=>parseFloat(getComputedStyle(el).fontSize)<=12),'version badge stays small');
   await mkdir('output/aqsi-qa',{recursive:true});
   await page.screenshot({path:'output/aqsi-qa/kiosk-version.png'});

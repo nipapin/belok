@@ -4,7 +4,7 @@ import { getAppSetting, setAppSetting } from '@/lib/appSettings';
 import { query } from '@/lib/db';
 
 export interface KioskRefreshCommand { id:string;requestedAt:string }
-export interface KioskClient { id:string;revision:string;busy:boolean;lastRefreshId:string|null;seenAt:string }
+export interface KioskClient { id:string;revision:string;version?:string;busy:boolean;lastRefreshId:string|null;seenAt:string }
 function latestCommand(commands:(KioskRefreshCommand|null)[]) {
   return commands.filter((c):c is KioskRefreshCommand=>Boolean(c))
     .sort((a,b)=>b.requestedAt.localeCompare(a.requestedAt))[0] ?? null;

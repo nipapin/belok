@@ -7,7 +7,7 @@ export default function TerminalPayPanel({orderId,onStatus,onDeferred}:{orderId:
   const callback = useRef(onStatus);
   const deferredCallback = useRef(onDeferred);
   useEffect(()=>{callback.current=onStatus;deferredCallback.current=onDeferred},[onStatus,onDeferred]);
-  const [cancellation,setCancellation]=useState<'CANCEL'|'DEFER'|null>(null);
+  const [cancellation,setCancellation]=useState<'CANCEL'|null>(null);
   const [error,setError]=useState('');
   const {data,isError}=useQuery({queryKey:['terminal-payment',orderId],queryFn:async()=>{
     const res=await fetch(`/api/kiosk/orders/${orderId}/payment`,{cache:'no-store'});
@@ -19,11 +19,11 @@ export default function TerminalPayPanel({orderId,onStatus,onDeferred}:{orderId:
     if (data?.paymentStatus === 'SUCCEEDED' || data?.paymentStatus === 'CANCELLED') callback.current(data.paymentStatus);
     else if (data?.deferredState === 'WAITING') deferredCallback.current();
   },[data?.paymentStatus,data?.deferredState]);
-  async function cancel(intent:'CANCEL'|'DEFER') {
-    setCancellation(intent);setError('');
+  async function cancel() {
+    setCancellation('CANCEL');setError('');
     try {
       const response=await fetch(`/api/kiosk/orders/${orderId}/payment`,{
-        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:intent === 'DEFER' ? 'defer' : 'cancel'}),
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cancel'}),
       });
       if(!response.ok) throw new Error();
     } catch {setError('Не удалось завершить попытку оплаты. Обратитесь к сотруднику.');setCancellation(null)}
@@ -34,14 +34,13 @@ export default function TerminalPayPanel({orderId,onStatus,onDeferred}:{orderId:
   const uncertain = data?.terminalState === 'UNKNOWN' || isError;
   return <div className="glass-panel space-y-5 p-6 text-center">
     <CreditCard className="mx-auto size-20" />
-    <h2 className="text-2xl font-semibold">{uncertain ? 'Уточняем результат оплаты' : transferring ? transferProblem ? 'Уточняем передачу заказа' : 'Передаём заказ на кассу' : intent === 'DEFER' ? 'Готовим оплату на кассе' : intent === 'CANCEL' ? 'Ожидаем отмену оплаты' : data?.paymentStatus==='CANCELLED' ? 'Оплата отменена' : data?.terminalState==='QUEUED' ? 'Готовим терминал…' : 'Приложите карту к терминалу'}</h2>
-    <p className="text-(--lg-text-muted)">{data?.terminalMessage || (transferring ? transferProblem ? 'Обратитесь к кассиру. Передачу заказа нужно проверить; создавать новый заказ не требуется.' : 'Оплата картой не завершилась. Сохраняем состав заказа для оплаты у кассира.' : intent === 'DEFER' ? 'Ждём подтверждения завершения первой попытки. Затем кассир сможет открыть тот же заказ и принять оплату.' : intent === 'CANCEL' ? 'Ожидаем подтверждение отмены. Платёж мог успеть пройти.' : 'Дождитесь результата оплаты на этом экране.')}</p>
+    <h2 className="text-2xl font-semibold">{uncertain ? 'Уточняем результат оплаты' : transferring ? 'Оплата картой не завершилась' : intent === 'DEFER' ? 'Уточняем результат оплаты' : intent === 'CANCEL' ? 'Ожидаем отмену оплаты' : data?.paymentStatus==='CANCELLED' ? 'Оплата отменена' : data?.terminalState==='QUEUED' ? 'Готовим терминал…' : 'Приложите карту к терминалу'}</h2>
+    <p className="text-(--lg-text-muted)">{transferring ? transferProblem ? 'Обратитесь к кассиру. Повторно оформлять заказ не нужно.' : 'Пожалуйста, подождите…' : intent === 'DEFER' ? 'Дождитесь результата оплаты на этом экране.' : data?.terminalMessage || (intent === 'CANCEL' ? 'Ожидаем подтверждение отмены. Платёж мог успеть пройти.' : 'Дождитесь результата оплаты на этом экране.')}</p>
     {data?.paymentStatus==='CANCELLED' ? <p>Оплата отменена. Бонусы возвращены.</p> : <Loader2 className="mx-auto size-8 animate-spin" />}
     {isError ? <p role="alert">Нет связи с сервером. Результат уточняется; не оплачивайте повторно.</p> : null}
     {error ? <p role="alert">{error}</p> : null}
     {data?.paymentStatus==='PENDING' && !uncertain && !transferring && !intent ? <div className="space-y-3">
-      <button type="button" className="btn-primary min-h-14 w-full" onClick={()=>cancel('DEFER')}>Оплатить на кассе</button>
-      <button type="button" className="btn-outline w-full" onClick={()=>cancel('CANCEL')}>Отменить оплату</button>
+      <button type="button" className="btn-outline w-full" onClick={cancel}>Отменить оплату</button>
     </div> : null}
   </div>;
 }

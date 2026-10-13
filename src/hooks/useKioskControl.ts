@@ -22,7 +22,7 @@ export function useKioskControl(enabled:boolean,busy:boolean) {
         const lastRefreshId=localStorage.getItem(KIOSK_REFRESH_STORAGE);
         const response=await fetch('/api/kiosk/control',{method:'POST',cache:'no-store',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({id,revision:buildVersion.revision,busy:isBusy(),lastRefreshId})});
+          body:JSON.stringify({id,revision:buildVersion.revision,version:buildVersion.version,busy:isBusy(),lastRefreshId})});
         if(!response.ok) return;
         const {command}=await response.json() as {command:{id:string}|null};
         if(stopped || !command || command.id===lastRefreshId || isBusy()) return;

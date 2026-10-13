@@ -25,7 +25,7 @@ try {
     if(path==='/api/auth/me')return void respond({user:{id:'test-admin',role:'ADMIN',name:'Тест',bonusBalance:0,totalSpent:0}});
     if(path==='/api/admin/kiosk') {
       if(request.method()==='POST') {kioskActions.push(JSON.parse(request.postData()));return void respond({command:{id:'test-refresh'}})}
-      return void respond({configured:true,revision:'1234567',clients:[{id:'00000000-0000-4000-8000-000000000001',revision:'1234567',busy:false,online:true,seenAt:new Date().toISOString(),lastRefreshId:null,command:null}]});
+      return void respond({configured:true,revision:'1234567',version:'1.0.0',clients:[{id:'00000000-0000-4000-8000-000000000001',revision:'1234567',version:'1.0.0',busy:false,online:true,seenAt:new Date().toISOString(),lastRefreshId:null,command:null}]});
     }
     if(path==='/api/admin/aqsi') {
       if(request.method()==='PUT'){config=JSON.parse(request.postData());return void respond({config})}
@@ -71,7 +71,7 @@ try {
   await click('Обновить все киоски');
   await page.waitForFunction(()=>document.body.innerText.includes('Команда отправлена. Киоск обновится'));
   assert.deepEqual(kioskActions,[{action:'refresh'}]);
-  assert.equal(await page.evaluate(()=>document.body.innerText.includes('версия 1234567')),true);
+  assert.equal(await page.evaluate(()=>document.body.innerText.includes('версия 1.0.0')),true);
   console.log('PASS: operation/catalog actions preserve fiscal draft; save persists it; retry is blocked until saved');
   console.log('PASS: admin sees kiosk versions and can send remote refresh');
 }finally{await browser.close()}

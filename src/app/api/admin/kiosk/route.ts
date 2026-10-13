@@ -8,7 +8,7 @@ export async function GET() {
   try {
     await requireAdmin();
     const settings = await getKioskSettings();
-    return NextResponse.json({ configured: Boolean(settings),clients:await listKioskClients(),revision:buildVersion.revision },{headers:{'Cache-Control':'private, no-store'}});
+    return NextResponse.json({ configured: Boolean(settings),clients:await listKioskClients(),revision:buildVersion.revision,version:buildVersion.version },{headers:{'Cache-Control':'private, no-store'}});
   } catch (e) {
     if ((e as Error).message === 'UNAUTHORIZED')
       return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });

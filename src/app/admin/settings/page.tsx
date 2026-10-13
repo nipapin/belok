@@ -13,8 +13,8 @@ function KioskPinSettings() {
 
   const { data } = useQuery({
     queryKey: ['admin-kiosk'],
-    queryFn: () => fetch('/api/admin/kiosk').then((r) => r.json()) as Promise<{ configured?: boolean;revision?:string;
-      clients?:{id:string;revision:string;busy:boolean;online:boolean;seenAt:string;lastRefreshId:string|null;command:{id:string}|null}[] }>,
+    queryFn: () => fetch('/api/admin/kiosk').then((r) => r.json()) as Promise<{ configured?: boolean;revision?:string;version?:string;
+      clients?:{id:string;revision:string;version?:string;busy:boolean;online:boolean;seenAt:string;lastRefreshId:string|null;command:{id:string}|null}[] }>,
     refetchInterval:15_000,
   });
 
@@ -106,12 +106,12 @@ function KioskPinSettings() {
       <div className="space-y-3 border-t pt-4">
         <h3 className="text-sm font-semibold">Удалённое обновление киоска</h3>
         <p className="text-sm text-(--lg-text-muted)">Обновляет приложение и очищает кеш. PIN и заказы сохраняются. Киоск с активным заказом дождётся его завершения.</p>
-        {data?.revision ? <p className="text-xs text-(--lg-text-muted)">Текущая версия: {data.revision.slice(0,7)}</p> : null}
+        {data?.version ? <p className="text-xs text-(--lg-text-muted)">Текущая версия: {data.version}</p> : null}
         {data?.clients?.map(client=>{
           const online=client.online;
           const pending=Boolean(client.command && client.lastRefreshId!==client.command.id);
           return <div key={client.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-sm">
-            <div><p>Киоск {client.id.slice(0,8)} · версия {client.revision.slice(0,7)}</p>
+            <div><p>Киоск {client.id.slice(0,8)} · версия {client.version ?? 'не указана'}</p>
               <p className="mt-1 text-xs text-(--lg-text-muted)">{!online ? 'Не на связи' : client.busy ? 'Обслуживает заказ' : 'На связи'} · {pending ? online ? client.busy ? 'Обновится после заказа' : 'Ожидаем обновления' : 'Обновится при подключении' : client.command ? 'Обновление выполнено' : 'Команд нет'}</p>
             </div>
             <button type="button" className="btn-outline py-2 text-sm" disabled={refreshKiosk.isPending} onClick={()=>refreshKiosk.mutate(client.id)}>Обновить</button>

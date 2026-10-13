@@ -41,13 +41,13 @@ export async function POST(request: NextRequest,{params}:{params:Promise<{id:str
   try {
     await requireKioskUnlocked();
     const body = await request.json().catch(()=>null) as {action?:unknown} | null;
-    if (body?.action != null && body.action !== 'cancel' && body.action !== 'defer') {
+    if (body?.action != null && body.action !== 'cancel') {
       return NextResponse.json({error:'Неизвестное действие'},{status:400});
     }
     const {id}=await params;
     const order=await queryOne<OrderRow>(`SELECT * FROM orders WHERE id=$1 AND source='KIOSK'`,[id]);
     if (!order || order.paymentMethod !== 'CARD') return NextResponse.json({error:'Заказ не найден'},{status:404});
-    await cancelAqsiCard(id,body?.action === 'defer' ? 'DEFER' : 'CANCEL');
+    await cancelAqsiCard(id,'CANCEL');
     return NextResponse.json({requested:true});
   } catch(error) {
     if (error instanceof KioskUnauthorizedError) return NextResponse.json({error:'Нет доступа'},{status:401});

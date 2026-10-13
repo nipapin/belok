@@ -63,19 +63,18 @@ try {
   assert.deepEqual(lastBody,draft);
   console.log('PASS: lost response recovery uses original request body after reload');
   const placedOrders=orders;
-  await text('Оплатить на кассе');
-  await page.waitForFunction(()=>document.body.innerText.includes('Готовим оплату на кассе'));
-  assert.deepEqual(cancellationRequests,[{action:'defer'}]);
-  assert.ok(await page.evaluate(()=>sessionStorage.getItem('belok:kiosk:payment')),'keep pending payment until cancellation is confirmed');
+  assert.equal(await page.evaluate(()=>[...document.querySelectorAll('button')].some(b=>b.textContent.includes('Оплатить на кассе'))),false);
+  assert.deepEqual(cancellationRequests,[],'card payment must not request manual transfer');
+  assert.ok(await page.evaluate(()=>sessionStorage.getItem('belok:kiosk:payment')),'keep pending payment until the result is confirmed');
   assert.equal(orders,placedOrders);
   await page.reload({waitUntil:'networkidle2'});
-  await page.waitForFunction(()=>document.body.innerText.includes('Готовим оплату на кассе'));
-  assert.equal(cancellationRequests.length,1,'reload reads persisted transfer intent without cancelling again');
-  // If the first payment wins the cancellation race, show paid, not cashier payment.
+  await page.waitForFunction(()=>document.body.innerText.includes('Приложите карту к терминалу'));
+  assert.equal(cancellationRequests.length,0,'reload must not request cancellation or transfer');
+  // Successful card payment never displays the cashier fallback.
   paymentStatus='SUCCEEDED';receiptState='SUCCEEDED';
   await page.waitForFunction(()=>document.body.innerText.includes('Заберите чек на терминале'));
   assert.equal(await page.evaluate(()=>document.body.innerText.includes('Заказ передан в отложенные')),false);
-  console.log('PASS: transfer waits for cancellation; reload and successful-payment race are safe');
+  console.log('PASS: pending card has no manual fallback; successful payment wins without a duplicate');
 
   async function restoreCard() {
     await page.evaluate(()=>{
@@ -86,10 +85,12 @@ try {
   }
   paymentStatus='PENDING';terminalState='FAILED';deferredState='QUEUED';cancelIntent=null;
   await restoreCard();
-  await page.waitForFunction(()=>document.body.innerText.includes('Передаём заказ на кассу'));
+  await page.waitForFunction(()=>document.body.innerText.includes('Оплата картой не завершилась'));
   assert.equal(await page.evaluate(()=>document.body.innerText.includes('Оплачено')),false);
   deferredState='WAITING';
-  await page.waitForFunction(()=>document.body.innerText.includes('Заказ передан в отложенные на кассе'));
+  await page.waitForFunction(()=>document.body.innerText.includes('Обратитесь к кассиру и назовите номер заказа'));
+  assert.equal(await page.evaluate(()=>document.body.innerText.includes('отложенные')),false);
+  assert.deepEqual(cancellationRequests,[],'confirmed failure transfers automatically without a guest action');
   assert.equal(await page.evaluate(()=>document.body.innerText.includes('#123')),true);
   assert.equal(await page.evaluate(()=>document.body.innerText.includes('Оплата на кассе')),true);
   assert.equal(await page.evaluate(()=>document.body.innerText.includes('Оплачено')),false);

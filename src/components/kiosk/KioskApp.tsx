@@ -569,7 +569,7 @@ export default function KioskApp() {
         <p className="mt-1 text-sm font-medium text-(--lg-text-muted)">
           {success.deferred ? 'Оплата на кассе' : success.paymentMethod === 'CASH' ? 'Оплата наличными' : 'Оплачено'}
         </p>
-        {success.deferred ? <p className="mt-4 max-w-md text-lg text-(--lg-text-muted)">Заказ передан в отложенные на кассе. Назовите кассиру номер заказа и оплатите — состав уже сохранён.</p> : ['CARD','SBP'].includes(success.paymentMethod) ? <KioskReceiptStatus orderId={success.orderId} /> : null}
+        {success.deferred ? <p className="mt-4 max-w-md text-lg text-(--lg-text-muted)">Оплата картой не завершилась. Обратитесь к кассиру и назовите номер заказа.</p> : ['CARD','SBP'].includes(success.paymentMethod) ? <KioskReceiptStatus orderId={success.orderId} /> : null}
         {success.inviteSent ? (
           <p className="mt-4 max-w-md text-base text-(--lg-text-muted)">
             На {success.email} отправили ссылку для создания аккаунта — баллы и история появятся после регистрации.
@@ -832,7 +832,7 @@ export default function KioskApp() {
       <header className="flex items-center justify-between gap-3 px-4 py-3">
         <div className="flex items-baseline gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">{brandMark}</h1>
-          <span className="text-[10px] font-normal tabular-nums text-(--lg-text-muted)" title={buildVersion.builtAt ? `Сборка ${buildVersion.revision} · ${buildVersion.builtAt}` : buildVersion.revision} aria-label={`Версия киоска ${buildVersion.revision.slice(0,7)}`}>{buildVersion.revision.slice(0,7)}</span>
+          <span className="text-[10px] font-normal tabular-nums text-(--lg-text-muted)" title={`Версия ${buildVersion.version}`} aria-label={`Версия киоска ${buildVersion.version}`}>{buildVersion.version}</span>
         </div>
         <button type="button" className="btn-ghost px-3 py-2 text-sm" onClick={resetGuest}>
           Новый гость
