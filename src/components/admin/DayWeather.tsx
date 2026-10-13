@@ -32,7 +32,7 @@ export function WeatherCredits() {
   return <div className="sales-weather-note"><p>Температура — среднее за 08:00–21:00, осадки — сумма за эти часы.</p><WeatherAttribution /></div>;
 }
 export function WeatherAttribution() {
-  return <a className="weather-attribution" href="https://openweathermap.org/" target="_blank" rel="noreferrer"><Image src="/openweather-logo.png" width={84} height={24} alt="OpenWeather" /><span>Weather data provided by OpenWeather</span></a>;
+  return <a className="weather-attribution" href="https://openweathermap.org/" target="_blank" rel="noreferrer"><span className="weather-attribution-logo"><Image src="/openweather-logo.png" width={600} height={340} alt="OpenWeather" /></span><span>Weather data provided by OpenWeather</span></a>;
 }
 export default function DayWeather({ day }: { day: string }) {
   const query = useDayWeather(day);
