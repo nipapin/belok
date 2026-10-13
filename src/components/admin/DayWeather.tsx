@@ -1,6 +1,6 @@
 'use client';
 
-import { CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Sun, CircleHelp, RefreshCw, Droplets } from 'lucide-react';
+import { CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Sun, CircleHelp, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
 import { fetchAdminJson } from '@/lib/adminDashboard';
@@ -28,7 +28,7 @@ export function WeekWeather({ weather }: { weather: Weather | undefined }) {
 }
 export function WeatherInline({ weather }: { weather: Weather | undefined }) {
   if (!weather?.source || weather.temperature === null) return <span className="sales-weather-inline">Нет данных о погоде за этот день</span>;
-  return <span className="sales-weather-inline"><WeatherIcon condition={weather.condition} size={15} /> {number(weather.temperature)} °C · {weather.precipitation === null ? 'осадки: нет данных' : `${number(weather.precipitation)} мм`}<br />{weather.source === 'archive' ? 'Архив' : 'Прогноз'} · {weather.complete ? '08:00–21:00' : `${weather.hours} из 13 часов`}</span>;
+  return <span className="sales-weather-inline"><WeatherIcon condition={weather.condition} size={15} /> {number(weather.temperature)} °C{weather.condition && ` · ${conditionLabels[weather.condition]}`}<br />{weather.source === 'archive' ? 'Архив' : 'Прогноз'} · {weather.complete ? '08:00–21:00' : `${weather.hours} из 13 часов`}</span>;
 }
 export function WeatherCredits({ weather }: { weather: Weather | undefined }) {
   if (!weather?.source || weather.temperature === null) return null;
@@ -51,7 +51,6 @@ export default function DayWeather({ day }: { day: string }) {
       {query.isPending ? <p className="day-weather-status" role="status">Загружаем погоду…</p> : query.isError && !weather ? <p className="day-weather-status" role="status">Погода временно недоступна. <button onClick={() => void query.refetch()}>Повторить <RefreshCw size={12} className="inline" /></button></p> : ready ? <>
         <div className="day-weather-temperature"><WeatherIcon condition={condition} size={52} /><strong>{number(weather!.temperature)}<span>°C</span></strong></div>
         <p className="day-weather-condition">{condition ? conditionLabels[condition] : 'Погода за рабочие часы'}</p>
-        <div className="day-weather-precipitation"><Droplets size={17} aria-hidden="true" /><span>Осадки</span><strong>{weather!.precipitation === null ? '—' : `${number(weather!.precipitation)} мм`}</strong></div>
       </> : <p className="day-weather-status">{query.data?.configured ? 'Погода за этот день ещё загружается.' : 'Подключите OpenWeather в настройках, чтобы показать погоду.'}</p>}
       {query.data?.warning && <p className="day-weather-warning" role="status">{query.data.warning}</p>}
     </div>
