@@ -6,7 +6,8 @@ import { parseOpenWeather, summarizeWeather, type WeatherHour, type WeatherSourc
 import { weatherApiKey } from './weatherSettings.server';
 
 export async function firstOrderDay() {
-  const row = await queryOne<{ day: string | null }>(`SELECT to_char(min("createdAt") AT TIME ZONE 'Europe/Kaliningrad', 'YYYY-MM-DD') AS day FROM orders`);
+  // Existing order timestamps are stored as UTC without a PostgreSQL timezone.
+  const row = await queryOne<{ day: string | null }>(`SELECT to_char(min("createdAt") AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Kaliningrad', 'YYYY-MM-DD') AS day FROM orders`);
   return row?.day ?? null;
 }
 
