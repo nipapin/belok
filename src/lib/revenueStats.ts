@@ -40,16 +40,30 @@ export function revenueStats(orders: DashboardOrder[], from: string, to: string)
     bucket.push(order);
     byDay.set(day, bucket);
   }
-  const hourly = Array.from({ length: 13 }, (_, index) => ({ hour: index + 8, count: 0, writeOffs: 0, paid: 0 }));
+  const hourly = Array.from({ length: 13 }, (_, index) => ({
+    hour: index + 8, count: 0, writeOffs: 0, paid: 0,
+    paidAmounts: { cash: 0, nonCash: 0, other: 0 },
+  }));
   let outsideHours = 0;
+  let outsideHoursPaid = 0;
   for (const order of periodOrders) {
     if (order.status === 'CANCELLED') continue;
     const hour = Number(hourFormatter.format(new Date(order.createdAt)));
     const bucket = hourly.find(bucket => bucket.hour === hour);
-    if (!bucket) { outsideHours++; continue; }
+    if (!bucket) {
+      outsideHours++;
+      if (!order.isWriteOff && order.paymentStatus === 'SUCCEEDED') outsideHoursPaid += Number(order.total);
+      continue;
+    }
     bucket.count++;
     if (order.isWriteOff) bucket.writeOffs++;
-    else if (order.paymentStatus === 'SUCCEEDED') bucket.paid += Number(order.total);
+    else if (order.paymentStatus === 'SUCCEEDED') {
+      const amount = Number(order.total);
+      bucket.paid += amount;
+      const method = order.paymentMethod === 'CASH' ? 'cash'
+        : ['CARD', 'SBP'].includes(order.paymentMethod ?? '') ? 'nonCash' : 'other';
+      bucket.paidAmounts[method] += amount;
+    }
   }
   return {
     orders: periodOrders,
@@ -57,5 +71,6 @@ export function revenueStats(orders: DashboardOrder[], from: string, to: string)
     daily: days.map(day => ({ day, ...summarize(byDay.get(day) ?? []) })),
     hourly,
     outsideHours,
+    outsideHoursPaid,
   };
 }

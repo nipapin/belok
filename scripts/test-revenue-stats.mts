@@ -43,6 +43,35 @@ test('working hours are 08:00 inclusive to 21:00 exclusive in cafe timezone', ()
   assert.equal(stats.hourly[0].paid, 500);
   assert.equal(stats.hourly[12].count, 1);
   assert.equal(stats.outsideHours, 2);
+  assert.equal(stats.outsideHoursPaid, 1000);
+});
+
+test('hourly revenue separates settled cash, card/SBP and other payments and reconciles with period totals', () => {
+  const stats = revenueStats([
+    order({ total: 500 }),
+    order({ total: 200, paymentMethod: 'CARD' }),
+    order({ total: 150, paymentMethod: 'SBP' }),
+    order({ total: 25, paymentMethod: 'BONUS' }),
+    order({ total: 50, paymentMethod: null }),
+    order({ total: 800, paymentStatus: 'PENDING', paymentMethod: 'CARD' }),
+    order({ total: 900, isWriteOff: true }),
+    order({ total: 999, status: 'CANCELLED', paymentMethod: 'SBP' }),
+    order({ total: 100, createdAt: '2026-10-14T06:00:00Z', paymentMethod: 'CASH' }),
+    order({ total: 300, createdAt: '2026-10-13T19:00:00Z', paymentMethod: 'CARD' }),
+    order({ total: 777, createdAt: '2026-10-13T19:00:00Z', isWriteOff: true }),
+    order({ total: 888, createdAt: '2026-10-13T19:00:00Z', paymentStatus: 'PENDING' }),
+    order({ total: 9999, createdAt: '2026-10-12T06:00:00Z' }),
+  ], '2026-10-13', '2026-10-14');
+  assert.equal(stats.hourly[0].count, 8);
+  assert.equal(stats.hourly[0].writeOffs, 1);
+  assert.equal(stats.hourly[0].paid, 1025);
+  assert.deepEqual(stats.hourly[0].paidAmounts, { cash: 600, nonCash: 350, other: 75 });
+  assert.equal(stats.outsideHoursPaid, 300);
+  assert.equal(stats.hourly.reduce((sum, row) => sum + row.paid, 0) + stats.outsideHoursPaid, stats.summary.paid);
+  for (const row of stats.hourly) {
+    assert.equal(row.paid, Object.values(row.paidAmounts).reduce((sum, amount) => sum + amount, 0));
+  }
+  assert.ok(revenueStats([], '2026-10-13', '2026-10-13').hourly.every(row => row.paid === 0 && row.paidAmounts.cash === 0 && row.paidAmounts.nonCash === 0 && row.paidAmounts.other === 0));
 });
 
 test('daily payment counts cover all orders while revenue only includes paid sales', () => {

@@ -1324,6 +1324,11 @@
 .revenue-hour { display: grid; grid-template-columns: 110px minmax(40px, 1fr) 85px 190px; gap: 12px; align-items: center; color: #203e2c; font-size: 13px; font-variant-numeric: tabular-nums; }
 .revenue-hour-track { height: 18px; border-radius: 5px; background: #f2f5ef; overflow: hidden; }
 .revenue-hour-track > div { height: 100%; background: #286345; border-radius: 5px; }
+.revenue-hourly-legend { margin: 0 0 18px; }
+.revenue-hours.is-revenue .revenue-hour { grid-template-columns: 110px minmax(40px, 1fr) 150px 230px; }
+.revenue-hours.is-revenue .revenue-hour-track > div { display: flex; overflow: hidden; }
+.revenue-hour-track > div > span { height: 100%; flex-shrink: 0; }
+.revenue-hour > strong { white-space: nowrap; }
 .revenue-hour small, .revenue-hour-detail { color: #53635b; }
 .revenue-order-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; max-height: min(640px, 70dvh); overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; padding: 3px; align-items: start; }
 .revenue-order-list > .dashboard-order-card { display: flex; flex-direction: column; min-width: 0; height: 100%; padding: 16px; border: 1px solid #dce5df; border-radius: 14px; background: #fff; overflow-wrap: anywhere; }
@@ -1346,8 +1351,10 @@
   .revenue-daily-detail dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .revenue-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .revenue-panel { padding: 14px; }
-  .revenue-hour { grid-template-columns: 96px minmax(30px, 1fr) 70px; gap: 8px; font-size: 12px; }
-  .revenue-hour-detail { grid-column: 2 / -1; }
+  .revenue-hour, .revenue-hours.is-revenue .revenue-hour { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; font-size: 12px; }
+  .revenue-hour > strong { grid-column: 2; grid-row: 1; text-align: right; }
+  .revenue-hour-track { grid-column: 1 / -1; grid-row: 2; }
+  .revenue-hour-detail { grid-column: 1 / -1; overflow-wrap: anywhere; }
   .revenue-period { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .revenue-period button, .revenue-period > p { grid-column: 1 / -1; }
 }

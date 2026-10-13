@@ -11,6 +11,7 @@ import { clampSalesPeriod } from '@/lib/weather';
 import SalesDatePicker from './SalesDatePicker';
 import DayWeather from './DayWeather';
 import RevenueDailyChart from './RevenueDailyChart';
+import RevenueHourlyChart from './RevenueHourlyChart';
 import { orderCustomerLabel, orderTicket, paymentMethodLabel } from '@/lib/orderCustomer';
 import { OrderItemsList, ORDER_STATUS_LABELS } from '@/components/admin/OrderItemsList';
 
@@ -31,8 +32,6 @@ export default function RevenuePage({ initialFrom, initialTo }: { initialFrom: s
   }, [firstDay, period.from, period.to, initialFrom, initialTo, router]);
   const stats = revenueStats(query.data?.orders ?? [], period.from, period.to);
   const { summary } = stats;
-  const max = Math.max(1, ...stats.hourly.map(row => row.count));
-  const workingCount = stats.hourly.reduce((sum, row) => sum + row.count, 0);
 
   return <div className="admin-dashboard revenue-page">
     <Link href="/admin" className="revenue-back"><ArrowLeft size={18} /> Обзор</Link>
@@ -52,14 +51,7 @@ export default function RevenuePage({ initialFrom, initialTo }: { initialFrom: s
       </section>
       <p className="revenue-note">Выручка — оплаченные заказы без отмен и списаний, сгруппированные по дате создания заказа. Сумма списаний — стоимость заказов сотрудников, не себестоимость. Способ оплаты «Бонусы / не указан» показан отдельно.</p>
       {period.from !== period.to && <RevenueDailyChart stats={stats} from={period.from} to={period.to} />}
-      <section className="dashboard-panel revenue-panel"><h2>Заказы по рабочим часам · 08:00–21:00</h2><p className="revenue-note">Суммарно за выбранный период: {workingCount} заказов. Отменённые исключены, списания включены и отмечены отдельно. Вне рабочих часов: {stats.outsideHours}.</p>
-        <div className="revenue-hours">{stats.hourly.map(row => <div className="revenue-hour" key={row.hour}>
-          <span>{String(row.hour).padStart(2, '0')}:00–{row.hour + 1}:00</span>
-          <div className="revenue-hour-track" aria-hidden="true"><div style={{ width: `${row.count / max * 100}%` }} /></div>
-          <strong>{row.count} <small>({workingCount ? Math.round(row.count / workingCount * 100) : 0}%)</small></strong>
-          <span className="revenue-hour-detail">{money(row.paid)}{row.writeOffs > 0 && ` · списаний: ${row.writeOffs}`}</span>
-        </div>)}</div>
-      </section>
+      <RevenueHourlyChart stats={stats} />
       <section className="dashboard-panel revenue-panel"><h2 id="revenue-orders-title">Заказы за период · {stats.orders.length}</h2><p className="revenue-note">Все статусы, включая отменённые. Заказ можно открыть для просмотра состава и деталей.</p>
         <div className="revenue-order-list" role="region" aria-labelledby="revenue-orders-title" tabIndex={0}>{stats.orders.length === 0 ? <p>За этот период заказов нет.</p> : stats.orders.map(order => <Link key={order.id} href={`/admin/orders/${order.id}`} className="dashboard-order-card">
           <div className="dashboard-order-top"><div className="revenue-order-identification"><span className="dashboard-ticket">{orderTicket(order)}</span><span className={`dashboard-status status-${order.status.toLowerCase()}`}>{ORDER_STATUS_LABELS[order.status]?.label ?? order.status}</span>{order.isWriteOff && <span className="revenue-writeoff">Списание</span>}</div><span className="revenue-order-price"><strong>{money(Number(order.total))}</strong><ChevronRight size={17} aria-hidden="true" /></span></div>
