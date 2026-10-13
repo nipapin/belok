@@ -1358,3 +1358,21 @@
   .revenue-period { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .revenue-period button, .revenue-period > p { grid-column: 1 / -1; }
 }
+
+.dish-sales-search { display: flex; flex-direction: column; gap: 6px; color: #53635b; font-size: 12px; min-width: 0; max-width: 100%; }
+.dish-sales-search input { width: 260px; max-width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid #d7e1d7; border-radius: 12px; background: #fff; color: #203e2c; font-size: 16px; }
+.dish-sales-table-scroll { overflow-x: auto; max-height: 65dvh; scrollbar-width: thin; }
+.dish-sales-table { width: 100%; border-collapse: collapse; color: #203e2c; font-size: 14px; font-variant-numeric: tabular-nums; }
+.dish-sales-table th, .dish-sales-table td { padding: 14px 12px; border-bottom: 1px solid #dce5df; text-align: right; }
+.dish-sales-table th:first-child { text-align: left; min-width: 140px; overflow-wrap: anywhere; }
+.dish-sales-table tbody th { font-weight: 500; }
+.dish-sales-table thead th { position: sticky; top: 0; z-index: 1; background: #f5f8f5; font-size: 12px; }
+.dish-sales-table tfoot { background: #f5f8f5; font-weight: 600; }
+.dish-sales-table-scroll:focus-visible, .dish-sales-search input:focus-visible { outline: 2px solid #286345; outline-offset: 2px; }
+@media (max-width: 700px) {
+  .dish-sales-search { width: 100%; }
+  .dish-sales-search input { width: 100%; }
+  .dish-sales-table { font-size: 12px; }
+  .dish-sales-table th, .dish-sales-table td { padding: 10px 6px; }
+  .dish-sales-table th:first-child { min-width: 100px; }
+}
