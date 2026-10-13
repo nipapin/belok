@@ -2,18 +2,30 @@
 
 import { useState } from 'react';
 import AqsiSettings from '@/components/admin/AqsiSettings';
-import { Save } from 'lucide-react';
+import { RefreshCw, Save } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 function KioskPinSettings() {
   const queryClient = useQueryClient();
   const [pin, setPin] = useState('');
   const [copied, setCopied] = useState(false);
+  const [refreshMessage,setRefreshMessage]=useState('');
 
   const { data } = useQuery({
     queryKey: ['admin-kiosk'],
-    queryFn: () => fetch('/api/admin/kiosk').then((r) => r.json()) as Promise<{ configured?: boolean }>,
+    queryFn: () => fetch('/api/admin/kiosk').then((r) => r.json()) as Promise<{ configured?: boolean;revision?:string;
+      clients?:{id:string;revision:string;busy:boolean;online:boolean;seenAt:string;lastRefreshId:string|null;command:{id:string}|null}[] }>,
+    refetchInterval:15_000,
   });
+
+  const refreshKiosk=useMutation({mutationFn:async(clientId?:string)=>{
+    const response=await fetch('/api/admin/kiosk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'refresh',clientId})});
+    const json=await response.json();
+    if(!response.ok) throw new Error(json.error || 'Не удалось отправить обновление');
+  },onSuccess:()=>{
+    setRefreshMessage('Команда отправлена. Киоск обновится, когда свободен и подключён к сети.');
+    void queryClient.invalidateQueries({queryKey:['admin-kiosk']});
+  },onError:(error)=>setRefreshMessage(error.message)});
 
   const savePin = useMutation({
     mutationFn: async () => {
@@ -91,6 +103,25 @@ function KioskPinSettings() {
         <Save className="size-4" />
         Сохранить PIN
       </button>
+      <div className="space-y-3 border-t pt-4">
+        <h3 className="text-sm font-semibold">Удалённое обновление киоска</h3>
+        <p className="text-sm text-(--lg-text-muted)">Обновляет приложение и очищает кеш. PIN и заказы сохраняются. Киоск с активным заказом дождётся его завершения.</p>
+        {data?.revision ? <p className="text-xs text-(--lg-text-muted)">Текущая версия: {data.revision.slice(0,7)}</p> : null}
+        {data?.clients?.map(client=>{
+          const online=client.online;
+          const pending=Boolean(client.command && client.lastRefreshId!==client.command.id);
+          return <div key={client.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-sm">
+            <div><p>Киоск {client.id.slice(0,8)} · версия {client.revision.slice(0,7)}</p>
+              <p className="mt-1 text-xs text-(--lg-text-muted)">{!online ? 'Не на связи' : client.busy ? 'Обслуживает заказ' : 'На связи'} · {pending ? online ? client.busy ? 'Обновится после заказа' : 'Ожидаем обновления' : 'Обновится при подключении' : client.command ? 'Обновление выполнено' : 'Команд нет'}</p>
+            </div>
+            <button type="button" className="btn-outline py-2 text-sm" disabled={refreshKiosk.isPending} onClick={()=>refreshKiosk.mutate(client.id)}>Обновить</button>
+          </div>;
+        })}
+        <button type="button" className="btn-outline gap-2 py-2.5 text-sm" disabled={refreshKiosk.isPending} onClick={()=>refreshKiosk.mutate(undefined)}>
+          <RefreshCw className="size-4"/>Обновить все киоски
+        </button>
+        {refreshMessage ? <p role="status" className="text-sm">{refreshMessage}</p> : null}
+      </div>
     </div>
   );
 }

@@ -7,12 +7,14 @@ import { aqsiConfigured, fiscalConfigured, getAqsiConfig } from '@/lib/aqsiConfi
 import { receiptPositions, receiptOrderReference, parsePurchaseResult, parseReceiptResult, type FiscalItem } from '@/lib/aqsiReceipt';
 import { notifyKitchenNewOrder } from '@/lib/orderNotify';
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
+import { enqueueCashOrder } from '@/lib/aqsiCashOrders';
 
 export interface AqsiJob {
   id: string; orderId: string; deviceId: number; kind: 'CARD' | 'RECEIPT';
   state: 'QUEUED' | 'SUBMITTING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'UNKNOWN' | 'BLOCKED';
   payload: Record<string, unknown> | null; operationId: string | null;
   result: Record<string, unknown> | null; error: string | null; createdAt: Date;
+  cancelIntent: 'CANCEL' | 'DEFER' | null;
 }
 
 export async function enqueueCard(client: PoolClient, orderId: string, total: number, deviceId: number) {
@@ -59,6 +61,27 @@ async function setJob(job: AqsiJob, state: AqsiJob['state'], error: string | nul
   await query(`UPDATE aqsi_jobs SET state=$2,error=$3,"updatedAt"=NOW() WHERE id=$1`,[job.id,state,error]);
 }
 
+async function failCard(job: AqsiJob, error: string, cancellationRequested = false) {
+  let cancelled = false;
+  await withTransaction(async client => {
+    const order = (await client.query<{paymentStatus:string;status:string}>(
+      `SELECT "paymentStatus",status FROM orders WHERE id=$1 FOR UPDATE`, [job.orderId]
+    )).rows[0];
+    await client.query(`UPDATE aqsi_jobs SET state='FAILED',error=$2,"updatedAt"=NOW() WHERE id=$1`, [job.id,error]);
+    if (!order || order.paymentStatus !== 'PENDING') return;
+    const abandon = job.cancelIntent === 'CANCEL' ||
+      (cancellationRequested && job.cancelIntent !== 'DEFER');
+    if (!abandon && order.status !== 'CANCELLED') {
+      // Failure and fallback commit together. Keep the order, number and spent bonuses.
+      await enqueueCashOrder(client,job.orderId,job.deviceId);
+    } else {
+      await client.query(`UPDATE orders SET status='CANCELLED' WHERE id=$1`, [job.orderId]);
+      cancelled = true;
+    }
+  });
+  if (cancelled) await settleOrderLoyalty(job.orderId,'CANCELLED');
+}
+
 async function applyOperation(job: AqsiJob, operation: AqsiOperation) {
   if (operation.deviceId !== job.deviceId || operation.operationId !== job.operationId ||
     operation.type !== (job.kind === 'CARD' ? 'acquiring.purchase' : 'receipt.process')) {
@@ -85,11 +108,10 @@ async function applyOperation(job: AqsiJob, operation: AqsiOperation) {
       return;
     }
     const details=[operation.problems,operation.message].filter(Boolean).join(': ').slice(0,300);
-    await setJob(job,'FAILED',`aQsi: ${operation.status}${details ? ` (${details})` : ''}`);
+    const error = `aQsi: ${operation.status}${details ? ` (${details})` : ''}`;
     if (job.kind === 'CARD') {
-      await query(`UPDATE orders SET status='CANCELLED' WHERE id=$1 AND "paymentStatus"='PENDING'`,[job.orderId]);
-      await settleOrderLoyalty(job.orderId,'CANCELLED');
-    }
+      await failCard(job,error,operation.isCancellationRequested);
+    } else await setJob(job,'FAILED',error);
   }
 }
 
@@ -102,10 +124,11 @@ export async function processAqsiJobs() {
     try {
       // An abandoned SUBMITTING row may have reached aQsi. Never resend it.
       await client.query(`UPDATE aqsi_jobs SET state='UNKNOWN',error='Отправка прервана. Проверьте операцию в aQsi.',"updatedAt"=NOW() WHERE state='SUBMITTING'`);
-      const failures=await query<AqsiJob>(`SELECT j.* FROM aqsi_jobs j JOIN orders o ON o.id=j."orderId" WHERE j.kind='CARD' AND j.state='FAILED' AND o."paymentStatus"='PENDING' LIMIT 20`);
+      const failures=await query<AqsiJob>(`SELECT j.* FROM aqsi_jobs j JOIN orders o ON o.id=j."orderId"
+        WHERE j.kind='CARD' AND j.state='FAILED' AND o."paymentStatus"='PENDING'
+        AND NOT EXISTS (SELECT 1 FROM aqsi_cash_orders c WHERE c."orderId"=j."orderId") LIMIT 20`);
       for(const job of failures) {
-        await query(`UPDATE orders SET status='CANCELLED' WHERE id=$1 AND "paymentStatus"='PENDING'`,[job.orderId]);
-        await settleOrderLoyalty(job.orderId,'CANCELLED');
+        await failCard(job,job.error ?? 'Оплата картой не завершилась');
       }
       const active = await query<AqsiJob>(`SELECT * FROM aqsi_jobs WHERE state='PROCESSING' ORDER BY "createdAt" LIMIT 20`);
       for (const job of active) {
@@ -121,9 +144,7 @@ export async function processAqsiJobs() {
       for (const job of jobs) {
         if (sentDevices.has(job.deviceId)) continue;
         if(job.kind==='CARD' && Date.now()-new Date(job.createdAt).getTime()>120_000) {
-          await setJob(job,'FAILED','Время ожидания терминала истекло');
-          await query(`UPDATE orders SET status='CANCELLED' WHERE id=$1 AND "paymentStatus"='PENDING'`,[job.orderId]);
-          await settleOrderLoyalty(job.orderId,'CANCELLED');
+          await failCard(job,'Время ожидания терминала истекло');
           continue;
         }
         let payload = job.payload;
@@ -135,7 +156,7 @@ export async function processAqsiJobs() {
         if (job.kind === 'RECEIPT' && !config.receiptsEnabled) continue;
         const order = await queryOne<{paymentStatus:string;status:string}>(`SELECT "paymentStatus",status FROM orders WHERE id=$1`,[job.orderId]);
         if (job.kind === 'CARD' && (order?.paymentStatus !== 'PENDING' || order.status === 'CANCELLED')) {
-          await setJob(job,'FAILED','Заказ отменён до отправки'); continue;
+          await failCard(job,'Заказ отменён до отправки'); continue;
         }
         await query(`UPDATE aqsi_jobs SET state='SUBMITTING',payload=$2,error=NULL,"submittedAt"=NOW(),"updatedAt"=NOW() WHERE id=$1`,[job.id,JSON.stringify(payload)]);
         sentDevices.add(job.deviceId);
@@ -145,11 +166,10 @@ export async function processAqsiJobs() {
           await query(`UPDATE aqsi_jobs SET state='PROCESSING',"operationId"=$2,"updatedAt"=NOW() WHERE id=$1`,[job.id,response.operationId]);
         } catch (error) {
           const ambiguous = !(error instanceof AqsiRequestError) || error.ambiguous;
-          await setJob(job,ambiguous ? 'UNKNOWN' : 'FAILED',error instanceof AqsiRequestError ? error.message : 'Требуется проверить операцию');
+          const message = error instanceof AqsiRequestError ? error.message : 'Требуется проверить операцию';
           if (!ambiguous && job.kind === 'CARD') {
-            await query(`UPDATE orders SET status='CANCELLED' WHERE id=$1 AND "paymentStatus"='PENDING'`,[job.orderId]);
-            await settleOrderLoyalty(job.orderId,'CANCELLED');
-          }
+            await failCard(job,message);
+          } else await setJob(job,ambiguous ? 'UNKNOWN' : 'FAILED',message);
         }
       }
     } finally { await client.query('SELECT pg_advisory_unlock(784146,20)'); }
@@ -160,7 +180,9 @@ export async function aqsiOrderState(orderId: string) {
   const jobs = await query<AqsiJob>(`SELECT * FROM aqsi_jobs WHERE "orderId"=$1`,[orderId]);
   const card = jobs.find(job => job.kind === 'CARD');
   const receipt = jobs.find(job => job.kind === 'RECEIPT');
-  return { terminalState:card?.state ?? null, receiptState:receipt?.state ?? null,
+  const deferred = await queryOne<{state:string}>(`SELECT state FROM aqsi_cash_orders WHERE "orderId"=$1`,[orderId]);
+  return { terminalState:card?.state ?? null, deferredState:deferred?.state ?? null, cancelIntent:card?.cancelIntent ?? null,
+    receiptState:deferred?.state === 'SUCCEEDED' ? 'SUCCEEDED' : receipt?.state ?? null,
     terminalMessage:card?.state === 'UNKNOWN' ? 'Результат оплаты уточняется. Обратитесь к сотруднику; не оплачивайте повторно.' : null };
 }
 
@@ -176,16 +198,17 @@ export async function retryAqsiReceipt(jobId: string): Promise<boolean> {
   });
 }
 
-export async function cancelAqsiCard(orderId: string) {
+export async function cancelAqsiCard(orderId: string, intent: 'CANCEL' | 'DEFER' = 'CANCEL') {
   const client = await pool.connect();
   try {
     await client.query('SELECT pg_advisory_lock(784146,20)');
     const job = (await client.query<AqsiJob>(`SELECT * FROM aqsi_jobs WHERE "orderId"=$1 AND kind='CARD'`,[orderId])).rows[0];
-    if (!job || ['FAILED','SUCCEEDED'].includes(job.state)) return;
-    if (job.state === 'QUEUED') {
-      await setJob(job,'FAILED','Отменено покупателем до отправки');
-      await query(`UPDATE orders SET status='CANCELLED' WHERE id=$1 AND "paymentStatus"='PENDING'`,[orderId]);
-      await settleOrderLoyalty(orderId,'CANCELLED');
+    if (!job || ['FAILED','SUCCEEDED','UNKNOWN'].includes(job.state)) return;
+    if (await queryOne(`SELECT id FROM aqsi_cash_orders WHERE "orderId"=$1`,[orderId])) return;
+    await query(`UPDATE aqsi_jobs SET "cancelIntent"=$2,"updatedAt"=NOW() WHERE id=$1`,[job.id,intent]);
+    job.cancelIntent = intent;
+    if (job.state === 'QUEUED' || job.state === 'BLOCKED') {
+      await failCard(job,intent === 'DEFER' ? 'Передано для оплаты на кассе до отправки' : 'Отменено покупателем до отправки');
     } else if (job.operationId) {
       await aqsiRequest(`/v4/Operations/${job.operationId}/cancel`,'POST');
       // Cancellation is a request, not proof of failure. Await final status.

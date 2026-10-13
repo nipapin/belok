@@ -6,6 +6,7 @@ import { aqsiRequest, AqsiRequestError } from '@/lib/aqsi';
 import { aqsiConfigured, fiscalConfigured, getAqsiConfig } from '@/lib/aqsiConfig';
 import { receiptPositions, receiptOrderReference, type FiscalItem } from '@/lib/aqsiReceipt';
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
+import { notifyKitchenNewOrder } from '@/lib/orderNotify';
 
 interface CashJob { id:string;orderId:string;deviceId:number;state:string;payload:Record<string,unknown>|null;operationId:string|null }
 interface RemoteOrder {
@@ -20,7 +21,7 @@ export async function enqueueCashOrder(client:PoolClient,orderId:string,deviceId
 async function buildPayload(job:CashJob) {
   const config=await getAqsiConfig();
   if(!aqsiConfigured(config) || !config.cashOrdersEnabled || !fiscalConfigured(config)) return null;
-  const order=await queryOne<{total:number;dailyNumber:number;createdAt:Date;status:string}>(`SELECT total,"dailyNumber","createdAt",status FROM orders WHERE id=$1`,[job.orderId]);
+  const order=await queryOne<{total:number;dailyNumber:number;createdAt:Date;status:string;paymentMethod:string}>(`SELECT total,"dailyNumber","createdAt",status,"paymentMethod" FROM orders WHERE id=$1`,[job.orderId]);
   if(!order || order.status==='CANCELLED') throw new Error('Заказ отменён');
   const items=await query<FiscalItem>(`SELECT "productId","variantId","fiscalName" AS name,quantity,"unitPrice" FROM order_items WHERE "orderId"=$1 ORDER BY id`,[job.orderId]);
   const positions=receiptPositions(items,Math.round(order.total*100),{...config,taxRateId:config.taxRateId!,calculationTypeId:config.calculationTypeId!});
@@ -28,7 +29,7 @@ async function buildPayload(job:CashJob) {
   // Orders V2 uses rubles and ordinal SNO codes; Receipts V4 uses kopecks and bit masks.
   const taxationSystem=({1:0,2:1,4:2,16:4,32:5} as Record<number,number>)[config.taxSystemCode];
   return {id:`belok:${job.orderId}`,number:String(order.dailyNumber),dateTime:new Date(order.createdAt).toISOString(),
-    device:String(job.deviceId),description:`Киоск · заказ #${order.dailyNumber} · наличные`,status:'Отложен',
+    device:String(job.deviceId),description:`Киоск · заказ #${order.dailyNumber} · ${order.paymentMethod === 'CARD' ? 'оплата на кассе' : 'наличные'}`,status:'Отложен',
     isEditableByDevice:false,ignoreItemCodeCheck:false,useTax20:false,
     content:{type:1,additionalAttribute:receiptOrderReference(job.orderId),additionalUserAttribute:{name:'Заказ',value:`#${order.dailyNumber}`},
       checkClose:{taxationSystem},
@@ -54,16 +55,21 @@ async function reconcile(job:CashJob) {
       Math.round(receipt.amount*100)!==Math.round(order.total*100) || receipt.content.additionalAttribute!==marker) {
       await setState(job,'UNKNOWN','Оплата отмечена на кассе, но фискальный чек требует проверки');return;
     }
-    await withTransaction(async client=>{
-      await client.query(`UPDATE orders SET "paymentStatus"='SUCCEEDED' WHERE id=$1 AND "paymentMethod"='CASH'`,[job.orderId]);
+    const paid = await withTransaction(async client=>{
+      const updated = await client.query<{paymentMethod:string;status:string}>(`UPDATE orders SET "paymentStatus"='SUCCEEDED'
+        WHERE id=$1 AND "paymentMethod" IN ('CASH','CARD') AND "paymentStatus"='PENDING' AND status!='CANCELLED'
+        RETURNING "paymentMethod",status`,[job.orderId]);
       await client.query(`UPDATE aqsi_cash_orders SET state='SUCCEEDED',error=NULL,"operationId"=$2,"updatedAt"=NOW() WHERE id=$1`,[job.id,receipt.id]);
       // The cashier already fiscalized and printed this receipt. Do not enqueue another.
+      return updated.rows[0];
     });
+    if (paid?.paymentMethod === 'CARD') await notifyKitchenNewOrder(job.orderId).catch(()=>console.error('Kitchen notify after deferred card payment failed'));
+    if (paid?.status === 'COMPLETED') await settleOrderLoyalty(job.orderId,'COMPLETED');
   } else if(remote.status==='Отменен' && receipts.length===0) {
-    await withTransaction(async client=>{
-      await client.query(`UPDATE orders SET status='CANCELLED' WHERE id=$1 AND "paymentStatus"='PENDING'`,[job.orderId]);
+    const cancelled = await withTransaction(async client=>{
+      return (await client.query(`UPDATE orders SET status='CANCELLED' WHERE id=$1 AND "paymentStatus"='PENDING' RETURNING id`,[job.orderId])).rowCount === 1;
     });
-    await settleOrderLoyalty(job.orderId,'CANCELLED');
+    if (cancelled) await settleOrderLoyalty(job.orderId,'CANCELLED');
     await setState(job,'CANCELLED');
   } else if(remote.status==='Отложен' && receipts.length===0) await setState(job,'WAITING');
   else await setState(job,'UNKNOWN','Статус или частичная оплата заказа требуют проверки на кассе');

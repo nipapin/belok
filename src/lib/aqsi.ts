@@ -35,6 +35,7 @@ export async function aqsiRequest<T>(path: string, method = 'GET', body?: unknow
 export interface AqsiOperation {
   operationId: string; deviceId: number; type: string;
   status: 'Pending' | 'Processing' | 'Finishing' | 'Completed' | 'Canceled' | 'Timeout' | 'Error';
+  isCancellationRequested?: boolean;
   result?: string | null; problems?: string | null; message?: string | null;
 }
 

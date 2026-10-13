@@ -13,6 +13,8 @@ import TerminalPayPanel, { KioskReceiptStatus } from '@/components/kiosk/Termina
 import { useKioskCartStore } from '@/store/kioskCartStore';
 import type { Category, Product } from '@/types';
 import { fetchKioskCatalog, kioskCatalogRefresh } from '@/lib/kioskCatalog';
+import { buildVersion } from '@/lib/buildVersion';
+import { useKioskControl } from '@/hooks/useKioskControl';
 
 type KioskTile = FoodCardModel & { key: string; categoryName: string };
 
@@ -32,6 +34,7 @@ type PlacedOrder = {
   total: number;
   email?: string;
   paymentMethod: KioskPayMethod | 'BONUS';
+  deferred?: boolean;
 };
 
 type PayOrder = PlacedOrder & {
@@ -135,6 +138,7 @@ export default function KioskApp() {
   const getItemPrice = useKioskCartStore((s) => s.getItemPrice);
   const totalItems = useKioskCartStore((s) => s.getTotalItems());
   const totalPrice = useKioskCartStore((s) => s.getTotalPrice());
+  const refreshing = useKioskControl(Boolean(session?.unlocked),step!=='menu' || items.length>0 || submitting || recoveringOrder || Boolean(payOrder));
 
   const discountPercent = loyalty?.discountPercent ?? 0;
   const discountAmount = Math.round(totalPrice * (discountPercent / 100));
@@ -431,6 +435,19 @@ export default function KioskApp() {
     [clearCart]
   );
 
+  const handleDeferred = useCallback(() => {
+    const current = payOrderRef.current;
+    if (!current) return;
+    payOrderRef.current = null;
+    setSuccess({...current,deferred:true});
+    clearCart();
+    sessionStorage.removeItem(PAYMENT_STORAGE);
+    sessionStorage.removeItem(REQUEST_STORAGE);
+    setPayOrder(null);
+    setPayFailed(false);
+    setStep('success');
+  },[clearCart]);
+
   async function placeOrder() {
     if ((items.length === 0 && !sessionStorage.getItem(REQUEST_STORAGE)) || submitting) return;
     const trimmed = email.trim();
@@ -515,6 +532,8 @@ export default function KioskApp() {
     }
   }
 
+  if (refreshing) return <div role="status" className="flex flex-1 flex-col items-center justify-center gap-4"><Loader2 className="size-8 animate-spin"/><p>Обновляем киоск…</p></div>;
+
   if (!session) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -548,9 +567,9 @@ export default function KioskApp() {
         <h1 className="mt-3 text-4xl font-semibold text-(--lg-text)">{title}</h1>
         <p className="mt-3 text-2xl font-bold tabular-nums">{success.total} ₽</p>
         <p className="mt-1 text-sm font-medium text-(--lg-text-muted)">
-          {success.paymentMethod === 'CASH' ? 'Оплата наличными' : 'Оплачено'}
+          {success.deferred ? 'Оплата на кассе' : success.paymentMethod === 'CASH' ? 'Оплата наличными' : 'Оплачено'}
         </p>
-        {['CARD','SBP'].includes(success.paymentMethod) ? <KioskReceiptStatus orderId={success.orderId} /> : null}
+        {success.deferred ? <p className="mt-4 max-w-md text-lg text-(--lg-text-muted)">Заказ передан в отложенные на кассе. Назовите кассиру номер заказа и оплатите — состав уже сохранён.</p> : ['CARD','SBP'].includes(success.paymentMethod) ? <KioskReceiptStatus orderId={success.orderId} /> : null}
         {success.inviteSent ? (
           <p className="mt-4 max-w-md text-base text-(--lg-text-muted)">
             На {success.email} отправили ссылку для создания аккаунта — баллы и история появятся после регистрации.
@@ -559,13 +578,13 @@ export default function KioskApp() {
           <p className="mt-4 max-w-md text-base text-(--lg-text-muted)">
             {success.paymentMethod === 'CASH'
               ? 'Заказ сохранён в аккаунте. Оплатите наличными. Баллы начислятся после выдачи.'
-              : 'Заказ оплачен и сохранён в аккаунте. Баллы начислятся после выдачи.'}
+              : success.deferred ? 'Заказ сохранён в аккаунте. Баллы начислятся после оплаты и выдачи.' : 'Заказ оплачен и сохранён в аккаунте. Баллы начислятся после выдачи.'}
           </p>
         ) : (
           <p className="mt-4 max-w-md text-base text-(--lg-text-muted)">
             {success.paymentMethod === 'CASH'
               ? 'Заказ принят. Подойдите к кассиру, назовите номер заказа и оплатите наличными.'
-              : 'Оплата прошла. Назовите номер заказа при получении.'}
+              : success.deferred ? 'Повторно оформлять заказ на планшете не нужно.' : 'Оплата прошла. Назовите номер заказа при получении.'}
           </p>
         )}
         <button type="button" className="btn-primary mt-8 min-h-14 px-8 text-lg" onClick={resetGuest}>
@@ -586,7 +605,7 @@ export default function KioskApp() {
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-4">
           <div className="mx-auto w-full max-w-md">
-            {payOrder.paymentMethod === 'CARD' ? <TerminalPayPanel orderId={payOrder.orderId} onStatus={handlePayStatus} /> : <SbpPayPanel
+            {payOrder.paymentMethod === 'CARD' ? <TerminalPayPanel orderId={payOrder.orderId} onStatus={handlePayStatus} onDeferred={handleDeferred} /> : <SbpPayPanel
               orderId={payOrder.orderId}
               statusUrl={`/api/kiosk/orders/${payOrder.orderId}/payment`}
               initialPayload={payOrder.payload}
@@ -811,7 +830,10 @@ export default function KioskApp() {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <header className="flex items-center justify-between gap-3 px-4 py-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{brandMark}</h1>
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">{brandMark}</h1>
+          <span className="text-[10px] font-normal tabular-nums text-(--lg-text-muted)" title={buildVersion.builtAt ? `Сборка ${buildVersion.revision} · ${buildVersion.builtAt}` : buildVersion.revision} aria-label={`Версия киоска ${buildVersion.revision.slice(0,7)}`}>{buildVersion.revision.slice(0,7)}</span>
+        </div>
         <button type="button" className="btn-ghost px-3 py-2 text-sm" onClick={resetGuest}>
           Новый гость
         </button>

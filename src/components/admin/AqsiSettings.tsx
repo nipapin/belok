@@ -52,7 +52,7 @@ export default function AqsiSettings() {
       <summary className="cursor-pointer font-medium">История чеков и операций · {data?.jobs.length ?? 0}{data?.jobs.some(job=>['FAILED','UNKNOWN','BLOCKED'].includes(job.state)) ? ` · Требуют внимания: ${data.jobs.filter(job=>['FAILED','UNKNOWN','BLOCKED'].includes(job.state)).length}` : ''}</summary>
       <p className="mt-3 text-xs text-(--lg-text-muted)">Последние 50 операций. Статусы обновляются автоматически.</p>
       <div className="mt-3 max-h-[36rem] space-y-3 overflow-y-auto">{data?.jobs.map(job=><div key={job.id} className="rounded-xl border p-3 text-sm">
-      <p>Заказ #{job.dailyNumber} · {job.kind==='CARD' ? 'Карта' : job.kind==='CASH_ORDER' ? 'Наличные · отложенный заказ' : 'Чек'} · {job.kind==='CASH_ORDER' && job.state==='SUCCEEDED' ? 'Оплачен, чек оформлен на кассе' : stateLabels[job.state] ?? job.state}</p>
+      <p>Заказ #{job.dailyNumber} · {job.kind==='CARD' ? 'Карта' : job.kind==='CASH_ORDER' ? 'Отложенный заказ · оплата на кассе' : 'Чек'} · {job.kind==='CASH_ORDER' && job.state==='SUCCEEDED' ? 'Оплачен, чек оформлен на кассе' : stateLabels[job.state] ?? job.state}</p>
       {job.operationId ? <p className="break-all text-xs">{job.kind==='CASH_ORDER' ? 'ID aQsi' : 'Операция aQsi'}: {job.operationId}</p> : null}
       {job.error ? <p>{job.error}</p> : null}
       {job.payload ? <details className="mt-3 rounded-lg border p-3">

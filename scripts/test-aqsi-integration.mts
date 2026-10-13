@@ -27,7 +27,8 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
         typeof text==='string' ? text.replaceAll('(784146,',`(${lockNamespace},`) : text,...args,
       ])) as typeof client.query;
     });
-    for(const name of readdirSync('migrations').filter(n=>n.endsWith('.sql')).sort()) await db.query(readFileSync(`migrations/${name}`,'utf8').replaceAll("'public'",`'${schema}'`).replaceAll('public.',`"${schema}".`));
+    // zz_inventory_* are optional dev migrations with a separate application order.
+    for(const name of readdirSync('migrations').filter(n=>/^\d.*\.sql$/.test(n)).sort()) await db.query(readFileSync(`migrations/${name}`,'utf8').replaceAll("'public'",`'${schema}'`).replaceAll('public.',`"${schema}".`));
     await db.query(`INSERT INTO app_settings (key,value) VALUES ('aqsi',$1),('notification_settings',$2) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[
       JSON.stringify({enabled:true,deviceId:784146,receiptsEnabled:true,catalogEnabled:false,taxSystemCode:1,taxRateId:6,calculationTypeId:4,calculationSubjectId:1,cashierName:''}),JSON.stringify({adminNewOrdersPush:false,autoPushLoyalty:false})]);
     await db.query(`INSERT INTO categories (id,name) VALUES ('cat','Меню'); INSERT INTO products (id,name,price,"categoryId") VALUES ('p','Новое имя',10,'cat')`);
@@ -40,7 +41,7 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
       await db!.query(`INSERT INTO order_items (id,"orderId","productId",quantity,"unitPrice","fiscalName") VALUES ($1,$2,'p',1,10,'Сохранённое имя')`,[randomUUID(),id]);
       if(method==='CARD') await db!.withTransaction(client=>enqueueCard(client,id,10,784146));
     }
-    let posts=0;let fail=false;const operations=new Map<string,{type:string;status:string;result:string|null;message?:string;problems?:string}>();
+    let posts=0;let fail=false;const operations=new Map<string,{type:string;status:string;result:string|null;message?:string;problems?:string;isCancellationRequested?:boolean}>();
     const payloads:Record<string,unknown>[]=[];
     globalThis.fetch=async(input,init)=>{
       const path=new URL(String(input)).pathname;
@@ -99,12 +100,57 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     await processAqsiJobs();await processAqsiJobs();assert.equal(posts,before+1);
     assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_jobs WHERE "orderId"='uncertain'`))?.state,'UNKNOWN');
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='uncertain'`))?.paymentStatus,'PENDING');
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='uncertain'`)).length,0,'uncertain payment cannot become a payable deferred order');
     await order('next-card');await processAqsiJobs();assert.equal(posts,before+1,'unknown result must block next terminal payment');
     await db.query(`UPDATE aqsi_jobs SET state='FAILED' WHERE "orderId"='uncertain'`);fail=false;
     await processAqsiJobs();assert.equal(posts,before+2);
     const next=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='next-card'`);assert.ok(next);
+    await db.query(`INSERT INTO users (id,email,"passwordHash","bonusBalance") VALUES ('fallback-user','fallback@example.test','unused-test-hash',10)`);
+    await db.query(`UPDATE orders SET "userId"='fallback-user',"bonusUsed"=3 WHERE id='next-card'`);
     operations.set(next.operationId,{type:'acquiring.purchase',status:'Timeout',result:null});await processAqsiJobs();
-    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='next-card'`))?.paymentStatus,'CANCELLED');
+    await processAqsiJobs();
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='next-card'`))?.paymentStatus,'PENDING');
+    assert.equal((await db.queryOne<{status:string}>(`SELECT status FROM orders WHERE id='next-card'`))?.status,'PENDING');
+    assert.equal((await db.queryOne<{bonusBalance:number}>(`SELECT "bonusBalance" FROM users WHERE id='fallback-user'`))?.bonusBalance,10,'fallback must not refund spent bonuses');
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='next-card'`)).length,1,'failure enqueues the same order exactly once');
+    assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_jobs WHERE "orderId"='next-card' AND kind='CARD'`))?.state,'FAILED');
+    assert.equal(posts,before+2,'fallback never retries the acquiring purchase');
+    await order('defer-wins');await processAqsiJobs();
+    const deferWins=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='defer-wins' AND kind='CARD'`);assert.ok(deferWins);
+    await cancelAqsiCard('defer-wins','DEFER');
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='defer-wins'`)).length,0,'cancel request alone cannot enable another payment');
+    operations.set(deferWins.operationId,{type:'acquiring.purchase',status:'Completed',result:JSON.stringify({id:'defer-wins-slip',content:{type:'purchase',amount:1000,responseCode:'000'}})});
+    await processAqsiJobs();
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='defer-wins'`))?.paymentStatus,'SUCCEEDED','a successful payment wins over a transfer request');
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='defer-wins'`)).length,0);
+    const deferReceipt=await db.queryOne<{operationId:string;payload:Record<string,unknown>}>(`SELECT "operationId",payload FROM aqsi_jobs WHERE "orderId"='defer-wins' AND kind='RECEIPT'`);assert.ok(deferReceipt);
+    operations.set(deferReceipt.operationId,{type:'receipt.process',status:'Completed',result:JSON.stringify({id:'defer-wins-receipt',isNonFiscal:false,info:{typeId:1,sum:1000,additionalAttribute:(deferReceipt.payload.info as {additionalAttribute:string}).additionalAttribute}})});
+    await processAqsiJobs();
+    await order('defer-confirmed');await processAqsiJobs();
+    const deferConfirmed=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='defer-confirmed' AND kind='CARD'`);assert.ok(deferConfirmed);
+    await cancelAqsiCard('defer-confirmed','DEFER');
+    await processAqsiJobs();
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='defer-confirmed'`)).length,0,'pending remote cancellation must keep the fallback blocked');
+    operations.set(deferConfirmed.operationId,{type:'acquiring.purchase',status:'Canceled',result:null,isCancellationRequested:true});
+    await processAqsiJobs();
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='defer-confirmed'`)).length,1);
+    await order('cancel-unsent');await cancelAqsiCard('cancel-unsent');
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cancel-unsent'`))?.paymentStatus,'CANCELLED');
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='cancel-unsent'`)).length,0,'abandoning an order does not create a payable fallback');
+    await order('cancel-timeout');await processAqsiJobs();
+    const cancelledTimeout=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='cancel-timeout' AND kind='CARD'`);assert.ok(cancelledTimeout);
+    await cancelAqsiCard('cancel-timeout');
+    operations.set(cancelledTimeout.operationId,{type:'acquiring.purchase',status:'Timeout',result:null,isCancellationRequested:true});await processAqsiJobs();
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cancel-timeout'`))?.paymentStatus,'CANCELLED');
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='cancel-timeout'`)).length,0);
+    await order('error-with-result');await processAqsiJobs();
+    const errorResult=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='error-with-result' AND kind='CARD'`);assert.ok(errorResult);
+    operations.set(errorResult.operationId,{type:'acquiring.purchase',status:'Error',result:'{}'});await processAqsiJobs();
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='error-with-result'`)).length,0,'an ambiguous result cannot be paid again');
+    // This test-only terminal is now clear; preserve the UNKNOWN assertion above.
+    await db.query(`UPDATE aqsi_jobs SET state='FAILED' WHERE "orderId"='error-with-result'`);
+    await db.query(`UPDATE orders SET "paymentStatus"='CANCELLED' WHERE id='error-with-result'`);
+    const cardPosts=posts;
     const {enqueueCashOrder,processAqsiCashOrders,cashOrderCancellationBlocked}=await import('../src/lib/aqsiCashOrders');
     const {receiptOrderReference}=await import('../src/lib/aqsiReceipt');
     const cashRemote=new Map<string,Record<string,unknown>>();
@@ -122,14 +168,24 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
       const remote=cashRemote.get(decodeURIComponent(path.split('/').pop()!));
       assert.ok(remote);return Response.json(remote);
     };
+    await Promise.all([processAqsiCashOrders(),processAqsiCashOrders()]);
+    const fallbackPayload=cashPayloads.find(p=>p.id==='belok:next-card');assert.ok(fallbackPayload);
+    assert.match(String(fallbackPayload.description),/оплата на кассе/);
+    assert.equal(fallbackPayload.number,String((await db.queryOne<{dailyNumber:number}>(`SELECT "dailyNumber" FROM orders WHERE id='next-card'`))?.dailyNumber));
+    const fallbackRemote=cashRemote.get('belok:next-card')!;
+    fallbackRemote.status='Оплачен';fallbackRemote.receipts=[{id:randomUUID(),isNonFiscal:false,amount:10,fp:'12345',documentNumber:4,content:{type:1,additionalAttribute:receiptOrderReference('next-card')}}];
+    await db.query(`UPDATE aqsi_cash_orders SET "checkedAt"=NULL`);await processAqsiCashOrders();
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='next-card'`))?.paymentStatus,'SUCCEEDED');
+    assert.equal((await db.query(`SELECT id FROM aqsi_jobs WHERE "orderId"='next-card' AND kind='RECEIPT'`)).length,0,'cashier already created the fallback receipt');
+    const cashBaseline=cashPayloads.length;
     async function cashOrder(id:string) {
       await order(id,'CASH');
       await db!.withTransaction(async client=>{await enqueueCashOrder(client,id,784146);await enqueueCashOrder(client,id,784146)});
     }
     await cashOrder('cash-paid');
     await Promise.all([processAqsiCashOrders(),processAqsiCashOrders()]);
-    assert.equal(cashPayloads.length,1,'parallel workers and duplicate enqueue create only one deferred order');
-    const cashContent=cashPayloads[0].content as {checkClose:{taxationSystem:number;payments?:unknown};positions:{price:number;quantity:number;id?:string}[]};
+    assert.equal(cashPayloads.length,cashBaseline+1,'parallel workers and duplicate enqueue create only one deferred order');
+    const cashContent=cashPayloads.find(p=>p.id==='belok:cash-paid')!.content as {checkClose:{taxationSystem:number;payments?:unknown};positions:{price:number;quantity:number;id?:string}[]};
     assert.equal(cashContent.checkClose.taxationSystem,1,'USN revenue uses 1 in Orders V2, 2 in Receipts V4');
     assert.equal(cashContent.checkClose.payments,undefined,'cash order must not be marked prepaid');
     assert.equal(cashContent.positions[0].price,10,'Orders V2 prices are rubles');
@@ -147,12 +203,12 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_cash_orders WHERE "orderId"='cash-uncertain'`))?.state,'UNKNOWN');
     await processAqsiCashOrders();
     assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_cash_orders WHERE "orderId"='cash-uncertain'`))?.state,'WAITING','recover a lost POST response with GET only');
-    assert.equal(cashPayloads.length,2,'lost response must not resubmit');
+    assert.equal(cashPayloads.length,cashBaseline+2,'lost response must not resubmit');
     cashRemote.get('belok:cash-uncertain')!.status='Отменен';
     await db.query(`UPDATE aqsi_cash_orders SET "checkedAt"=NULL`);await processAqsiCashOrders();
     assert.equal((await db.queryOne<{status:string}>(`SELECT status FROM orders WHERE id='cash-uncertain'`))?.status,'CANCELLED');
     await cashOrder('cash-unsent');assert.equal(await cashOrderCancellationBlocked('cash-unsent',true),false);
-    await processAqsiCashOrders();assert.equal(cashPayloads.length,2,'unsent cancelled order is never delivered');
+    await processAqsiCashOrders();assert.equal(cashPayloads.length,cashBaseline+2,'unsent cancelled order is never delivered');
     loseCashResponse=false;await cashOrder('cash-wrong-receipt');await processAqsiCashOrders();
     const wrongRemote=cashRemote.get('belok:cash-wrong-receipt')!;
     wrongRemote.status='Оплачен';wrongRemote.receipts=[{id:randomUUID(),isNonFiscal:false,amount:11,fp:'12345',documentNumber:6,content:{type:1,additionalAttribute:receiptOrderReference('cash-wrong-receipt')}}];
@@ -163,10 +219,11 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     await db.query(`UPDATE products SET price=11 WHERE id='p'`);
     assert.notEqual((await db.queryOne<{revision:string}>('SELECT revision FROM aqsi_catalog_sync'))?.revision,oldRevision);
     await processAqsiCatalog(); // Disabled: must never upload catalog.
-    assert.equal(posts,before+2);
+    assert.equal(posts,cardPosts);
     await order('expired');await db.query(`UPDATE aqsi_jobs SET "createdAt"=NOW()-INTERVAL '3 minutes' WHERE "orderId"='expired'`);await processAqsiJobs();
-    assert.equal(posts,before+2,'expired queued cards must never be submitted');
-    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='expired'`))?.paymentStatus,'CANCELLED');
+    assert.equal(posts,cardPosts,'expired queued cards must never be submitted');
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='expired'`))?.paymentStatus,'PENDING');
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='expired'`)).length,1,'an unsent expired card can be paid at the cashier');
     // Bulk upsert and verification, including disabling a deleted site product.
     await db.query(`UPDATE app_settings SET value=jsonb_set(value,'{catalogEnabled}','true') WHERE key='aqsi'`);
     let categories:Record<string,unknown>[]=[];
@@ -193,6 +250,22 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     await db.query(`DELETE FROM order_items; DELETE FROM products WHERE id='p'`);
     await processAqsiCatalog();await processAqsiCatalog();await processAqsiCatalog();
     assert.equal(goods.get('belok:p')?.nonTradable,true);
+    const {requestKioskRefresh,reportKioskClient,listKioskClients,kioskRefreshCommand}=await import('../src/lib/kioskControl');
+    const {setAppSetting}=await import('../src/lib/appSettings');
+    const firstClient=randomUUID();const secondClient=randomUUID();
+    assert.equal(await reportKioskClient({id:firstClient,revision:'1234567',busy:true,lastRefreshId:null}),null);
+    const targeted=await requestKioskRefresh(firstClient);
+    assert.equal((await kioskRefreshCommand(firstClient))?.id,targeted.id);
+    assert.equal(await kioskRefreshCommand(secondClient),null,'a targeted refresh must not reach another kiosk');
+    assert.equal((await reportKioskClient({id:firstClient,revision:'1234567',busy:true,lastRefreshId:null}))?.id,targeted.id,'busy/offline kiosk retains its unacknowledged command');
+    const all={id:randomUUID(),requestedAt:'2099-01-01T00:00:00.000Z'};
+    await setAppSetting('kiosk_refresh',all);
+    assert.equal((await kioskRefreshCommand(firstClient))?.id,all.id);
+    assert.equal((await kioskRefreshCommand(secondClient))?.id,all.id);
+    await reportKioskClient({id:firstClient,revision:'7654321',busy:false,lastRefreshId:all.id});
+    const clients=await listKioskClients();assert.equal(clients.length,1);
+    assert.equal(clients[0].lastRefreshId,clients[0].command?.id,'admin can verify the acknowledgement and the loaded version');
+    assert.equal(clients[0].revision,'7654321');
   } finally {
     globalThis.fetch=originalFetch;
     if(db) await db.pool.end();

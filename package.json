@@ -18,6 +18,7 @@
     "aqsi:worker": "node --conditions=react-server --import tsx scripts/aqsi-worker.ts",
     "test:aqsi": "node --import tsx --test scripts/test-aqsi.mts",
     "test:aqsi:integration": "node --conditions=react-server --import tsx --test scripts/test-aqsi-integration.mts",
+    "test:kiosk-control": "node --import tsx --test scripts/test-kiosk-control.mts",
     "test:manager": "node --import tsx --test scripts/test-manager-workspace.mts",
     "test:manager:integration": "node --import tsx --test scripts/test-manager-workspace-integration.mts",
     "test:employees": "node --import tsx --test scripts/test-employees.mts",

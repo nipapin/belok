@@ -3,6 +3,7 @@ import { queryOne } from '@/lib/db';
 import { KioskUnauthorizedError, requireKioskUnlocked } from '@/lib/kioskAuth';
 import { syncSbpPayment } from '@/lib/tbankPayments';
 import { aqsiOrderState, cancelAqsiCard, processAqsiJobs } from '@/lib/aqsiJobs';
+import { processAqsiCashOrders } from '@/lib/aqsiCashOrders';
 import type { OrderRow } from '@/lib/types';
 
 export async function GET(
@@ -21,6 +22,7 @@ export async function GET(
     }
 
     await processAqsiJobs();
+    await processAqsiCashOrders();
     const latest = await queryOne<OrderRow>(`SELECT * FROM orders WHERE id=$1`,[id]);
     const payment = latest?.paymentMethod === 'CARD'
       ? {paymentStatus:latest.paymentStatus,payload:null,image:null}
@@ -35,13 +37,17 @@ export async function GET(
   }
 }
 
-export async function POST(_request: NextRequest,{params}:{params:Promise<{id:string}>}) {
+export async function POST(request: NextRequest,{params}:{params:Promise<{id:string}>}) {
   try {
     await requireKioskUnlocked();
+    const body = await request.json().catch(()=>null) as {action?:unknown} | null;
+    if (body?.action != null && body.action !== 'cancel' && body.action !== 'defer') {
+      return NextResponse.json({error:'Неизвестное действие'},{status:400});
+    }
     const {id}=await params;
     const order=await queryOne<OrderRow>(`SELECT * FROM orders WHERE id=$1 AND source='KIOSK'`,[id]);
     if (!order || order.paymentMethod !== 'CARD') return NextResponse.json({error:'Заказ не найден'},{status:404});
-    await cancelAqsiCard(id);
+    await cancelAqsiCard(id,body?.action === 'defer' ? 'DEFER' : 'CANCEL');
     return NextResponse.json({requested:true});
   } catch(error) {
     if (error instanceof KioskUnauthorizedError) return NextResponse.json({error:'Нет доступа'},{status:401});

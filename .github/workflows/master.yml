@@ -18,6 +18,20 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: aqsi_test
+          POSTGRES_PASSWORD: aqsi_test
+          POSTGRES_DB: aqsi_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aqsi_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
       SESSION_SECRET: ci-build-placeholder-never-used-at-runtime
@@ -42,6 +56,10 @@ jobs:
         env:
           INVENTORY_TEST_PGLITE_MODULE: ${{ runner.temp }}/belok-test-db/node_modules/@electric-sql/pglite/dist/index.js
       - run: python3 scripts/deploy/test-production-deploy.py
+      - run: npm run test:aqsi:integration
+        env:
+          AQSI_TEST_DATABASE_URL: postgresql://aqsi_test:aqsi_test@127.0.0.1:5432/aqsi_test
+      - run: npm run test:kiosk-control
       - run: npx eslint scripts/package-production-release.mjs
       - run: npm run build
       - run: node scripts/package-production-release.mjs
