@@ -13,6 +13,9 @@
 # testing
 /coverage
 /output/kitchen-qa/
+/output/weather-qa/
+/output/weather-assets/
+/output/weather-worker/
 /artifacts/order-board/
 
 # next.js

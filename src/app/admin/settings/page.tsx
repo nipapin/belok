@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import AqsiSettings from '@/components/admin/AqsiSettings';
+import WeatherSettings from '@/components/admin/WeatherSettings';
 import { RefreshCw, Save } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -297,6 +298,7 @@ export default function AdminSettingsPage() {
       </button>
 
       <KioskPinSettings />
+      <WeatherSettings />
       <AqsiSettings />
 
       <div className="glass-panel mt-8 p-5">

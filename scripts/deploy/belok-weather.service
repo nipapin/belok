@@ -1,0 +1,10 @@
+[Unit]
+Description=Belok daily weather forecast and historical recovery
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/belok-weather-run.py
+TimeoutStartSec=35min
+UMask=0077

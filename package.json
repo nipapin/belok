@@ -28,7 +28,9 @@
     "deploy:manual": "git pull && npm ci --no-fund --no-audit && npm run build && pm2 startOrReload ecosystem.config.js --only belok --update-env && pm2 save",
     "test:revenue:browser": "node scripts/test-revenue-browser.mjs",
     "test:revenue": "node --import tsx --test scripts/test-admin-dashboard.mts scripts/test-revenue-stats.mts",
-    "test:roles": "node --import tsx --test scripts/test-roles.mts"
+    "test:roles": "node --import tsx --test scripts/test-roles.mts",
+    "test:weather": "node --import tsx --test scripts/test-weather.mts scripts/test-weather-server.mts",
+    "weather:sync": "node --import tsx scripts/sync-weather.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1104.0",

@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useDayWeather, WeekWeather, WeatherAttribution } from '@/components/admin/DayWeather';
 import {
   ORDER_STATUS_LABELS,
   OrderItemsList,
@@ -149,6 +150,8 @@ export default function AdminDashboard() {
     count: orders.filter((order) => cafeDay(order.createdAt) === day).length,
   }));
   const weekMax = Math.max(1, ...week.map((day) => day.count));
+  const weatherQuery = useDayWeather(week[0].day, today);
+  const weekWeather = new Map((weatherQuery.data?.days ?? []).map(day => [day.day, day]));
   const products = productsQuery.data?.products ?? [];
   const available = products.filter((product) => product.isAvailable).length;
   const refreshing =
@@ -574,7 +577,7 @@ export default function AdminDashboard() {
           >
             <div className="dashboard-section-heading">
               <div>
-                <h2 id="dashboard-week-title">Ритм недели</h2>
+                <h2 id="dashboard-week-title">Заказы за неделю</h2>
                 <p>Заказы за последние 7 дней</p>
               </div>
               <span className="dashboard-chart-icon">
@@ -626,10 +629,12 @@ export default function AdminDashboard() {
                           ? "Сегодня"
                           : dateLabel(`${day}T12:00:00Z`, { weekday: "short" })}
                       </span>
+                      <WeekWeather weather={weekWeather.get(day)} />
                     </Link>
                   ))}
                 </div>
-                <Link href="/admin/revenue" className="dashboard-orders-more">Выручка за период <ArrowRight size={16} aria-hidden="true" /></Link>
+                <div className="dashboard-weather-credit"><WeatherAttribution /></div>
+                <Link href="/admin/revenue" className="dashboard-orders-more">Продажи за период <ArrowRight size={16} aria-hidden="true" /></Link>
               </>
             )}
           </section>

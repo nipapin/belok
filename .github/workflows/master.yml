@@ -52,7 +52,7 @@ jobs:
       - run: npm ci --no-fund --no-audit
       - name: Install isolated PostgreSQL for employee tests
         run: npm install --prefix "$RUNNER_TEMP/belok-test-db" --no-save --no-package-lock --no-fund --no-audit @electric-sql/pglite@0.5.8
-      - run: npm run test:aqsi && npm run test:manager && npm run test:employees && npm run test:revenue && npm run test:roles && npm run test:inventory
+      - run: npm run test:aqsi && npm run test:manager && npm run test:employees && npm run test:revenue && npm run test:weather && npm run test:roles && npm run test:inventory
         env:
           INVENTORY_TEST_PGLITE_MODULE: ${{ runner.temp }}/belok-test-db/node_modules/@electric-sql/pglite/dist/index.js
       - run: python3 scripts/deploy/test-production-deploy.py

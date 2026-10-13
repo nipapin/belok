@@ -9,7 +9,7 @@ assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname), 'Use a lo
 const secret = process.env.SESSION_SECRET ?? 'local-check-only';
 const session = `qa.${createHmac('sha256', secret).update('qa').digest('hex')}`;
 const fixture = (id, overrides = {}) => ({ id, status: 'COMPLETED', total: 500, paymentStatus: 'SUCCEEDED', paymentMethod: 'CASH', createdAt: '2026-10-13T06:00:00Z', user: { name: 'Тестовый клиент', email: 'client@example.test', phone: null }, comment: null, guestEmail: null, items: [], ...overrides });
-const orders = [fixture('cash'), fixture('card', { paymentMethod: 'CARD', total: 200 }), fixture('employee', { isWriteOff: true, total: 900 }), fixture('next-day', { createdAt: '2026-10-14T08:00:00Z', total: 100 })];
+const orders = [fixture('first', { createdAt: '2026-05-24T10:00:00Z', total: 0 }), fixture('cash', { createdAt: '2026-10-12T06:00:00Z' }), fixture('card', { createdAt: '2026-10-12T06:00:00Z', paymentMethod: 'CARD', total: 200 }), fixture('employee', { createdAt: '2026-10-12T06:00:00Z', isWriteOff: true, total: 900 }), fixture('next-day', { createdAt: '2026-10-13T08:00:00Z', total: 100 })];
 const browser = await puppeteer.launch({ headless: 'shell', pipe: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 try {
   const page = await browser.newPage();
@@ -25,12 +25,13 @@ try {
       : pathname === '/api/admin/orders' ? { orders }
       : pathname === '/api/admin/users' ? { users: [] }
       : pathname === '/api/admin/products' ? { products: [] }
+      : pathname === '/api/admin/weather' ? { configured: true, firstDay: '2026-05-24', days: Array.from({ length: 7 }, (_, i) => ({ day: `2026-10-${String(7 + i).padStart(2, '0')}`, temperature: 15, precipitation: 0, condition: ['sun', 'cloud', 'rain'][i % 3], complete: true, hours: 13, source: 'archive' })) }
       : {};
     void request.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(payload) });
   });
   for (const width of [1440, 390, 320]) {
     await page.setViewport({ width, height: 1000, isMobile: width < 500, deviceScaleFactor: 1 });
-    await page.goto(`${base}/admin/revenue?from=2026-10-13&to=2026-10-14`, { waitUntil: 'networkidle0' });
+    await page.goto(`${base}/admin/revenue?from=2026-10-12&to=2026-10-13`, { waitUntil: 'networkidle0' });
     await page.waitForSelector('.revenue-table tbody tr');
     const summary = await page.$eval('.revenue-summary', node => node.innerText);
     assert.match(summary, /800\s*₽/);
@@ -44,12 +45,33 @@ try {
       await page.screenshot({ path: join(process.env.REVENUE_SCREENSHOT_DIR, `revenue-${width}.png`), fullPage: true });
     }
     await page.click(width < 500 ? '.revenue-day-card' : '.revenue-table tbody tr a');
-    await page.waitForFunction(() => location.search === '?from=2026-10-13&to=2026-10-13');
+    await page.waitForFunction(() => location.search === '?from=2026-10-12&to=2026-10-12');
     await page.waitForFunction(() => document.querySelectorAll('.revenue-table tbody tr').length === 1);
     assert.match(await page.$eval('.revenue-summary', node => node.innerText), /700\s*₽/);
+    await page.click('.sales-date-trigger');
+    await page.waitForSelector('.sales-date-dialog[open]');
+    assert.equal(await page.$$eval('input[type=date]', nodes => nodes.length), 0);
+    assert.equal(await page.evaluate(() => document.querySelector('.sales-date-dialog').scrollWidth <= document.querySelector('.sales-date-dialog').clientWidth), true, `Calendar fits ${width}px`);
+    await page.$eval('.sales-date-modes button:last-child', button => button.click());
+    await page.click('[data-day="2026-10-10"]');
+    await page.click('[data-day="2026-10-12"]');
+    if (process.env.REVENUE_SCREENSHOT_DIR) await page.screenshot({ path: join(process.env.REVENUE_SCREENSHOT_DIR, `calendar-${width}.png`) });
+    await page.click('.sales-date-footer button');
+    await page.waitForFunction(() => location.search === '?from=2026-10-10&to=2026-10-12');
+    await page.waitForFunction(() => document.querySelectorAll('.revenue-table tbody tr').length === 3);
+    await page.click('.sales-date-trigger');
+    await page.$eval('.sales-date-presets button:last-child', button => button.click());
+    assert.equal(await page.$eval('[data-day="2026-05-23"]', button => button.disabled), true);
+    assert.equal(await page.$eval('[data-day="2026-05-24"]', button => button.disabled), false);
+    assert.equal(await page.$eval('[aria-label="Предыдущий месяц"]', button => button.disabled), true);
+    await page.keyboard.press('Escape');
   }
   await page.goto(`${base}/admin`, { waitUntil: 'networkidle0' });
   assert.equal(await page.$$eval('a.dashboard-chart-column', nodes => nodes.length), 7);
+  assert.equal(await page.$$eval('.dashboard-day-weather .weather-icon', nodes => nodes.length), 7);
+  assert.match(await page.$eval('.dashboard-day-weather', node => node.innerText), /\+15 °C/);
+  assert.equal(await page.$$eval('.sales-weather-card', nodes => nodes.length), 0);
+  if (process.env.REVENUE_SCREENSHOT_DIR) await page.screenshot({ path: join(process.env.REVENUE_SCREENSHOT_DIR, 'week-weather.png'), fullPage: true });
   await page.click('a.dashboard-chart-column:last-child');
   await page.waitForSelector('.revenue-table');
   assert.match(page.url(), /\/admin\/revenue\?from=/);
