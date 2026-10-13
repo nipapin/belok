@@ -26,6 +26,7 @@ import {
   ExternalLink,
   X,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
@@ -36,53 +37,77 @@ import AdminNewOrderWatcher from "@/components/admin/AdminNewOrderWatcher";
 import AdminBuildVersion from "@/components/admin/AdminBuildVersion";
 import "@/app/admin/admin-ux.css";
 
+const overviewItem = { label: "Обзор", icon: LayoutDashboard, path: "/admin" };
 const menuGroups = [
   {
-    label: "Рабочее пространство",
+    id: "operations", label: "Работа заведения", icon: BriefcaseBusiness,
     items: [
-      { label: "Обзор", icon: LayoutDashboard, path: "/admin" },
       { label: "Управляющий", icon: BriefcaseBusiness, path: "/admin/manager" },
-      { label: "Отчетность", icon: BarChart3, path: "/admin/reports" },
-      { label: "Продажи", icon: BarChart3, path: "/admin/revenue" },
-      { label: "Продажи блюд", icon: UtensilsCrossed, path: "/admin/dish-sales" },
       { label: "Заказы", icon: Receipt, path: "/admin/orders" },
       { label: "Касса и лояльность", icon: ScanLine, path: "/admin/loyalty" },
+      { label: "Стоп-лист", icon: UtensilsCrossed, path: "/admin/availability" },
     ],
   },
   {
-    label: "Меню кафе",
+    id: "catalog", label: "Меню и склад", icon: Warehouse,
     items: [
       { label: "Товары", icon: UtensilsCrossed, path: "/admin/products" },
       { label: "Категории", icon: Tags, path: "/admin/categories" },
       { label: "Ингредиенты", icon: ChefHat, path: "/admin/ingredients" },
       { label: "Склад", icon: Warehouse, path: "/admin/inventory" },
       { label: "Техкарты", icon: ClipboardList, path: "/admin/recipes" },
-      { label: "Стоп-лист", icon: UtensilsCrossed, path: "/admin/availability" },
-      { label: "Кухонная доска", icon: ClipboardList, path: "/order-board" },
-      { label: "Кухня · приготовление", icon: ChefHat, path: "/kitchen" },
-      { label: "Кухня · техкарты", icon: ChefHat, path: "/admin/kitchen" },
       { label: "Хиты", icon: Flame, path: "/admin/hits" },
     ],
   },
   {
-    label: "Управление",
+    id: "kitchen", label: "Кухня", icon: ChefHat,
     items: [
-      { label: "Пользователи", icon: Users, path: "/admin/users" },
+      { label: "Кухонная доска", icon: ClipboardList, path: "/order-board" },
+      { label: "Приготовление", icon: ChefHat, path: "/kitchen" },
+      { label: "Техкарты кухни", icon: ChefHat, path: "/admin/kitchen" },
+    ],
+  },
+  {
+    id: "analytics", label: "Аналитика", icon: BarChart3,
+    items: [
+      { label: "Отчётность", icon: BarChart3, path: "/admin/reports" },
+      { label: "Выручка", icon: BarChart3, path: "/admin/revenue" },
+      { label: "Продажи блюд", icon: UtensilsCrossed, path: "/admin/dish-sales" },
+    ],
+  },
+  {
+    id: "team", label: "Команда", icon: Users,
+    items: [
       { label: "Сотрудники", icon: UserRoundCog, path: "/admin/employees" },
+      { label: "Пользователи", icon: Users, path: "/admin/users" },
       { label: "Журнал доступа", icon: ClipboardList, path: "/admin/audit" },
+    ],
+  },
+  {
+    id: "system", label: "Система и сайт", icon: Settings,
+    items: [
+      { label: "Настройки", icon: Settings, path: "/admin/settings" },
       { label: "Уведомления", icon: Bell, path: "/admin/notifications" },
       { label: "Главная сайта", icon: Home, path: "/admin/home" },
       { label: "Приветствие", icon: Sparkles, path: "/admin/walkthrough" },
-      { label: "Настройки", icon: Settings, path: "/admin/settings" },
     ],
   },
 ];
 const mobileItems = [
-  { label: "Обзор", icon: LayoutDashboard, path: "/admin" },
+  overviewItem,
   { label: "Заказы", icon: Receipt, path: "/admin/orders" },
-  { label: "Касса", icon: ScanLine, path: "/admin/loyalty" },
-  { label: "Товары", icon: UtensilsCrossed, path: "/admin/products" },
+  { label: "Управляющий", icon: BriefcaseBusiness, path: "/admin/manager" },
+  { label: "Склад", icon: Warehouse, path: "/admin/inventory" },
 ];
+const navigationStorageKey = "belok.admin.navigation.groups.v1";
+function readExpandedGroups(): Record<string, boolean> {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(navigationStorageKey) || "{}");
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return Object.fromEntries(Object.entries(value).filter(([key, expanded]) =>
+      menuGroups.some(group => group.id === key) && typeof expanded === "boolean"));
+  } catch { return {}; }
+}
 
 export default function AdminShell({
   children,
@@ -114,9 +139,23 @@ export default function AdminShell({
     path === "/admin"
       ? pathname === path
       : pathname === path || pathname.startsWith(`${path}/`);
-  const currentPage = menuGroups
-    .flatMap((group) => group.items)
+  const currentPage = [overviewItem, ...menuGroups.flatMap((group) => group.items)]
     .find((item) => selected(item.path));
+  const activeGroup = menuGroups.find(group => group.items.some(item => selected(item.path)))?.id;
+  const [groupState, setGroupState] = useState(() => ({
+    pathname,
+    expanded: { ...readExpandedGroups(), ...(activeGroup ? { [activeGroup]: true } : {}) },
+  }));
+  if (groupState.pathname !== pathname) {
+    setGroupState({ pathname, expanded: {
+      ...groupState.expanded, ...(activeGroup ? { [activeGroup]: true } : {}),
+    } });
+  }
+  const toggleGroup = (id: string) => {
+    const expanded = { ...groupState.expanded, [id]: !groupState.expanded[id] };
+    setGroupState({ pathname, expanded });
+    try { localStorage.setItem(navigationStorageKey, JSON.stringify(expanded)); } catch { /* Storage may be unavailable. */ }
+  };
   // Product editing already has a fixed save bar: give it the entire bottom edge.
   const editingProduct =
     pathname === "/admin/products/new" ||
@@ -153,7 +192,7 @@ export default function AdminShell({
       </div>
     );
 
-  const navigation = (
+  const navigation = (surface: "desktop" | "mobile") => (
     <>
       <div className="admin-brand">
         <span className="admin-brand-icon" aria-hidden="true">
@@ -165,9 +204,30 @@ export default function AdminShell({
         </div>
       </div>
       <nav className="admin-grouped-nav" aria-label="Разделы админки">
+        {canAccessPage(user, overviewItem.path) && (
+          <Link href={overviewItem.path} prefetch={false}
+            aria-current={selected(overviewItem.path) ? "page" : undefined}
+            onClick={() => setMobileOpen(false)}
+            className={`admin-nav-item admin-nav-overview ${selected(overviewItem.path) ? "is-selected" : ""}`}>
+            <LayoutDashboard size={19} strokeWidth={1.8} aria-hidden="true" />
+            <span>{overviewItem.label}</span>
+          </Link>
+        )}
         {menuGroups.map(group => ({...group, items: group.items.filter(item => canAccessPage(user, item.path))})).filter(group => group.items.length).map((group) => (
-          <div key={group.label} className="admin-nav-group">
-            <p className="admin-nav-label">{group.label}</p>
+          <div key={group.id} className="admin-nav-group">
+            <button type="button"
+              className={`admin-nav-group-toggle ${group.id === activeGroup ? "has-selected" : ""}`}
+              aria-expanded={!!groupState.expanded[group.id]}
+              aria-controls={`admin-nav-${surface}-${group.id}`}
+              onClick={() => toggleGroup(group.id)}>
+              <group.icon size={19} strokeWidth={1.8} aria-hidden="true" />
+              <span>{group.label}</span>
+              {group.id === "operations" && pendingCount > 0 && (
+                <span className="admin-count" aria-label={`${pendingCount} ожидают подтверждения`}>{pendingCount > 99 ? "99+" : pendingCount}</span>
+              )}
+              <ChevronDown size={16} className="admin-nav-chevron" aria-hidden="true" />
+            </button>
+            <div id={`admin-nav-${surface}-${group.id}`} className="admin-nav-group-items" hidden={!groupState.expanded[group.id]}>
             {group.items.map(({ icon: Icon, ...item }) => (
               <Link
                 key={item.path}
@@ -189,6 +249,7 @@ export default function AdminShell({
                 )}
               </Link>
             ))}
+            </div>
           </div>
         ))}
       </nav>
@@ -222,7 +283,7 @@ export default function AdminShell({
       <a className="admin-skip-link" href="#admin-main">
         К содержимому
       </a>
-      <aside className="admin-desktop-sidebar">{navigation}</aside>
+      <aside className="admin-desktop-sidebar">{navigation("desktop")}</aside>
       <header className="admin-header-bar admin-workspace-header">
         <Link
           href={user ? staffHome(user) : "/admin"}
@@ -291,6 +352,7 @@ export default function AdminShell({
         <nav
           className="admin-bottom-nav"
           aria-label="Основная навигация админки"
+          style={{ gridTemplateColumns: `repeat(${mobileItems.filter(item => canAccessPage(user, item.path)).length + 1}, minmax(0, 1fr))` }}
           inert={mobileOpen || undefined}
         >
           {mobileItems.filter(item => canAccessPage(user, item.path)).map(({ icon: Icon, ...item }) => (
@@ -350,7 +412,7 @@ export default function AdminShell({
               <X size={22} />
             </button>
           </div>
-          {navigation}
+          {navigation("mobile")}
         </div>
       </dialog>
     </div>
