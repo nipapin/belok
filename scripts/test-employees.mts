@@ -46,3 +46,30 @@ test('users and employees partition all accounts by USER role without changing a
     authorized = false; assert.equal((await get('?scope=employees')).status, 403);
   } finally { await db.close(); }
 });
+
+test('order write-offs match registered and guest employee emails with effective role overrides', async () => {
+  const modulePath = process.env.INVENTORY_TEST_PGLITE_MODULE;
+  assert.ok(modulePath, 'Set INVENTORY_TEST_PGLITE_MODULE; production DB is never accessed');
+  const { PGlite } = await import(pathToFileURL(modulePath).href);
+  const db = new PGlite();
+  try {
+    await db.exec(`CREATE TABLE users(id text PRIMARY KEY,email text,role text);
+      CREATE TABLE app_settings(key text PRIMARY KEY,value jsonb);
+      INSERT INTO users VALUES('owner','Owner@Cafe.ru','ADMIN'),('guest','client@cafe.ru','USER'),('cook',' Cook@Cafe.ru ','USER'),('former','former@cafe.ru','ADMIN');
+      INSERT INTO app_settings VALUES('employee_roles:cook','{"roles":["COOK"]}'),('employee_roles:former','{"roles":["USER"]}');`);
+    const source = await readFile(new URL('../src/lib/orderWriteOff.ts', import.meta.url), 'utf8');
+    const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+    const exports: { employeeEmailSet?: () => Promise<Set<string>>; matchesEmployeeEmail?: (emails: Set<string>, user?: string | null, guest?: string | null) => boolean } = {};
+    vm.runInNewContext(code, { exports, require: (name: string) => {
+      assert.equal(name, '@/lib/db');
+      return { query: async (sql: string) => (await db.query(sql)).rows };
+    } });
+    const emails = await exports.employeeEmailSet!();
+    assert.deepEqual([...emails].sort(), ['cook@cafe.ru', 'owner@cafe.ru']);
+    assert.equal(exports.matchesEmployeeEmail!(emails, ' OWNER@CAFE.RU '), true);
+    assert.equal(exports.matchesEmployeeEmail!(emails, null, 'cook@cafe.ru'), true);
+    assert.equal(exports.matchesEmployeeEmail!(emails, 'client@cafe.ru'), false);
+    assert.equal(exports.matchesEmployeeEmail!(emails, 'former@cafe.ru'), false);
+    assert.equal(exports.matchesEmployeeEmail!(emails, null, ''), false);
+  } finally { await db.close(); }
+});

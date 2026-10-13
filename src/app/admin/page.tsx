@@ -527,6 +527,7 @@ export default function AdminDashboard() {
                       <span className="dashboard-ticket">
                         {orderTicket(order)}
                       </span>
+                      {order.isWriteOff && <span className="revenue-writeoff">Списание</span>}
                       <span
                         className={`dashboard-status status-${order.status.toLowerCase()}`}
                       >
@@ -596,7 +597,7 @@ export default function AdminDashboard() {
                 </p>
                 <div
                   className="dashboard-bar-chart"
-                  role="img"
+                  role="group"
                   aria-label={week
                     .map(
                       ({ day, count }) =>
@@ -605,10 +606,11 @@ export default function AdminDashboard() {
                     .join("; ")}
                 >
                   {week.map(({ day, count }) => (
-                    <div
+                    <Link
                       key={day}
+                      href={`/admin/revenue?from=${day}&to=${day}`}
                       className={`dashboard-chart-column ${day === today ? "is-today" : ""}`}
-                      aria-hidden="true"
+                      aria-label={`${dateLabel(`${day}T12:00:00Z`, { day: "numeric", month: "long" })}: ${count} заказов. Открыть выручку дня`}
                     >
                       <span className="dashboard-bar-value">{count}</span>
                       <div className="dashboard-bar-track">
@@ -624,9 +626,10 @@ export default function AdminDashboard() {
                           ? "Сегодня"
                           : dateLabel(`${day}T12:00:00Z`, { weekday: "short" })}
                       </span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
+                <Link href="/admin/revenue" className="dashboard-orders-more">Выручка за период <ArrowRight size={16} aria-hidden="true" /></Link>
               </>
             )}
           </section>

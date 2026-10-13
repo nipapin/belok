@@ -1,4 +1,5 @@
 import { query, queryOne } from '@/lib/db';
+import { employeeEmailSet, matchesEmployeeEmail } from '@/lib/orderWriteOff';
 import type {
   IngredientRow,
   OrderItemCustomizationRow,
@@ -28,6 +29,7 @@ export async function fetchAdminOrderById(id: string) {
     [id]
   );
   if (!order) return null;
+  const employeeEmails = await employeeEmailSet();
 
   const items = await query<OrderItemRow>(
     `SELECT * FROM "order_items" WHERE "orderId" = $1 ORDER BY id ASC`,
@@ -60,6 +62,7 @@ export async function fetchAdminOrderById(id: string) {
 
   return {
     id: order.id,
+    isWriteOff: matchesEmployeeEmail(employeeEmails, order.user_email, order.guestEmail),
     userId: order.userId,
     status: order.status,
     total: order.total,

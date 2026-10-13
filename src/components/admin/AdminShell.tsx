@@ -43,6 +43,7 @@ const menuGroups = [
       { label: "Обзор", icon: LayoutDashboard, path: "/admin" },
       { label: "Управляющий", icon: BriefcaseBusiness, path: "/admin/manager" },
       { label: "Отчетность", icon: BarChart3, path: "/admin/reports" },
+      { label: "Выручка и ритм", icon: BarChart3, path: "/admin/revenue" },
       { label: "Заказы", icon: Receipt, path: "/admin/orders" },
       { label: "Касса и лояльность", icon: ScanLine, path: "/admin/loyalty" },
     ],

@@ -21,6 +21,7 @@ interface Order {
   bonusUsed: number;
   discountAmount: number;
   paymentStatus: string;
+  isWriteOff?: boolean;
   fulfillment?: string | null;
   deliveryAddress?: string | null;
   comment: string | null;
@@ -174,6 +175,7 @@ export default function AdminOrdersPage() {
                   <td>
                     {customerLabel(order)}
                     <SourceBadge source={order.source} />
+                {order.isWriteOff && <span className="revenue-writeoff">Списание</span>}
                     {fulfillmentLabel(order.fulfillment) ? (
                       <span className="mt-0.5 block text-xs text-(--lg-text-muted)">
                         {fulfillmentLabel(order.fulfillment)}
@@ -251,6 +253,7 @@ export default function AdminOrdersPage() {
               <p className="text-sm font-medium text-(--lg-text)">
                 {customerLabel(order)}
                 <SourceBadge source={order.source} />
+                {order.isWriteOff && <span className="revenue-writeoff">Списание</span>}
               </p>
               {fulfillmentLabel(order.fulfillment) ? (
                 <p className="text-xs text-(--lg-text-muted)">

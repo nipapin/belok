@@ -814,6 +814,7 @@
 }
 .dashboard-order-top {
   display: flex;
+  flex-wrap: wrap;
   gap: 7px;
   align-items: center;
 }
@@ -955,7 +956,13 @@
   flex-direction: column;
   align-items: center;
   min-width: 0;
+  border-radius: 8px;
+  padding: 5px 2px;
+  text-decoration: none;
+  transition: background 150ms;
 }
+.dashboard-chart-column:hover { background: #eaf1e8; }
+.dashboard-chart-column:focus-visible { outline: 2px solid #286345; outline-offset: 2px; }
 .dashboard-bar-value {
   font-size: 10px;
   color: #53635b;
@@ -1272,4 +1279,41 @@
     scroll-behavior: auto !important;
     transition: none !important;
   }
+}
+
+/* Revenue and hourly workload, with forms and cards sized for phones. */
+.revenue-back { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; color: #286345; }
+.revenue-period { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 22px 0; }
+.revenue-period label { display: flex; flex-direction: column; gap: 7px; min-width: 0; color: #53635b; font-size: 13px; }
+.revenue-period input { background: white; border: 1px solid #d7e1d7; border-radius: 12px; padding: 12px; min-width: 0; max-width: 100%; color: #203e2c; font-size: 16px; }
+.revenue-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.revenue-summary .dashboard-metric-card > strong { font-size: clamp(18px, 2vw, 28px); overflow-wrap: anywhere; }
+.revenue-note { color: #53635b; font-size: 13px; line-height: 1.6; margin: 12px 0 18px; }
+.revenue-panel { padding: 20px; margin-top: 20px; min-width: 0; }
+.revenue-panel h2 { font-size: 18px; font-weight: 600; color: #203e2c; }
+.revenue-table { min-width: 860px; font-variant-numeric: tabular-nums; }
+.revenue-table a { color: #286345; text-decoration: underline; text-underline-offset: 3px; }
+.revenue-table tfoot { font-weight: 600; }
+.revenue-hours { display: flex; flex-direction: column; gap: 14px; }
+.revenue-hour { display: grid; grid-template-columns: 110px minmax(40px, 1fr) 85px 190px; gap: 12px; align-items: center; color: #203e2c; font-size: 13px; font-variant-numeric: tabular-nums; }
+.revenue-hour-track { height: 18px; border-radius: 5px; background: #f2f5ef; overflow: hidden; }
+.revenue-hour-track > div { height: 100%; background: #286345; border-radius: 5px; }
+.revenue-hour small, .revenue-hour-detail { color: #53635b; }
+.revenue-order-list { display: flex; flex-direction: column; gap: 12px; }
+.revenue-days-mobile { display: none; }
+.revenue-day-card { border: 1px solid #e0e7e1; border-radius: 12px; padding: 14px; display: block; color: #203e2c; }
+.revenue-day-card > div { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.revenue-day-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; font-size: 13px; }
+.revenue-day-card dt { color: #53635b; font-size: 11px; }
+.revenue-day-card dd { font-weight: 600; margin-top: 4px; overflow-wrap: anywhere; }
+.revenue-writeoff { display: inline-block; border-radius: 20px; background: #fef3c7; color: #92400e; padding: 3px 9px; font-size: 11px; font-weight: 600; margin: 0 4px; }
+@media (max-width: 700px) {
+  .revenue-days-desktop { display: none; }
+  .revenue-days-mobile { display: flex; flex-direction: column; gap: 12px; }
+  .revenue-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .revenue-panel { padding: 14px; }
+  .revenue-hour { grid-template-columns: 96px minmax(30px, 1fr) 70px; gap: 8px; font-size: 12px; }
+  .revenue-hour-detail { grid-column: 2 / -1; }
+  .revenue-period { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .revenue-period button, .revenue-period > p { grid-column: 1 / -1; }
 }

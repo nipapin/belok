@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
+import { employeeEmailSet, matchesEmployeeEmail } from '@/lib/orderWriteOff';
 import type {
   IngredientRow,
   OrderItemCustomizationRow,
@@ -33,6 +34,7 @@ export async function GET() {
     );
 
     if (orders.length === 0) return NextResponse.json({ orders: [] });
+    const employeeEmails = await employeeEmailSet();
 
     const orderIds = orders.map((o) => o.id);
 
@@ -68,6 +70,7 @@ export async function GET() {
 
     const result = orders.map((o) => ({
       id: o.id,
+      isWriteOff: matchesEmployeeEmail(employeeEmails, o.user_email, o.guestEmail),
       userId: o.userId,
       status: o.status,
       total: o.total,

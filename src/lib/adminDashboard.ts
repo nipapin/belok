@@ -5,6 +5,7 @@ export interface DashboardOrder {
   status: string;
   total: number;
   paymentStatus: string;
+  isWriteOff?: boolean;
   paymentMethod?: string | null;
   createdAt: string;
   comment: string | null;
@@ -43,7 +44,7 @@ export function dashboardPeriod(days: number, now = new Date()) {
 }
 
 export function orderMetrics(orders: DashboardOrder[]) {
-  const valid = orders.filter((order) => order.status !== "CANCELLED");
+  const valid = orders.filter((order) => order.status !== "CANCELLED" && !order.isWriteOff);
   const total = valid.reduce((sum, order) => sum + Number(order.total), 0);
   const paidOrders = valid.filter(order => order.paymentStatus === 'SUCCEEDED');
   const breakdown = (list: DashboardOrder[]) => ({

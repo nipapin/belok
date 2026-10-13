@@ -28,6 +28,7 @@ interface AdminOrder {
   bonusUsed: number;
   bonusEarned: number;
   paymentStatus: string;
+  isWriteOff?: boolean;
   fulfillment?: string | null;
   deliveryAddress?: string | null;
   deliveryTime?: string | null;
@@ -194,7 +195,7 @@ export default function AdminOrderDetailPage() {
                 : 'admin-chip-neutral'
             }
           >
-            {paymentLabel(order.paymentStatus)}
+            {order.isWriteOff ? 'Списание · ' : ''}{paymentLabel(order.paymentStatus)}
             {paymentMethodLabel(order.paymentMethod) ? ` · ${paymentMethodLabel(order.paymentMethod)}` : ''}
           </span>
         </div>
