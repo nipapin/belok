@@ -5,6 +5,7 @@ import {
   dashboardPeriod,
   fetchAdminJson,
   orderMetrics,
+  weeklyMetrics,
   type DashboardOrder,
 } from "../src/lib/adminDashboard";
 
@@ -98,4 +99,40 @@ test("HTTP errors reject the query rather than looking like an empty successful 
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("weekly revenue separates cash, card/SBP and unknown methods without counting unpaid or cancelled orders", () => {
+  const week = weeklyMetrics([
+    order({ total: 200, paymentMethod: "CASH", paymentStatus: "SUCCEEDED" }),
+    order({ total: 300, paymentMethod: "CARD", paymentStatus: "SUCCEEDED" }),
+    order({ total: 150, paymentMethod: "SBP", paymentStatus: "SUCCEEDED" }),
+    order({ total: 75, paymentMethod: null, paymentStatus: "SUCCEEDED" }),
+    order({ total: 25, paymentMethod: "LEGACY", paymentStatus: "SUCCEEDED" }),
+    order({ total: 900, paymentMethod: "CASH", paymentStatus: "SUCCEEDED", status: "CANCELLED" }),
+    order({ total: 800, paymentMethod: "SBP" }),
+    order({ total: 700, paymentMethod: "CARD", paymentStatus: "CANCELLED" }),
+    order({ total: 0, paymentMethod: "BONUS", paymentStatus: "SUCCEEDED" }),
+    order({ total: 600, paymentMethod: "BONUS", paymentStatus: "SUCCEEDED" }),
+  ], new Date("2026-10-09T08:00:00Z"));
+  assert.deepEqual(week[6], {
+    day: "2026-10-09", count: 10, revenue: 750, cash: 200, cashless: 450, unknown: 100,
+  });
+  for (const day of week) assert.equal(day.revenue, day.cash + day.cashless + day.unknown);
+});
+
+test("weekly buckets use Kaliningrad dates, retain empty days and exclude orders outside the week", () => {
+  const now = new Date("2026-10-09T08:00:00Z");
+  const week = weeklyMetrics([
+    order({ createdAt: "2026-10-08T21:59:59Z", total: 100, paymentMethod: "CASH", paymentStatus: "SUCCEEDED" }),
+    order({ createdAt: "2026-10-08T22:00:00Z", total: 200, paymentMethod: "SBP", paymentStatus: "SUCCEEDED" }),
+    order({ createdAt: "2026-10-02T21:59:59Z", paymentStatus: "SUCCEEDED" }),
+    order({ createdAt: "2026-10-09T22:00:00Z", paymentStatus: "SUCCEEDED" }),
+  ], now);
+  assert.equal(week.length, 7);
+  assert.equal(week[0].day, "2026-10-03");
+  assert.equal(week[0].count, 0);
+  assert.equal(week[5].cash, 100);
+  assert.equal(week[6].cashless, 200);
+  assert.equal(week.reduce((sum, day) => sum + day.count, 0), 2);
+  assert.ok(weeklyMetrics([], now).every((day) => day.count === 0 && day.revenue === 0));
 });

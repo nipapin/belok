@@ -38,11 +38,16 @@ import {
   fetchAdminJson,
   fetchAdminOrders,
   orderMetrics,
+  weeklyMetrics,
 } from "@/lib/adminDashboard";
 
 const money = (value: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value) +
   " ₽";
+const chartMoney = (value: number) =>
+  new Intl.NumberFormat("ru-RU", {
+    notation: "compact", maximumFractionDigits: 1,
+  }).format(value);
 const dateLabel = (value: string, options: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat("ru-RU", {
     timeZone: CAFE_TIME_ZONE,
@@ -76,6 +81,8 @@ const quickActions = [
 
 export default function AdminDashboard() {
   const [days, setDays] = useState(1);
+  const [weekView, setWeekView] = useState<"orders" | "revenue">("orders");
+  const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null);
   const [filter, setFilter] = useState<"active" | "all">("active");
   const [search, setSearch] = useState("");
   const [clock, setClock] = useState(() => new Date());
@@ -144,11 +151,20 @@ export default function AdminDashboard() {
         value.toLocaleLowerCase("ru-RU").includes(normalizedSearch),
       ),
   );
-  const week = dashboardPeriod(7, clock).map((day) => ({
-    day,
-    count: orders.filter((order) => cafeDay(order.createdAt) === day).length,
-  }));
-  const weekMax = Math.max(1, ...week.map((day) => day.count));
+  const week = weeklyMetrics(orders, clock);
+  const revenueView = weekView === "revenue";
+  const weekMax = Math.max(1, ...week.map((day) => revenueView ? day.revenue : day.count));
+  const weekTotals = week.reduce((sum, day) => ({
+    count: sum.count + day.count, revenue: sum.revenue + day.revenue,
+    cash: sum.cash + day.cash, cashless: sum.cashless + day.cashless,
+    unknown: sum.unknown + day.unknown,
+  }), { count: 0, revenue: 0, cash: 0, cashless: 0, unknown: 0 });
+  const selectedDay = week.find((day) => day.day === selectedWeekDay) ?? week[week.length - 1];
+  const weekDayLabel = (day: string) => dateLabel(`${day}T12:00:00Z`, { day: "numeric", month: "long" });
+  const weekDaySummary = (day: (typeof week)[number]) =>
+    `${weekDayLabel(day.day)}: ${revenueView
+      ? `${money(day.revenue)}, наличные ${money(day.cash)}, безнал ${money(day.cashless)}${day.unknown ? `, способ не указан ${money(day.unknown)}` : ""}`
+      : `${day.count} заказов`}`;
   const products = productsQuery.data?.products ?? [];
   const available = products.filter((product) => product.isAvailable).length;
   const refreshing =
@@ -574,59 +590,87 @@ export default function AdminDashboard() {
             <div className="dashboard-section-heading">
               <div>
                 <h2 id="dashboard-week-title">Ритм недели</h2>
-                <p>Заказы за последние 7 дней</p>
+                <p>{revenueView ? "Выручка" : "Заказы"} за последние 7 дней</p>
               </div>
               <span className="dashboard-chart-icon">
-                <Receipt size={19} aria-hidden="true" />
+                {revenueView ? <Banknote size={19} aria-hidden="true" /> : <Receipt size={19} aria-hidden="true" />}
               </span>
+            </div>
+            <div className="dashboard-week-controls">
+              <div className="dashboard-segmented" role="group" aria-label="Показатель графика">
+                <button type="button" aria-pressed={!revenueView} onClick={() => setWeekView("orders")}>Заказы</button>
+                <button type="button" aria-pressed={revenueView} onClick={() => setWeekView("revenue")}>Выручка</button>
+              </div>
             </div>
             {ordersQuery.isPending ? (
               <div className="dashboard-skeleton dashboard-chart-skeleton" />
             ) : ordersQuery.isError && !ordersQuery.data ? (
               <p className="dashboard-inline-error">
-                Данные о заказах недоступны.
+                Данные для графика недоступны.
               </p>
             ) : (
               <>
                 <p className="dashboard-week-total">
                   <strong>
-                    {week.reduce((sum, day) => sum + day.count, 0)}
+                    {revenueView ? money(weekTotals.revenue) : weekTotals.count}
                   </strong>{" "}
-                  заказов
+                  {revenueView ? "за неделю" : "заказов"}
                 </p>
+                {revenueView && (
+                  <div className="dashboard-payment-legend" aria-label="Выручка по способам оплаты за неделю">
+                    <span><i className="is-cash" />Наличные <strong>{money(weekTotals.cash)}</strong></span>
+                    <span><i className="is-cashless" />Безнал <strong>{money(weekTotals.cashless)}</strong></span>
+                    {weekTotals.unknown > 0 && <span><i className="is-unknown" />Не указан <strong>{money(weekTotals.unknown)}</strong></span>}
+                  </div>
+                )}
                 <div
-                  className="dashboard-bar-chart"
-                  role="img"
-                  aria-label={week
-                    .map(
-                      ({ day, count }) =>
-                        `${dateLabel(`${day}T12:00:00Z`, { day: "numeric", month: "long" })}: ${count} заказов`,
-                    )
-                    .join("; ")}
+                  className={`dashboard-bar-chart ${revenueView ? "is-revenue" : ""}`}
+                  role="group"
+                  aria-label={revenueView ? "Выручка по дням в рублях. Выберите день" : "Заказы по дням. Выберите день"}
                 >
-                  {week.map(({ day, count }) => (
-                    <div
-                      key={day}
-                      className={`dashboard-chart-column ${day === today ? "is-today" : ""}`}
-                      aria-hidden="true"
+                  {week.map((day) => (
+                    <button
+                      type="button"
+                      key={day.day}
+                      className={`dashboard-chart-column ${day.day === today ? "is-today" : ""}`}
+                      aria-label={weekDaySummary(day)}
+                      aria-pressed={day.day === selectedDay.day}
+                      onClick={() => setSelectedWeekDay(day.day)}
                     >
-                      <span className="dashboard-bar-value">{count}</span>
-                      <div className="dashboard-bar-track">
-                        <div
+                      <span className="dashboard-bar-value" aria-hidden="true">{revenueView ? chartMoney(day.revenue) : day.count}</span>
+                      <span className="dashboard-bar-track" aria-hidden="true">
+                        <span
                           className="dashboard-bar"
                           style={{
-                            height: `${count ? Math.max(5, (count / weekMax) * 100) : 0}%`,
+                            height: `${((revenueView ? day.revenue : day.count) / weekMax) * 100}%`,
                           }}
-                        />
-                      </div>
-                      <span className="dashboard-bar-label">
-                        {day === today
-                          ? "Сегодня"
-                          : dateLabel(`${day}T12:00:00Z`, { weekday: "short" })}
+                        >
+                          {revenueView && day.revenue > 0 && <>
+                            <span className="dashboard-bar-segment is-cash" style={{ height: `${day.cash / day.revenue * 100}%` }} />
+                            <span className="dashboard-bar-segment is-cashless" style={{ height: `${day.cashless / day.revenue * 100}%` }} />
+                            {day.unknown > 0 && <span className="dashboard-bar-segment is-unknown" style={{ height: `${day.unknown / day.revenue * 100}%` }} />}
+                          </>}
+                        </span>
                       </span>
-                    </div>
+                      <span className="dashboard-bar-label" aria-hidden="true">
+                        {day.day === today
+                          ? "Сегодня"
+                          : dateLabel(`${day.day}T12:00:00Z`, { weekday: "short" })}
+                      </span>
+                    </button>
                   ))}
                 </div>
+                <div className="dashboard-day-detail" aria-live="polite" aria-atomic="true">
+                  <strong>{weekDayLabel(selectedDay.day)}{selectedDay.day === today ? " · сегодня" : ""}</strong>
+                  <p>{revenueView ? <>
+                    Наличные <b>{money(selectedDay.cash)}</b> · Безнал <b>{money(selectedDay.cashless)}</b>
+                    {selectedDay.unknown > 0 && <> · Способ не указан <b>{money(selectedDay.unknown)}</b></>}
+                  </> : <>{selectedDay.count} заказов</>}</p>
+                </div>
+                {revenueView && <p className="dashboard-chart-note">
+                  Только оплаченные заказы, без отмен и бонусов. Безнал — карты и СБП. По дате создания заказа.
+                  {weekTotals.revenue === 0 && <> За неделю оплаченных заказов нет.</>}
+                </p>}
               </>
             )}
           </section>

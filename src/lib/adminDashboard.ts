@@ -63,6 +63,29 @@ export function orderMetrics(orders: DashboardOrder[]) {
   };
 }
 
+export function weeklyMetrics(orders: DashboardOrder[], now = new Date()) {
+  const week = dashboardPeriod(7, now).map((day) => ({
+    day, count: 0, revenue: 0, cash: 0, cashless: 0, unknown: 0,
+  }));
+  const byDay = new Map(week.map((day) => [day.day, day]));
+  for (const order of orders) {
+    const day = byDay.get(cafeDay(order.createdAt));
+    if (!day) continue;
+    day.count += 1;
+    const amount = Number(order.total);
+    if (
+      order.status === "CANCELLED" || order.paymentStatus !== "SUCCEEDED" ||
+      order.paymentMethod === "BONUS" || !Number.isFinite(amount) || amount <= 0
+    ) continue;
+    day.revenue += amount;
+    if (order.paymentMethod === "CASH") day.cash += amount;
+    else if (order.paymentMethod === "CARD" || order.paymentMethod === "SBP")
+      day.cashless += amount;
+    else day.unknown += amount;
+  }
+  return week;
+}
+
 export async function fetchAdminJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok)
