@@ -3,7 +3,7 @@ Description=Refresh Belok weather every hour
 
 [Timer]
 OnBootSec=2min
-OnUnitInactiveSec=1h
+OnUnitInactiveSec=15min
 RandomizedDelaySec=2min
 Persistent=true
 

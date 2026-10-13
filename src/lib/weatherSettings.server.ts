@@ -20,8 +20,15 @@ export async function weatherApiKey() {
   const row = await queryOne<{ value: { encryptedKey?: string } }>('SELECT value FROM app_settings WHERE key=$1', ['weather_openweather']);
   return row?.value?.encryptedKey ? unsealWeatherKey(row.value.encryptedKey) : process.env.OPENWEATHER_API_KEY?.trim() || null;
 }
-export async function saveWeatherApiKey(apiKey: string) {
+export async function weatherConnectionState() {
+  const row = await queryOne<{ value: { pending?: boolean } }>('SELECT value FROM app_settings WHERE key=$1', ['weather_openweather']);
+  return { configured: Boolean(await weatherApiKey()), pending: row?.value?.pending ?? false };
+}
+export async function markWeatherConnected() {
+  await query(`UPDATE app_settings SET value=value || '{"pending":false}'::jsonb,"updatedAt"=now() WHERE key=$1 AND value->>'pending'='true'`, ['weather_openweather']);
+}
+export async function saveWeatherApiKey(apiKey: string, pending = false) {
   await query(`INSERT INTO app_settings(key,value,"updatedAt") VALUES($1,$2,now())
-    ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,"updatedAt"=now()`, ['weather_openweather', JSON.stringify({ encryptedKey: sealWeatherKey(apiKey) })]);
+    ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,"updatedAt"=now()`, ['weather_openweather', JSON.stringify({ encryptedKey: sealWeatherKey(apiKey), pending })]);
   await query('DELETE FROM weather_cache');
 }

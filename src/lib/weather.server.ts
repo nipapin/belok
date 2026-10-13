@@ -3,7 +3,11 @@ import type { PoolClient } from 'pg';
 import { cafeDay } from './adminDashboard';
 import { revenueDays } from './revenueStats';
 import { parseOpenWeather, summarizeWeather, type WeatherHour, type WeatherSource } from './weather';
-import { weatherApiKey } from './weatherSettings.server';
+import { weatherApiKey, markWeatherConnected, weatherConnectionState } from './weatherSettings.server';
+
+export class WeatherAccessError extends Error {
+  constructor() { super('OpenWeather ещё не разрешил доступ: новый ключ может активироваться до двух часов. Проверьте One Call 4.0 и ключ, если ожидание затянется.'); }
+}
 
 export async function firstOrderDay() {
   // Existing order timestamps are stored as UTC without a PostgreSQL timezone.
@@ -25,7 +29,7 @@ export async function requestWeatherDay(day: string, apiKey: string, source: Wea
   try {
     response = await fetch(`https://api.openweathermap.org/data/4.0/onecall/timeline/1h?${params}`, { signal: AbortSignal.timeout(20_000), cache: 'no-store' });
   } catch { throw Error('OpenWeather временно недоступен'); }
-  if (response.status === 401 || response.status === 403) throw Error('Ключ не активирован или не подключён One Call 4.0');
+  if (response.status === 401 || response.status === 403) throw new WeatherAccessError();
   if (response.status === 429) throw Error('Лимит OpenWeather исчерпан. Продолжим завтра.');
   if (!response.ok) throw Error(`OpenWeather: ошибка ${response.status}`);
   const payload: unknown = await response.json();
@@ -36,7 +40,7 @@ export async function requestWeatherDay(day: string, apiKey: string, source: Wea
 }
 
 export async function syncWeatherDay(day: string, source: WeatherSource, apiKey: string) {
-  const error = await withTransaction(async client => {
+  const outcome = await withTransaction(async client => {
     const key = `${source}:${day}`;
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`belok-weather:${key}`]);
     const cached = await client.query<{ expires_at: Date }>('SELECT expires_at FROM weather_cache WHERE key=$1', [key]);
@@ -52,13 +56,15 @@ export async function syncWeatherDay(day: string, source: WeatherSource, apiKey:
           condition=EXCLUDED.condition,updated_at=now()`, [JSON.stringify(hours)]);
       await client.query(`INSERT INTO weather_cache(key,expires_at) VALUES($1,now()+interval '1 hour')
         ON CONFLICT(key) DO UPDATE SET expires_at=EXCLUDED.expires_at`, [key]);
+      return 'saved';
     } catch (error) {
       await client.query(`INSERT INTO weather_cache(key,expires_at) VALUES($1,now()+interval '15 minutes')
         ON CONFLICT(key) DO UPDATE SET expires_at=EXCLUDED.expires_at`, [key]);
       return error;
     }
   });
-  if (error) throw error;
+  if (outcome === 'saved' && source === 'forecast') await markWeatherConnected();
+  else if (outcome && outcome !== 'saved') throw outcome;
 }
 
 export async function syncForecast() {
@@ -71,6 +77,7 @@ export async function syncForecast() {
 }
 export async function syncArchive(from: string, to: string) {
   const key = await weatherApiKey(); if (!key) return false;
+  if ((await weatherConnectionState()).pending) return false;
   const pending = revenueDays(from, to).filter(day => day < cafeDay(new Date())).reverse();
   for (const day of pending) await syncWeatherDay(day, 'archive', key);
   return true;
