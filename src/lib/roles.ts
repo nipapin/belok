@@ -42,7 +42,7 @@ export function canAssignRoles(actor: AccessUser, target: AccessUser, roles: rea
     && (roles ?? [target.role]).every(role => operational.includes(role));
 }
 const pagePermissions: Record<string, Permission> = {
-  '/admin': 'reports', '/admin/manager': 'reports', '/admin/reports': 'reports', '/admin/revenue': 'reports', '/admin/orders': 'orders',
+  '/admin': 'reports', '/admin/manager': 'reports', '/admin/reports': 'reports', '/admin/revenue': 'reports', '/admin/dish-sales': 'reports', '/admin/orders': 'orders',
   '/admin/loyalty': 'cashier', '/admin/products': 'menu', '/admin/categories': 'menu', '/admin/ingredients': 'menu',
   '/admin/inventory': 'inventory', '/admin/recipes': 'inventory', '/admin/kitchen': 'menu', '/kitchen': 'kitchen',
   '/order-board': 'kitchen', '/admin/hits': 'menu', '/admin/users': 'people', '/admin/employees': 'people',

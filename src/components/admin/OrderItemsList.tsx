@@ -16,6 +16,7 @@ export interface OrderCustomizationView {
 }
 
 export interface OrderItemView {
+  productId?: string;
   product: { name: string } | null;
   variantName?: string | null;
   quantity: number;

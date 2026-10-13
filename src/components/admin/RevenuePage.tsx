@@ -38,6 +38,7 @@ export default function RevenuePage({ initialFrom, initialTo }: { initialFrom: s
     <div className="dashboard-heading"><div><h1>Продажи</h1><p className="dashboard-date">{period.from === period.to ? dayLabel(period.from) : `${dayLabel(period.from)} — ${dayLabel(period.to)}`} · Калининград</p></div>
       <button type="button" className="admin-icon-button" aria-label="Обновить данные" onClick={() => void query.refetch()} disabled={query.isFetching}><RefreshCw size={19} /></button>
     </div>
+    <Link className="revenue-daily-link" href={`/admin/dish-sales?from=${period.from}&to=${period.to}`}>Продажи блюд за этот период</Link>
     <SalesDatePicker from={period.from} to={period.to} firstDay={firstDay} today={today} onApply={(from, to) => router.push(`/admin/revenue?from=${from}&to=${to}`)} />
     {period.from === period.to && <DayWeather day={period.from} />}
     {query.isError && <div className="dashboard-error" role="alert"><p>{query.data ? 'Не удалось обновить. Показаны последние загруженные данные.' : 'Не удалось загрузить заказы.'}</p><button onClick={() => void query.refetch()}>Повторить</button></div>}
