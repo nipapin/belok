@@ -24,7 +24,8 @@ async function reserveCall(connection: Pick<PoolClient, 'query'>) {
 export async function requestWeatherDay(day: string, apiKey: string, source: WeatherSource, connection: Pick<PoolClient, 'query'> = pool): Promise<WeatherHour[]> {
   await reserveCall(connection);
   const params = new URLSearchParams({ lat: '54.71', lon: '20.51', appid: apiKey, units: 'metric', lang: 'ru',
-    start: String(Date.parse(`${day}T08:00:00+02:00`) / 1000), cnt: '13' });
+    // Use the documented full 20-record page; shorter historical pages can be truncated.
+    start: String(Date.parse(`${day}T08:00:00+02:00`) / 1000), cnt: '20' });
   let response: Response;
   try {
     response = await fetch(`https://api.openweathermap.org/data/4.0/onecall/timeline/1h?${params}`, { signal: AbortSignal.timeout(20_000), cache: 'no-store' });
@@ -35,8 +36,9 @@ export async function requestWeatherDay(day: string, apiKey: string, source: Wea
   const payload: unknown = await response.json();
   const start = Date.parse(`${day}T08:00:00+02:00`); const end = start + 13 * 3_600_000;
   const rows = parseOpenWeather(payload, source).filter(row => Date.parse(row.time) >= start && Date.parse(row.time) < end);
-  if (new Set(rows.map(row => row.time)).size !== 13) throw Error('OpenWeather пока не вернул все рабочие часы этого дня');
-  return rows;
+  const unique = new Map(rows.map(row => [row.time, row]));
+  if (!unique.size || (source === 'forecast' && unique.size !== 13)) throw Error('OpenWeather не вернул данные за все рабочие часы этого дня');
+  return [...unique.values()];
 }
 
 export async function syncWeatherDay(day: string, source: WeatherSource, apiKey: string) {

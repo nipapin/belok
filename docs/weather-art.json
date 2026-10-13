@@ -1,0 +1,22 @@
+{
+  "generator": "built-in ImageGen",
+  "purpose": "Illustrative weather-card backgrounds, not photographs of actual conditions at the cafe",
+  "assets": [
+    {
+      "path": "public/weather/clear.webp",
+      "prompt": "Use case: photorealistic-natural. Asset type: background for a wide weather card on a cafe dashboard. Create a premium atmospheric image of a perfectly clear blue daytime sky, soft sunshine and a glowing sun on the right half, subtle atmospheric blue gradient. Wide landscape composition, ideally 1536 by 768. The sun sits near the vertical middle of the right half so it survives a very wide banner crop. The left half is calm blue negative space for white weather information added later. Natural, softly cinematic, clean and elegant like a modern phone weather application. Sky only: no horizon, ground, buildings, people, icons, typography, logo, border or UI. No exaggerated sun rays."
+    },
+    {
+      "path": "public/weather/clouds.webp",
+      "prompt": "Use case: photorealistic-natural. Asset type: background for a wide weather card on a cafe dashboard. Create a premium atmospheric blue daytime sky with beautiful voluminous white cumulus clouds concentrated on the right half, soft silvery shading and depth, realistic yet clean and serene like a modern phone weather application. Wide landscape composition, ideally 1536 by 768. Cumulus clouds sit around the vertical middle on the right so they survive a very wide banner crop. The left half is calm muted blue negative space for white weather information added later. Sky only: no horizon, ground, buildings, people, icons, typography, logo, border or UI."
+    },
+    {
+      "path": "public/weather/rain.webp",
+      "prompt": "Use case: photorealistic-natural. Asset type: background for a wide weather card on a cafe dashboard. Create a premium moody rainy sky, layered dark gray-blue rain clouds on the right half and crisp small rain droplets in the foreground, delicate translucent drops visible across the scene, atmospheric blue-gray tones, a refined modern phone weather application feeling. Wide landscape composition, ideally 1536 by 768. Rain clouds sit around the vertical middle on the right so they survive a very wide banner crop. The left half stays calm and dark enough for white weather information added later. No horizon, ground, buildings, people, lightning, icons, typography, logo, border or UI. Avoid an extreme storm; soft natural rain."
+    },
+    {
+      "path": "public/weather/snow.webp",
+      "prompt": "Use case: photorealistic-natural. Asset type: background for a wide weather card on a cafe dashboard. Create a premium wintry pale blue-gray sky with soft snow-bearing clouds and beautiful falling white snowflakes in the foreground, a mix of small crisp snowflakes and a few gently blurred flakes for depth. Calm blue slate negative space on the left for white weather text added later. Cloud mass and snowfall are more visible on the right half, near the vertical middle, to survive a very wide card crop. Wide landscape composition, ideally 1536 by 768. Atmospheric, elegant, clean natural photography with the serene visual feeling of a modern phone weather application. Only sky and snow: no ground, horizon, trees, mountains, people, buildings, text, logos, icons, borders or UI. No rain droplets."
+    }
+  ]
+}

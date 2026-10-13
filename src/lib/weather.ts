@@ -29,13 +29,14 @@ export function summarizeWeather(hours: WeatherHour[], from: string, to: string)
   return revenueDays(from, to).map(day => {
     const bucket = grouped.get(day) ?? [];
     const archive = bucket.filter(row => row.source === 'archive');
-    const selected = archive.length === 13 ? archive : bucket.filter(row => row.source === 'forecast');
+    const forecast = bucket.filter(row => row.source === 'forecast');
+    const selected = archive.length === 13 ? archive : forecast.length === 13 ? forecast : archive.length ? archive : forecast;
     const counts = new Map<WeatherCondition, number>();
     for (const row of selected) if (row.condition) counts.set(row.condition, (counts.get(row.condition) ?? 0) + 1);
     const condition = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
     const complete = selected.length === 13;
     return { day, source: selected[0]?.source ?? null, hours: selected.length, complete, condition,
-      temperature: complete ? round(selected.reduce((sum, row) => sum + row.temperature, 0) / 13) : null,
+      temperature: complete || selected[0]?.source === 'archive' ? round(selected.reduce((sum, row) => sum + row.temperature, 0) / selected.length) : null,
       precipitation: complete ? round(selected.reduce((sum, row) => sum + row.precipitation, 0)) : null };
   });
 }

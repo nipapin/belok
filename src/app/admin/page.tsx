@@ -633,7 +633,7 @@ export default function AdminDashboard() {
                     </Link>
                   ))}
                 </div>
-                <div className="dashboard-weather-credit"><WeatherAttribution /></div>
+                {weatherQuery.data?.days.some(day => day.source && day.temperature !== null) && <div className="dashboard-weather-credit"><WeatherAttribution /></div>}
                 <Link href="/admin/revenue" className="dashboard-orders-more">Продажи за период <ArrowRight size={16} aria-hidden="true" /></Link>
               </>
             )}

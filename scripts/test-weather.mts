@@ -22,6 +22,11 @@ test('incomplete day does not fabricate a full-day mean or rainfall sum', () => 
   const [day] = summarizeWeather(hours('forecast').slice(12), '2026-10-01', '2026-10-01');
   assert.equal(day.complete, false); assert.equal(day.hours, 7); assert.equal(day.precipitation, null); assert.equal(day.temperature, null);
 });
+test('a genuine partial archive remains visible with its hour count and no fabricated rainfall total', () => {
+  const [day] = summarizeWeather(hours('archive', 12).filter(row => Date.parse(row.time) < Date.parse('2026-10-01T17:00:00Z')), '2026-10-01', '2026-10-01');
+  assert.equal(day.source, 'archive'); assert.equal(day.hours, 11); assert.equal(day.complete, false);
+  assert.equal(day.temperature, 12); assert.equal(day.precipitation, null);
+});
 test('OpenWeather metric response sums rain and snow; omitted rainfall is zero as documented', () => {
   const parsed = parseOpenWeather({ data: [{ dt: 1790834400, temp: 11, rain: { '1h': 0.2 }, snow: { '1h': 0.3 }, weather: [{ id: 601 }] }, { dt: 1790838000, temp: 12, weather: [{ id: 800 }] }] }, 'archive');
   assert.equal(parsed[0].precipitation, 0.5); assert.equal(parsed[0].condition, 'snow'); assert.equal(parsed[1].precipitation, 0);

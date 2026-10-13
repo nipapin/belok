@@ -19,6 +19,7 @@ test('exhausted app budget prevents a provider request; units and opening timest
     requests++;
     const url = new URL(String(input)); assert.equal(url.searchParams.get('units'), 'metric');
     assert.equal(url.pathname, '/data/4.0/onecall/timeline/1h');
+    assert.equal(url.searchParams.get('cnt'), '20', 'Request the full historical page, then select the 13 opening hours');
     assert.equal(Number(url.searchParams.get('start')), Date.parse('2026-10-01T06:00:00Z') / 1000);
     const start = Number(url.searchParams.get('start'));
     return Response.json({ data: Array.from({ length: 20 }, (_, index) => ({ dt: start + index * 3600, temp: 10, weather: [{ id: 800 }] })) });

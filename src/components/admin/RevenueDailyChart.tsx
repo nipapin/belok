@@ -72,6 +72,6 @@ export default function RevenueDailyChart({ stats, from, to }: { stats: Stats; f
       </dl>
       {weatherQuery.isPending ? <p className="sales-weather-inline">Загружаем погоду…</p> : weatherQuery.isError ? <p className="sales-weather-inline">Погода недоступна. <button className="sales-weather-retry" onClick={() => void weatherQuery.refetch()}>Повторить</button></p> : <WeatherInline weather={weatherQuery.data?.days.find(day => day.day === row.day)} />}
     </div>
-    <WeatherCredits />
+    <WeatherCredits weather={weatherQuery.data?.days.find(day => day.day === row.day)} />
   </section>;
 }
