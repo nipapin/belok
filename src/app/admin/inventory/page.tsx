@@ -15,12 +15,13 @@ import InventoryCardMenu from '@/components/admin/InventoryCardMenu';
 import {inventoryKinds, inventoryKindLabels, stockMilli, type InventoryKind, type StockReason} from '@/lib/inventoryStock';
 import './inventory.css';
 
-type Item={ id:string;name:string;kind:InventoryKind;unit:'g'|'ml'|'pcs';quantity:string;minQuantity:string;notes:string;image?:string|null;updatedAt?:string };
+type Item={ id:string;name:string;kind:InventoryKind;unit:'g'|'ml'|'pcs';quantity:string;stockKnown?:boolean;minQuantity:string;notes:string;image?:string|null;updatedAt?:string };
 const unitLabels={g:'г',ml:'мл',pcs:'шт.'};
 const kindLabels=inventoryKindLabels;
-type StockStatus='green'|'yellow'|'orange'|'red';
-const statusLabels:Record<StockStatus,string>={green:'Достаточно',yellow:'Внимание',orange:'Скоро пополнить',red:'Пополнить'};
+type StockStatus='unknown'|'green'|'yellow'|'orange'|'red';
+const statusLabels:Record<StockStatus,string>={unknown:'Не посчитано',green:'Достаточно',yellow:'Внимание',orange:'Скоро пополнить',red:'Пополнить'};
 function stockStatus(item:Item):StockStatus {
+ if(item.stockKnown===false)return 'unknown';
  const qty=Number(item.quantity),min=Number(item.minQuantity);
  if(qty<=min)return 'red';
  // Without a replenishment threshold we cannot calculate relative stock levels.
@@ -68,14 +69,14 @@ export default function InventoryPage(){
   const items=data?.items||[];
   const counts=useMemo(()=>({ALL:items.length,UNSPECIFIED:items.filter(i=>i.kind==='UNSPECIFIED').length,RAW:items.filter(i=>i.kind==='RAW').length,PURCHASED:items.filter(i=>i.kind==='PURCHASED').length,PREPARED:items.filter(i=>i.kind==='PREPARED').length,PACKAGING:items.filter(i=>i.kind==='PACKAGING').length}),[items]);
   const lowCount=items.filter(x=>stockStatus(x)==='red').length;
-  const statusCounts=useMemo(()=>({ALL:items.length,green:items.filter(x=>stockStatus(x)==='green').length,yellow:items.filter(x=>stockStatus(x)==='yellow').length,orange:items.filter(x=>stockStatus(x)==='orange').length,red:items.filter(x=>stockStatus(x)==='red').length}),[items]);
+  const statusCounts=useMemo(()=>({ALL:items.length,unknown:items.filter(x=>stockStatus(x)==='unknown').length,green:items.filter(x=>stockStatus(x)==='green').length,yellow:items.filter(x=>stockStatus(x)==='yellow').length,orange:items.filter(x=>stockStatus(x)==='orange').length,red:items.filter(x=>stockStatus(x)==='red').length}),[items]);
   const filters: {value:'ALL'|InventoryKind;label:string}[]=[{value:'ALL',label:'Все'},...inventoryKinds.map(value=>({value,label:kindLabels[value]}))];
   const filtered=useMemo(()=>items.filter(x=>(filter==='ALL'||x.kind===filter)&&(statusFilter==='ALL'||stockStatus(x)===statusFilter)&&x.name.toLocaleLowerCase('ru').includes(search.toLocaleLowerCase('ru'))),[items,search,filter,statusFilter]);
   const resetForm=()=>{setShowForm(false);setEditing(null);setName('');setKind('UNSPECIFIED');setUnit('g');setNotes('');setMinQuantity('0');setImage('');setError('')};
   const openCreate=()=>{resetForm();setShowForm(true)};
   const openEdit=(item:Item)=>{setEditing(item);setName(item.name);setKind(item.kind);setUnit(item.unit);setNotes(item.notes??'');setMinQuantity(String(Number(item.minQuantity)));setImage(item.image??'');setShowForm(true);setError('')};
   const uploadImage=async (file:File)=>{setUploading(true);setError('');try{const data=new FormData();data.append('file',file);data.append('folder','products');const res=await fetch('/api/upload',{method:'POST',body:data});const result=await res.json();if(!res.ok)throw Error(result.error??'Ошибка загрузки');setImage(result.url)}catch(e){setError(e instanceof Error?e.message:'Ошибка загрузки')}finally{setUploading(false)}};
-  const save=useMutation({mutationFn:(payload:unknown)=>api(editing?'PUT':'POST',payload),onSuccess:(result)=>{void qc.invalidateQueries({queryKey:['admin-inventory']});resetForm();if(!editing&&result.item)setStockOperation({item:result.item,reason:'OPENING'})},onError:(e:Error)=>setError(e.message)});
+  const save=useMutation({mutationFn:(payload:unknown)=>api(editing?'PUT':'POST',payload),onSuccess:()=>{void qc.invalidateQueries({queryKey:['admin-inventory']});resetForm()},onError:(e:Error)=>setError(e.message)});
   const remove=useMutation({mutationFn:async(id:string)=>{const r=await fetch('/api/admin/inventory?id='+encodeURIComponent(id),{method:'DELETE'});const data=await r.json();if(!r.ok)throw Error(data.error??'Ошибка удаления');return data},onSuccess:()=>{setDeleteTarget(null);void qc.invalidateQueries({queryKey:['admin-inventory']})},onError:(e:Error)=>setError(e.message)});
   const quantityInput=(value:string)=>value.replace(/[^0-9.,]/g,'');
   const valid=(s:string,measure:Item['unit']=unit)=>{try{stockMilli(s,measure);return true}catch{return false}};
@@ -158,7 +159,7 @@ export default function InventoryPage(){
       </label>
     </div>
     <div className="hidden md:flex flex-wrap items-center gap-2" role="group" aria-label="Состояние остатков">
-      {(['ALL','green','yellow','orange','red'] as const).map(state=><button type="button" key={state}
+      {(['ALL','unknown','green','yellow','orange','red'] as const).map(state=><button type="button" key={state}
         aria-pressed={statusFilter===state}
         onClick={()=>setStatusFilter(state)}
         className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${statusFilter===state?'border-[#244837] bg-[#e5eee8] text-[#173d2c]':'border-[#dce4df] bg-white text-[#52625c] hover:bg-[#f0f4f1]'}`}>
@@ -169,7 +170,7 @@ export default function InventoryPage(){
     </div>
     <div className="md:hidden">
       <AdminSelect ariaLabel="Состояние остатков" value={statusFilter} onChange={v=>setStatusFilter(v as typeof statusFilter)}
-        options={([{value:'ALL',label:'Все состояния'},...(['green','yellow','orange','red'] as const).map(v=>({value:v,label:statusLabels[v]}))]).map(x=>({value:x.value,label:`${x.label} · ${statusCounts[x.value as keyof typeof statusCounts]}`}))}/>
+        options={([{value:'ALL',label:'Все состояния'},...(['unknown','green','yellow','orange','red'] as const).map(v=>({value:v,label:statusLabels[v]}))]).map(x=>({value:x.value,label:`${x.label} · ${statusCounts[x.value as keyof typeof statusCounts]}`}))}/>
     </div>
 
     {isLoading?<p>Загружаем склад…</p>:isError?<p role="alert" className="text-rose-600">Не удалось загрузить склад.</p>:filtered.length===0?<div className="flex min-h-[240px] flex-col items-center justify-center gap-3 py-12 text-center text-[#61726b]"><PackagePlus className="mb-1 opacity-65" size={56} strokeWidth={1.3}/><p className="text-sm font-medium text-[#52635b]">{search||filter!=='ALL'||statusFilter!=='ALL'?'Ничего не найдено':'Склад пуст. Добавьте первую позицию.'}</p></div>:
@@ -184,12 +185,12 @@ export default function InventoryPage(){
         </div>
         <div className="p-3 flex flex-col gap-3 flex-1">
           <div><div className="flex items-start justify-between gap-2"><h3 className="font-semibold leading-tight break-words min-w-0">{item.name}</h3>{item.updatedAt&&<time className="shrink-0 text-[10px] text-(--lg-text-muted) tabular-nums text-right" dateTime={item.updatedAt} title={new Date(item.updatedAt).toLocaleString('ru-RU')}>{new Date(item.updatedAt).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</time>}</div><p className="inventory-card-kind">{kindLabels[item.kind]}</p><p className="text-xs text-(--lg-text-muted) mt-1">Пополнить при ≤ {Number(item.minQuantity).toLocaleString('ru',{maximumFractionDigits:3})} {unitLabels[item.unit]}</p></div>
-          <p className="text-xl font-semibold tabular-nums">{Number(item.quantity).toLocaleString('ru-RU',{maximumFractionDigits:3})} <span className="text-sm font-normal">{unitLabels[item.unit]}</span></p>
+          <p className="text-xl font-semibold tabular-nums">{item.stockKnown===false?<span className="text-sm font-normal">Остаток не задан</span>:<>{Number(item.quantity).toLocaleString('ru-RU',{maximumFractionDigits:3})} <span className="text-sm font-normal">{unitLabels[item.unit]}</span></>}</p>
           <div className="inventory-card-actions">
             {item.kind!=='PREPARED'&&<button type="button" onClick={()=>setStockOperation({item,reason:'RECEIPT'})}><ArrowDownLeft size={14}/>Приход</button>}
             <button type="button" className={item.kind==='PREPARED'?'inventory-card-action-wide':undefined} onClick={()=>setStockOperation({item,reason:'WRITE_OFF'})}><ArrowUpRight size={14}/>Списание</button>
             <button type="button" className="inventory-card-action-wide" onClick={()=>setStockOperation({item,reason:'RECOUNT'})}><ClipboardCheck size={14}/>Инвентаризация</button>
-            {Number(item.quantity)===0&&<button type="button" className="inventory-card-action-wide" onClick={()=>setStockOperation({item,reason:'OPENING'})}><Plus size={14}/>Начальный остаток</button>}
+            {item.stockKnown===false&&<button type="button" className="inventory-card-action-wide" onClick={()=>setStockOperation({item,reason:'OPENING'})}><Plus size={14}/>Начальный остаток</button>}
           </div>
           {item.kind==='PREPARED'&&<div className="flex flex-wrap gap-2"><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setRecipeItem(item);setBatchItem(null)}}>Техкарта</button><button className="btn-outline px-3 py-2 text-xs" onClick={()=>{setBatchItem(item);setRecipeItem(null);setBatchAmount('1')}}>Выпустить партию</button></div>}
           {canCatalog&&<div className="mt-auto pt-2 border-t border-(--lg-ring)">

@@ -21,7 +21,9 @@ const errorResponse = (error: unknown) => {
 export async function GET() {
   try {
     await requireInventoryPermission('view');
-    const items = await query(`SELECT id,name,kind,unit,quantity::text AS quantity,min_quantity::text AS "minQuantity",image,notes,updated_at AS "updatedAt",is_active AS "isActive" FROM inventory_items WHERE is_active=true ORDER BY name COLLATE "default"`);
+    const items = await query(`SELECT id,name,kind,unit,quantity::text AS quantity,min_quantity::text AS "minQuantity",image,notes,updated_at AS "updatedAt",is_active AS "isActive",
+      (quantity<>0 OR EXISTS(SELECT 1 FROM inventory_movements m WHERE m.item_id=inventory_items.id)) AS "stockKnown"
+      FROM inventory_items WHERE is_active=true ORDER BY name COLLATE "default"`);
     return NextResponse.json({ items });
   } catch (error) { return errorResponse(error); }
 }
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
       );
       return rows.rows[0];
     });
-    return NextResponse.json({ item }, { status: 201 });
+    return NextResponse.json({ item: {...item, stockKnown: false} }, { status: 201 });
   } catch(error) { return errorResponse(error); }
 }
 export async function PUT(request: NextRequest) {

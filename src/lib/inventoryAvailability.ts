@@ -1,12 +1,13 @@
 export type StockRequirement = {
   itemId: string; name: string; unit: string; required: string | null;
-  quantity: string; active: boolean;
+  quantity: string; active: boolean; stockKnown?: boolean;
 };
 export type StockAvailability = { state: 'AVAILABLE' | 'STOP' | 'UNCONFIGURED'; portions: number | null; reasons: string[] };
 
 /** Prepared ingredients are consumed from their own stock, not from hypothetical future production. */
 export function calculateAvailability(lines: StockRequirement[]): StockAvailability {
   if (!lines.length || lines.some(line => line.required === null)) return { state: 'UNCONFIGURED', portions: null, reasons: ['Не задан расход на одну порцию'] };
+  if (lines.some(line => line.stockKnown === false)) return {state:'UNCONFIGURED', portions:null, reasons:['Остатки ещё не внесены. Проведите инвентаризацию.']};
   const totals = new Map<string, { line: StockRequirement; required: number }>();
   for (const line of lines) {
     const required = Number(line.required);
@@ -31,7 +32,7 @@ export function cartStockAvailability(requests: { productId: string; quantity: n
   const lines: StockRequirement[] = [];
   for (const request of requests) {
     const recipe = requirements.get(request.productId) ?? [];
-    if (!recipe.length || recipe.some(line => line.required === null)) continue;
+    if (!recipe.length || recipe.some(line => line.required === null || line.stockKnown === false)) continue;
     for (const line of recipe) lines.push({ ...line, required: String(Math.ceil(Number((Number(line.required) * 1000).toFixed(6))) * request.quantity / 1000) });
   }
   return calculateAvailability(lines);

@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 export type RecipeOwner = 'PRODUCT' | 'PREPARED';
 export type RecipeLine = { itemId: string; quantity: number };
 export type RecipeInput = { ownerKind: RecipeOwner; ownerId: string; outputQuantity: number; outputUnit: 'g'|'ml'|'pcs'; lines: RecipeLine[]; instructions?: string };
-const positive = (n: number) => Number.isFinite(n) && n > 0 && Math.round(n * 1000) === n * 1000 && n <= 999999999;
+const positive = (n: number) => Number.isFinite(n) && n > 0 && Number(n.toFixed(3)) === n && n <= 999999999;
 
 export function validateRecipe(input: RecipeInput): void {
  if (!['PRODUCT','PREPARED'].includes(input.ownerKind) || !input.ownerId || !['g','ml','pcs'].includes(input.outputUnit) ||

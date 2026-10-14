@@ -101,17 +101,18 @@ type FormState = typeof emptyForm;
 type AdminProductFormProps = {
   mode: 'new' | 'edit';
   productId?: string;
+  productsV2?: boolean;
 };
 
-export default function AdminProductForm({ mode, productId }: AdminProductFormProps) {
+export default function AdminProductForm({ mode, productId, productsV2 = false }: AdminProductFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<FormState>(() => productsV2 && mode === 'new' ? {...emptyForm, isAvailable: false} : emptyForm);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const variantsRef = useRef(form.variants);
-  variantsRef.current = form.variants;
+  useEffect(() => { variantsRef.current = form.variants; }, [form.variants]);
 
   const { data: productRes, isLoading: productLoading, isError: productError } = useQuery({
     queryKey: ['admin-product', productId],
@@ -138,6 +139,8 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
   const categories: Category[] = categoriesData?.categories ?? [];
   const ingredients: Ingredient[] = ingredientsData?.ingredients ?? [];
 
+  // The form is hydrated from an external query; file previews track browser object URLs.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useLayoutEffect(() => {
     if (mode !== 'edit' || !product) return;
     setForm({
@@ -193,6 +196,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
     setForm((f) => ({ ...f, image: '' }));
   };
 
+  /* eslint-enable react-hooks/set-state-in-effect */
   const toggleIngredient = (id: string) => {
     setForm((f) => ({
       ...f,
@@ -277,18 +281,19 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (result: {product?: {id: string}}) => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-products-v2'] });
       queryClient.invalidateQueries({ queryKey: ['admin-product', productId] });
-      router.push('/admin/products');
+      router.push(productsV2 ? `/admin/products-v2/${result.product?.id ?? productId}/edit` : '/admin/products');
     },
     onError: (err) =>
       setError(err instanceof Error ? err.message : 'Ошибка сохранения'),
   });
 
-  const goBack = () => router.push('/admin/products');
+  const goBack = () => router.push(productsV2 ? '/admin/products-v2' : '/admin/products');
 
-  const title = mode === 'edit' ? 'Редактировать товар' : 'Новый товар';
+  const title = mode === 'edit' ? 'Редактировать товар' : productsV2 ? 'Новый товар · 2.0' : 'Новый товар';
   const saving = saveMutation.isPending;
   const canSave = Boolean(
     form.name &&
@@ -343,7 +348,7 @@ export default function AdminProductForm({ mode, productId }: AdminProductFormPr
   const selectClass =
     'select-pill w-full !rounded-2xl border border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] py-3.5 !text-[0.9375rem] shadow-sm';
 
-  const submitLabel = mode === 'edit' ? 'Сохранить' : 'Создать';
+  const submitLabel = productsV2 && mode === 'new' ? 'Создать и заполнить состав' : mode === 'edit' ? 'Сохранить' : 'Создать';
   const handleSubmit = () => {
     setError('');
     saveMutation.mutate(form);

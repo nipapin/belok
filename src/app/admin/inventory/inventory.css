@@ -384,3 +384,5 @@
     overscroll-behavior: contain;
   }
 }
+
+.inventory-card-unknown{border-color:#dce4df}.inventory-status-unknown{background:#edf1ee;color:#52625c}.inventory-status-unknown .inventory-status-dot{background:#8a9790}

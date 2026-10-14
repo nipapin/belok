@@ -52,6 +52,7 @@ const menuGroups = [
     id: "catalog", label: "Меню и склад", icon: Warehouse,
     items: [
       { label: "Товары", icon: UtensilsCrossed, path: "/admin/products" },
+      { label: "Товары 2.0", icon: ClipboardList, path: "/admin/products-v2" },
       { label: "Категории", icon: Tags, path: "/admin/categories" },
       { label: "Ингредиенты", icon: ChefHat, path: "/admin/ingredients" },
       { label: "Склад", icon: Warehouse, path: "/admin/inventory" },
@@ -159,6 +160,8 @@ export default function AdminShell({
   // Product editing already has a fixed save bar: give it the entire bottom edge.
   const editingProduct =
     pathname === "/admin/products/new" ||
+    pathname === "/admin/products-v2/new" ||
+    /^\/admin\/products-v2\/[^/]+\/details$/.test(pathname) ||
     /^\/admin\/products\/[^/]+\/edit$/.test(pathname);
 
   useEffect(() => {

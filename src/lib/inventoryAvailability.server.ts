@@ -24,7 +24,8 @@ export async function loadStockRequirements(ids: string[]): Promise<Map<string, 
     AND NOT EXISTS(SELECT 1 FROM inventory_product_links pl WHERE pl.product_id=r.owner_id)
     UNION ALL SELECT product_id,item_id,quantity FROM inventory_product_links WHERE product_id=ANY($1::text[])
   ) SELECT r.product_id AS "productId", i.id::text AS "itemId", i.name, i.unit,
-    r.required::text AS required, i.quantity::text AS quantity, i.is_active AS active
+    r.required::text AS required, i.quantity::text AS quantity, i.is_active AS active,
+    (i.quantity<>0 OR EXISTS(SELECT 1 FROM inventory_movements m WHERE m.item_id=i.id)) AS "stockKnown"
     FROM requirements r JOIN inventory_items i ON i.id=r.item_id`, [ids]);
   const grouped = new Map<string, StockRequirement[]>();
   for (const row of rows) grouped.set(row.productId, [...(grouped.get(row.productId) ?? []), row]);
