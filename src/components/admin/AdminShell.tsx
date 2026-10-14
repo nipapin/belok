@@ -34,7 +34,7 @@ import { canAccessPage, hasPermission, isStaff, staffHome, displayRoles } from '
 import { brandMark } from "@/lib/brand";
 import { fetchAdminOrders } from "@/lib/adminDashboard";
 import AdminNewOrderWatcher from "@/components/admin/AdminNewOrderWatcher";
-import AdminBuildVersion from "@/components/admin/AdminBuildVersion";
+import AdminUpdateButton from "@/components/admin/AdminUpdateButton";
 import "@/app/admin/admin-ux.css";
 
 const overviewItem = { label: "Обзор", icon: LayoutDashboard, path: "/admin" };
@@ -120,11 +120,6 @@ export default function AdminShell({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [versionPanel, setVersionPanel] = useState({ pathname, open: false });
-  const versionOpen = versionPanel.open;
-  if (versionPanel.pathname !== pathname) {
-    setVersionPanel({ pathname, open: false });
-  }
   const { user, fetchUser, isLoading, logout } = useAuthStore();
   const { data: ordersData } = useQuery({
     queryKey: ["admin-orders"],
@@ -299,20 +294,7 @@ export default function AdminShell({
           Рабочее пространство <ChevronRight size={14} aria-hidden="true" />{" "}
           <strong>{currentPage?.label || "Обзор"}</strong>
         </span>
-        <button
-          type="button"
-          className="admin-environment"
-          aria-label="Информация о версии приложения"
-          aria-expanded={versionOpen}
-          aria-controls="admin-build-version-details"
-          disabled={!hasPermission(user, 'settings')}
-          onClick={() => setVersionPanel({ pathname, open: !versionOpen })}
-        >
-          {process.env.NODE_ENV === "development" ||
-          process.env.NEXT_PUBLIC_APP_URL?.includes("dev.")
-            ? "DEV"
-            : "ADMIN"}
-        </button>
+        <AdminUpdateButton />
         <div className="admin-header-actions">
           {editingProduct && (
             <button
@@ -348,7 +330,6 @@ export default function AdminShell({
         inert={mobileOpen || undefined}
       >
         {hasPermission(user, 'orders') && <AdminNewOrderWatcher />}
-        {versionOpen && <div id="admin-build-version-details"><AdminBuildVersion /></div>}
         {children}
       </main>
       {!editingProduct && (

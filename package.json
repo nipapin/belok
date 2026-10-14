@@ -29,7 +29,7 @@
     "test:revenue:browser": "node scripts/test-revenue-browser.mjs",
     "test:revenue:hourly": "node scripts/test-revenue-hourly-browser.mjs",
     "test:revenue": "node --import tsx --test scripts/test-admin-dashboard.mts scripts/test-revenue-stats.mts scripts/test-dish-sales.mts",
-    "test:roles": "node --import tsx --test scripts/test-roles.mts",
+    "test:roles": "node --import tsx --test scripts/test-roles.mts scripts/test-admin-update.mts",
     "test:weather": "node --import tsx --test scripts/test-weather.mts scripts/test-weather-server.mts",
     "weather:sync": "node --import tsx scripts/sync-weather.ts",
     "test:products-v2": "node --import tsx --test scripts/test-products-v2.mts"

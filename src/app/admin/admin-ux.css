@@ -1399,3 +1399,23 @@
   .dish-sales-table th, .dish-sales-table td { padding: 10px 6px; }
   .dish-sales-table th:first-child { min-width: 100px; }
 }
+
+.admin-environment { position: relative; }
+.admin-environment:disabled { cursor: default; }
+.admin-environment.has-update { cursor: pointer; border-color: #28744d; color: #195d40; }
+.admin-environment.has-update:hover:not(:disabled) { background: #e9f2eb; }
+.admin-environment:focus-visible { outline: 2px solid #195d40; outline-offset: 3px; }
+.admin-update-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #28744d;
+  color: #fff;
+}
+.admin-update-error { color: #864315; font-size: 11px; max-width: 180px; }
