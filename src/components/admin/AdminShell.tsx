@@ -201,7 +201,7 @@ export default function AdminShell({
           <span className="admin-brand-caption">Панель управления</span>
         </div>
       </div>
-      <nav className="admin-grouped-nav" aria-label="Разделы админки">
+      <nav className={`admin-grouped-nav ${surface === "mobile" ? "admin-tile-nav" : ""}`} aria-label="Разделы админки">
         {canAccessPage(user, overviewItem.path) && (
           <Link href={overviewItem.path} prefetch={false}
             aria-current={selected(overviewItem.path) ? "page" : undefined}
@@ -213,7 +213,7 @@ export default function AdminShell({
         )}
         {menuGroups.map(group => ({...group, items: group.items.filter(item => canAccessPage(user, item.path))})).filter(group => group.items.length).map((group) => (
           <div key={group.id} className="admin-nav-group">
-            <button type="button"
+            {surface === "mobile" ? <h3 className="admin-tile-group-heading">{group.label}</h3> : <button type="button"
               className={`admin-nav-group-toggle ${group.id === activeGroup ? "has-selected" : ""}`}
               aria-expanded={!!groupState.expanded[group.id]}
               aria-controls={`admin-nav-${surface}-${group.id}`}
@@ -224,8 +224,8 @@ export default function AdminShell({
                 <span className="admin-count" aria-label={`${pendingCount} ожидают подтверждения`}>{pendingCount > 99 ? "99+" : pendingCount}</span>
               )}
               <ChevronDown size={16} className="admin-nav-chevron" aria-hidden="true" />
-            </button>
-            <div id={`admin-nav-${surface}-${group.id}`} className="admin-nav-group-items" hidden={!groupState.expanded[group.id]}>
+            </button>}
+            <div id={`admin-nav-${surface}-${group.id}`} className="admin-nav-group-items" hidden={surface === "desktop" && !groupState.expanded[group.id]}>
             {group.items.map(({ icon: Icon, ...item }) => (
               <Link
                 key={item.path}
