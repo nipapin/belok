@@ -8,7 +8,7 @@ export async function GET(
   try {
     const { id } = await params;
     const product = await fetchProductById(id, true);
-    if (!product) {
+    if (!product || !product.category.isActive) {
       return NextResponse.json({ error: 'Товар не найден' }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
     }
     return NextResponse.json({ product }, { headers: { 'Cache-Control': 'no-store' } });

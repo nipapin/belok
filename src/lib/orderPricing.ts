@@ -22,9 +22,9 @@ export interface PricedOrderItem {
   customizations: OptionCustomization[];
 }
 
-export function priceOrderItem(item: IncomingOrderItem, product: ProductWithRelations): PricedOrderItem {
+export function priceOrderItem(item: IncomingOrderItem, product: ProductWithRelations, linkedTopping = false): PricedOrderItem {
   const fail = (message: string): never => { throw new VariantOrderError(message); };
-  if (!product.isAvailable || !product.category.isActive) fail('Товар недоступен для заказа');
+  if (!product.isAvailable || (!product.category.isActive && !linkedTopping)) fail('Товар недоступен для заказа');
   if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100) fail('Некорректное количество товара');
   const variant = product.variants.find((entry) => entry.id === item.variantId);
   if (product.variants.length && !variant) fail('Выберите доступный вариант товара');
@@ -79,9 +79,9 @@ export async function priceOrderItems(items: IncomingOrderItem[]): Promise<Price
     for (const choice of item.toppings ?? []) {
       const key = JSON.stringify([choice.productId,choice.variantId ?? null]);
       const topping = map.get(choice.productId);
-      if (seen.has(key) || !topping || !product.toppings?.some((entry) => entry.id === choice.productId && entry.categoryActive && entry.isAvailable)) throw new VariantOrderError('Топпинг недоступен для этого блюда');
+      if (seen.has(key) || !topping || !product.toppings?.some((entry) => entry.id === choice.productId && entry.isAvailable)) throw new VariantOrderError('Топпинг недоступен для этого блюда');
       seen.add(key);
-      priced.push({ ...priceOrderItem({ productId:choice.productId,variantId:choice.variantId,quantity:item.quantity },topping),parentLineIndex });
+      priced.push({ ...priceOrderItem({ productId:choice.productId,variantId:choice.variantId,quantity:item.quantity },topping,true),parentLineIndex });
     }
   }
   const requirements = await loadStockRequirements([...ids]);

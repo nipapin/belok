@@ -87,6 +87,7 @@ try {
   plainProductId = plain.product.id;
 
   await go('/menu');
+  assert.equal(await page.$('#category-other'),null,'Hidden categories must never become a fallback Other section');
   await page.evaluate(() => localStorage.removeItem('belok-cart'));
   await go('/menu');
   await addDish();

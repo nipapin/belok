@@ -44,11 +44,6 @@ export function MenuPageInner() {
     return grouped;
   }, [allProducts]);
 
-  const uncategorizedProducts = useMemo(
-    () => allProducts.filter((product) => !categories.some((category) => category.id === product.categoryId)),
-    [allProducts, categories],
-  );
-
   const categoriesWithProducts = useMemo(
     () => categories.filter((category) => (productsByCategory.get(category.id)?.length ?? 0) > 0),
     [categories, productsByCategory],
@@ -175,36 +170,6 @@ export function MenuPageInner() {
           );
         })}
 
-      {!loadingProducts && uncategorizedProducts.length > 0 && (
-        <section id="category-other" className="mb-6 scroll-mt-24">
-          <h2 className="heading-section mb-3">Другое</h2>
-          <div className={productCarouselClass}>
-            {uncategorizedProducts.map((product) => (
-              <div key={product.id} className={productSlideClass}>
-                <ProductCard
-                  product={{
-                    id: product.id,
-              isAvailable: product.isAvailable,
-                    name: product.name,
-                    price: product.price,
-                    image: product.image,
-                    calories: product.calories,
-                    proteins: product.proteins,
-                    fats: product.fats,
-                    carbs: product.carbs,
-                    weightGrams: product.weightGrams,
-                    spicinessLevel: product.spicinessLevel,
-                    categoryName: product.category?.name,
-                    createdAt: product.createdAt,
-                    variants: product.variants ?? [],
-                    toppings: product.toppings,
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

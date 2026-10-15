@@ -15,6 +15,8 @@ const request = async (path, method = 'GET', body, authenticated = true) => {
 const update = (body, authenticated) => request('/api/admin/products/' + productId, 'PUT', body, authenticated);
 let createdId;
 let quickCreatedId;
+let hiddenCategoryId;
+let hiddenProductId;
 const testOrderIds = [];
 try {
   assert.equal((await request('/api/admin/products/toppings', 'POST', { name:'Карамель',price:45 }, false)).status,403);
@@ -39,6 +41,15 @@ try {
   assert.equal(created.status, 201, JSON.stringify(created));
   createdId = created.data.product.id;
   assert.equal(created.data.product.toppings[0].id, original[0]);
+  const hiddenCategory = await request('/api/admin/categories','POST',{name:'Топпинги',isActive:false});
+  hiddenCategoryId = hiddenCategory.data.category.id;
+  const hiddenProduct = await request('/api/admin/products','POST',{name:'Добавка в скрытой категории',price:25,categoryId:hiddenCategoryId});
+  hiddenProductId = hiddenProduct.data.product.id;
+  assert.equal((await request('/api/products')).data.products.some((entry) => entry.id === hiddenProductId),false);
+  assert.equal((await request('/api/products?categoryId='+hiddenCategoryId)).data.products.length,0);
+  assert.equal((await request('/api/products/'+hiddenProductId)).status,404);
+  assert.equal((await request('/api/admin/products/'+hiddenProductId)).status,200);
+  assert.equal((await request('/api/admin/products/'+createdId,'PUT',{toppingIds:[original[0],hiddenProductId]})).status,200);
   assert.equal((await update({ toppingIds: [] })).status, 200);
   assert.equal((await request('/api/products/' + productId)).data.product.toppings.length, 0);
   assert.equal((await update({ toppingIds: original })).status, 200);
@@ -46,6 +57,11 @@ try {
   assert.equal(product.toppings.find((topping) => topping.id === original[3]).isAvailable, false);
   const items = [{ productId, quantity:2, toppings:[{productId:original[0]},{productId:original[1]}] }];
   for (const path of ['/api/orders','/api/kiosk/orders']) {
+    const hiddenOrder = await request(path,'POST',{items:[{productId:createdId,variantId:created.data.product.variants[0].id,quantity:1,toppings:[{productId:hiddenProductId}]}],paymentMethod:'CASH',fulfillment:'PICKUP',pickupTime:'ASAP'});
+    assert.ok([200,201].includes(hiddenOrder.status),JSON.stringify(hiddenOrder));
+    testOrderIds.push(hiddenOrder.data.order.id);
+    assert.equal(hiddenOrder.data.order.total,125);
+    assert.equal((await request(path,'POST',{items:[{productId:hiddenProductId,quantity:1}],paymentMethod:'CASH',fulfillment:'PICKUP',pickupTime:'ASAP'})).status,400);
     const order = await request(path, 'POST', { items, paymentMethod:'CASH', fulfillment:'PICKUP', pickupTime:'ASAP', requestId:randomUUID() });
     assert.ok([200,201].includes(order.status), JSON.stringify(order));
     testOrderIds.push(order.data.order.id);
@@ -92,4 +108,6 @@ try {
   }
   if (createdId) await request('/api/admin/products/' + createdId, 'DELETE');
   if (quickCreatedId) await request('/api/admin/products/' + quickCreatedId, 'DELETE');
+  if (hiddenProductId) await request('/api/admin/products/' + hiddenProductId,'DELETE');
+  if (hiddenCategoryId) await request('/api/admin/categories/' + hiddenCategoryId,'DELETE');
 }

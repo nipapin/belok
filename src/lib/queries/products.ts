@@ -10,6 +10,7 @@ import type {
 } from '@/lib/types';
 
 export interface ProductFilter {
+  visibleCategoriesOnly?: boolean;
   categoryId?: string | null;
   onlyAvailable?: boolean;
   stockAvailability?: boolean;
@@ -87,6 +88,7 @@ export async function fetchProductsWithRelations(
   const params: unknown[] = [];
 
   if (filter.onlyAvailable) where.push(`p."isAvailable" = TRUE`);
+  if (filter.visibleCategoriesOnly) where.push(`c."isActive" = TRUE`);
   if (filter.categoryId) {
     params.push(filter.categoryId);
     where.push(`p."categoryId" = $${params.length}`);

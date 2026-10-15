@@ -28,10 +28,10 @@ test('quick creation accepts zero and comma prices and rejects malformed drafts'
   for (const price of ['',-1,'-1','1.001','10abc',NaN,Infinity,1_000_001,null]) assert.equal(parseNewTopping({ name:'Карамель',price }),null);
   for (const name of ['', '   ', 'я'.repeat(121), null]) assert.equal(parseNewTopping({ name,price:10 }),null);
 });
-test('only available toppings are offered and variant prices include zero overrides', () => {
+test('hidden categories keep their linked toppings available and variants include zero prices', () => {
   const options = toppingOptions(toppings);
-  assert.equal(options.length, 3);
-  assert.deepEqual(options.map((option) => option.price), [40,55,0]);
+  assert.equal(options.length, 4);
+  assert.deepEqual(options.map((option) => option.price), [40,55,0,20]);
   assert.equal(options[1].variantId, 'strawberry');
 });
 test('multiple selected toppings use the dish quantity; no selection adds no toppings', () => {

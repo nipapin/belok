@@ -28,7 +28,7 @@ export function parseNewTopping(raw: unknown): { name: string; price: number } |
 }
 
 export function toppingOptions(toppings: ToppingProduct[] = []) {
-  return toppings.filter((topping) => topping.isAvailable && topping.categoryActive).flatMap((topping) =>
+  return toppings.filter((topping) => topping.isAvailable).flatMap((topping) =>
     (topping.variants.length ? topping.variants : [null]).map((variant) => ({
       key: JSON.stringify([topping.id, variant?.id ?? null]),
       productId: topping.id,
