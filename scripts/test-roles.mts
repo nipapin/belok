@@ -55,6 +55,7 @@ test('real server guard rejects old ADMIN assigned to cook before destructive AP
  const products=await load('src/app/api/admin/products/[id]/route.ts',{
   'next/server':{NextResponse},'uuid':{v4:()=> 'unused'},'@/lib/db':{query:()=>{throw Error('Forbidden request touched DB')},queryOne:()=>{throw Error('Forbidden request touched DB')},withTransaction:()=>{throw Error('Forbidden request touched DB')}},
   '@/lib/adminAuth':guard, '@/lib/uploadStorage':{}, '@/lib/queries/products':{}, '@/lib/productVariants':{}, '@/lib/productSpiciness':{},
+  '@/lib/productToppings.server':{replaceProductToppings:()=>{throw Error('Forbidden request touched toppings')},ToppingValidationError:class extends Error {}},
  });
  assert.equal((await products.DELETE(new NextRequest('http://test'),{params:Promise.resolve({id:'product'})})).status,403);
 });
