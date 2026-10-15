@@ -7,7 +7,7 @@ import CartToppings from '@/components/product/CartToppings';
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, removeItem, updateQuantity, getItemPrice, getTotalPrice, clearCart } = useCartStore();
+  const { items, removeItem, removeTopping, updateQuantity, getItemPrice, getTotalPrice, clearCart } = useCartStore();
 
   if (items.length === 0) {
     return (
@@ -62,7 +62,7 @@ export default function CartPage() {
                       <Trash2 className="size-[15px]" strokeWidth={2} />
                     </button>
                   </div>
-                  <CartToppings toppings={item.toppings} quantity={item.quantity} />
+                  <CartToppings toppings={item.toppings} quantity={item.quantity} onRemove={(topping) => removeTopping(item.id,topping.productId,topping.variantId)} />
                   {item.customizations.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {item.customizations.map((c, i) => (

@@ -66,3 +66,25 @@ test('order displays group identical dishes by their persisted parent IDs, prese
   const items = [{id:'porridge-plain'},{id:'porridge-jam'},{id:'jam',parentItemId:'porridge-jam'},{id:'standalone-honey'}];
   assert.deepEqual(orderItemGroups(items).map(({item,toppings}) => [item.id,toppings.map((topping) => topping.id)]), [['porridge-plain',[]],['porridge-jam',['jam']],['standalone-honey',[]]]);
 });
+test('removing one topping retains the dish and other toppings, reprices quantities and merges matching lines', () => {
+  const base = { productId:'syrniki',name:'Сырники',image:null,basePrice:290,quantity:2,customizations:[] };
+  const options = toppingOptions(toppings);
+  const choices = toppingCartItems(toppings,new Set([options[0].key,options[1].key]));
+  for (const store of [useCartStore,useKioskCartStore]) {
+    store.getState().clearCart();
+    store.getState().addItem({...base,toppings:choices});
+    store.getState().addItem({...base,quantity:1});
+    const id = store.getState().items[0].id;
+    store.getState().removeTopping(id,'jam','free');
+    assert.equal(store.getState().getTotalPrice(),1060,'Removing a different topping variant must do nothing');
+    store.getState().removeTopping(id,'jam','strawberry');
+    assert.equal(store.getState().getTotalPrice(),950);
+    assert.deepEqual(store.getState().items[0].toppings?.map((topping) => topping.productId),['sourcream']);
+    assert.equal(store.getState().items[0].quantity,2);
+    store.getState().removeTopping(id,'sourcream');
+    assert.equal(store.getState().items.length,1);
+    assert.equal(store.getState().items[0].quantity,3);
+    assert.equal(store.getState().getTotalPrice(),870);
+    store.getState().clearCart();
+  }
+});

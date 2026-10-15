@@ -77,10 +77,18 @@ function mergeDuplicateItems(items: CartItem[]): CartItem[] {
   return merged;
 }
 
+export function removeCartTopping(items: CartItem[], itemId: string, productId: string, variantId?: string | null): CartItem[] {
+  const item = items.find((entry) => entry.id === itemId);
+  const toppings = item?.toppings?.filter((topping) => topping.productId !== productId || (topping.variantId ?? null) !== (variantId ?? null));
+  if (!item || !toppings || toppings.length === item.toppings?.length) return items;
+  return mergeDuplicateItems(items.map((entry) => entry.id === itemId ? { ...entry,toppings } : entry));
+}
+
 interface CartState {
   items: CartItem[];
   addItem: (item: Omit<CartItem, 'id'>) => void;
   removeItem: (id: string) => void;
+  removeTopping: (itemId: string, productId: string, variantId?: string | null) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   getTotalItems: () => number;
@@ -116,6 +124,8 @@ export const useCartStore = create<CartState>()(
         set((state) => ({
           items: state.items.filter((item) => item.id !== id),
         })),
+
+      removeTopping: (itemId,productId,variantId) => set((state) => ({ items:removeCartTopping(state.items,itemId,productId,variantId) })),
 
       updateQuantity: (id, quantity) =>
         set((state) => ({

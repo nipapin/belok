@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { cartItemPrice, isSameCartLine, type CartItem, type CartItemCustomization } from '@/store/cartStore';
+import { cartItemPrice, isSameCartLine, removeCartTopping, type CartItem, type CartItemCustomization } from '@/store/cartStore';
 
 export type { CartItem, CartItemCustomization };
 
@@ -17,6 +17,7 @@ interface KioskCartState {
   items: CartItem[];
   addItem: (item: Omit<CartItem, 'id'>) => void;
   removeItem: (id: string) => void;
+  removeTopping: (itemId: string, productId: string, variantId?: string | null) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   getTotalItems: () => number;
@@ -56,6 +57,8 @@ export const useKioskCartStore = create<KioskCartState>()((set, get) => ({
           ? state.items.filter((item) => item.id !== id)
           : state.items.map((item) => (item.id === id ? { ...item, quantity } : item)),
     })),
+
+  removeTopping: (itemId,productId,variantId) => set((state) => ({ items:removeCartTopping(state.items,itemId,productId,variantId) })),
 
   clearCart: () => set({ items: [] }),
 

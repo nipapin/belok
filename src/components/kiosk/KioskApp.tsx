@@ -136,6 +136,7 @@ export default function KioskApp() {
   const clearCart = useKioskCartStore((s) => s.clearCart);
   const updateQuantity = useKioskCartStore((s) => s.updateQuantity);
   const removeItem = useKioskCartStore((s) => s.removeItem);
+  const removeTopping = useKioskCartStore((s) => s.removeTopping);
   const getItemPrice = useKioskCartStore((s) => s.getItemPrice);
   const totalItems = useKioskCartStore((s) => s.getTotalItems());
   const totalPrice = useKioskCartStore((s) => s.getTotalPrice());
@@ -656,7 +657,7 @@ export default function KioskApp() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{item.name}</p>
-                  <CartToppings toppings={item.toppings} quantity={item.quantity} />
+                  <CartToppings toppings={item.toppings} quantity={item.quantity} onRemove={(topping) => removeTopping(item.id,topping.productId,topping.variantId)} />
                   {item.customizations.length > 0 ? (
                     <p className="truncate text-xs text-(--lg-text-muted)">
                       {item.customizations

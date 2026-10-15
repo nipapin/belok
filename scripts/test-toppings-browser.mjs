@@ -121,6 +121,12 @@ try {
   await page.waitForFunction(() => location.pathname === '/cart');
   await expectCart([['toppings-local-syrniki',2,['toppings-local-honey']]]);
   assert.equal(await page.$$eval('[data-cart-toppings]',(nodes) => nodes.length),1);
+  await page.screenshot({path:'output/toppings-qa/cart-removable-topping.png'});
+  await page.click('[aria-label="Убрать топпинг Мёд"]');
+  await expectCart([['toppings-local-syrniki',2]]);
+  assert.equal((await cart()).reduce((sum,item) => sum+item.basePrice*item.quantity,0),580);
+  await page.reload({waitUntil:'networkidle0'});
+  await expectCart([['toppings-local-syrniki',2]]);
 
   await page.setViewport({width:1080,height:1920});
   await go('/kiosk');
@@ -137,6 +143,9 @@ try {
   await page.setViewport({width:650,height:1100});
   await page.evaluate(async () => { await Promise.all(document.getAnimations().filter((animation) => animation.effect?.getTiming().iterations !== Infinity).map((animation) => animation.finished.catch(() => {}))); });
   await page.screenshot({path:'output/toppings-qa/kiosk-grouped-cart.png'});
+  await page.click('[aria-label="Убрать топпинг Джем"]');
+  await page.waitForFunction(() => document.querySelectorAll('li.glass-panel').length===1 && !document.querySelector('[data-cart-toppings]'));
+  assert.match(await page.$eval('li.glass-panel',(node) => node.innerText),/580 ₽/);
   await page.click('[aria-label="Назад к меню"]');
   await page.click('[aria-label^="Открыть Сырники,"]');
   await page.waitForSelector('[role="dialog"] .btn-primary');
