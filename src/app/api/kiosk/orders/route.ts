@@ -29,6 +29,7 @@ import type {
 } from '@/lib/types';
 
 interface IncomingItem {
+  toppings?: { productId: string; variantId?: string | null }[];
   productId: string;
   variantId?: string | null;
   quantity: number;
@@ -215,14 +216,15 @@ export async function POST(request: NextRequest) {
         ]
       );
 
-      for (const item of stampedItems) {
-        const itemId = uuidv4();
+      const itemIds = stampedItems.map(() => uuidv4());
+      for (const [index, item] of stampedItems.entries()) {
+        const itemId = itemIds[index];
         const inserted = await client.query(
           `INSERT INTO "order_items"
-             (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice", "fiscalName")
-           SELECT $1, $2, $3, $4, $5, $6, $7, p.name || $8 FROM products p WHERE p.id=$3`,
+             (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice", "fiscalName", "parentItemId")
+           SELECT $1, $2, $3, $4, $5, $6, $7, p.name || $8, $9 FROM products p WHERE p.id=$3`,
           [itemId, orderId, item.productId, item.variantId, item.variantName, item.quantity, item.unitPrice,
-            `${item.variantName ? ` — ${item.variantName}` : ''}${item.customizations.map(c => `; ${c.action === 'ADD' ? '+' : '−'}${c.ingredientName}`).join('')}`]
+            `${item.variantName ? ` — ${item.variantName}` : ''}${item.customizations.map(c => `; ${c.action === 'ADD' ? '+' : '−'}${c.ingredientName}`).join('')}`, item.parentLineIndex === undefined ? null : itemIds[item.parentLineIndex]]
         );
         if(inserted.rowCount!==1) throw new VariantOrderError('Товар изменился. Обновите заказ.');
         for (const c of item.customizations || []) {

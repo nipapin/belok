@@ -11,6 +11,7 @@ export interface CartItemCustomization {
 }
 
 export interface CartItem {
+  toppings?: CartTopping[];
   id: string;
   productId: string;
   variantId?: string | null;
@@ -20,6 +21,18 @@ export interface CartItem {
   basePrice: number;
   quantity: number;
   customizations: CartItemCustomization[];
+}
+
+export type CartTopping = Pick<CartItem, 'productId' | 'variantId' | 'variantName' | 'name' | 'image' | 'basePrice'>;
+
+export function cartItemPrice(item: CartItem): number {
+  const extras = item.customizations.reduce((sum, choice) => sum + choice.priceDelta, 0);
+  const toppings = (item.toppings ?? []).reduce((sum, topping) => sum + topping.basePrice, 0);
+  return Math.round((item.basePrice + extras + toppings) * 100) * item.quantity / 100;
+}
+
+function toppingKey(item: { toppings?: CartTopping[] }): string {
+  return (item.toppings ?? []).map((topping) => JSON.stringify([topping.productId,topping.variantId ?? null,topping.basePrice])).sort().join('|');
 }
 
 /** Order-independent fingerprint of a customization set. */
@@ -35,13 +48,13 @@ export function cartVariantId(item: { variantId?: string | null }): string | nul
 }
 
 export function isSameCartLine(
-  a: Pick<CartItem, 'productId' | 'variantId' | 'customizations'>,
-  b: Pick<CartItem, 'productId' | 'variantId' | 'customizations'>
+  a: Pick<CartItem, 'productId' | 'variantId' | 'customizations' | 'toppings'>,
+  b: Pick<CartItem, 'productId' | 'variantId' | 'customizations' | 'toppings'>
 ): boolean {
   return (
     a.productId === b.productId &&
     cartVariantId(a) === cartVariantId(b) &&
-    customizationKey(a.customizations) === customizationKey(b.customizations)
+    customizationKey(a.customizations) === customizationKey(b.customizations) && toppingKey(a) === toppingKey(b)
   );
 }
 
@@ -49,7 +62,7 @@ function isPlainLine(item: CartItem, productId: string, variantId?: string | nul
   return (
     item.productId === productId &&
     cartVariantId(item) === (variantId ?? null) &&
-    item.customizations.length === 0
+    item.customizations.length === 0 && !item.toppings?.length
   );
 }
 
@@ -117,10 +130,7 @@ export const useCartStore = create<CartState>()(
 
       getTotalItems: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
 
-      getItemPrice: (item) => {
-        const extras = item.customizations.reduce((sum, c) => sum + c.priceDelta, 0);
-        return (item.basePrice + extras) * item.quantity;
-      },
+      getItemPrice: cartItemPrice,
 
       getTotalPrice: () => {
         const { items, getItemPrice } = get();

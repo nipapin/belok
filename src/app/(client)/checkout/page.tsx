@@ -1,4 +1,5 @@
 'use client';
+import CartToppings from '@/components/product/CartToppings';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -114,6 +115,7 @@ export default function CheckoutPage() {
     setLoading(true);
     try {
       const orderItems = items.map((item) => ({
+        toppings: (item.toppings ?? []).map((topping) => ({ productId:topping.productId,variantId:topping.variantId ?? null })),
         productId: item.productId,
         variantId: item.variantId ?? null,
         quantity: item.quantity,
@@ -201,9 +203,10 @@ export default function CheckoutPage() {
         <h2 className="mb-3 text-base font-semibold text-(--lg-text)">Ваш заказ</h2>
         {items.map((item) => (
           <div key={item.id} className="flex justify-between gap-2 py-1.5 text-sm">
-            <span className="text-(--lg-text)">
+            <div className="min-w-0 flex-1 text-(--lg-text)">
               {item.name} ×{item.quantity}
-            </span>
+              <CartToppings toppings={item.toppings} quantity={item.quantity} />
+            </div>
             <span className="shrink-0 font-semibold tabular-nums text-(--lg-text)">{getItemPrice(item)} ₽</span>
           </div>
         ))}

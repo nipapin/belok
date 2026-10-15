@@ -1,4 +1,5 @@
 import { formatVariantTitle } from '@/lib/productTitle';
+import { orderItemGroups } from '@/lib/orderItemGroups';
 
 export const ORDER_STATUS_LABELS: Record<string, { label: string; chip: string }> = {
   PENDING: { label: 'Ожидает', chip: 'admin-chip-neutral' },
@@ -16,6 +17,8 @@ export interface OrderCustomizationView {
 }
 
 export interface OrderItemView {
+  id?: string;
+  parentItemId?: string | null;
   productId?: string;
   product: { name: string } | null;
   variantName?: string | null;
@@ -31,7 +34,7 @@ export function OrderItemsList({ items }: { items: OrderItemView[] }) {
 
   return (
     <div className="space-y-2">
-      {items.map((item, i) => {
+      {orderItemGroups(items).map(({ item, toppings }, i) => {
         const adds = item.customizations.filter((c) => c.action === 'ADD');
         const removes = item.customizations.filter((c) => c.action === 'REMOVE');
         return (
@@ -39,7 +42,8 @@ export function OrderItemsList({ items }: { items: OrderItemView[] }) {
             <span className="font-medium text-(--lg-text)">
               {formatVariantTitle(item.product?.name ?? 'Товар', item.variantName)} ×{item.quantity}
             </span>
-            <span className="ml-1 tabular-nums">· {item.unitPrice} ₽</span>
+            <span className="ml-1 tabular-nums">· {item.unitPrice + toppings.reduce((sum, topping) => sum + topping.unitPrice,0)} ₽</span>
+            {toppings.map((topping,j) => <span key={`t-${j}`} className="mt-0.5 block pl-2 text-emerald-700">+ {formatVariantTitle(topping.product?.name ?? 'Топпинг',topping.variantName)} ×{topping.quantity}</span>)}
             {adds.map((c, j) => (
               <span key={`a-${j}`} className="mt-0.5 block text-emerald-700">
                 + {c.ingredient?.name ?? 'добавка'}

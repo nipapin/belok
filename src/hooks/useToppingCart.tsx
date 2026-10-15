@@ -8,8 +8,8 @@ import type { CartItem } from '@/store/cartStore';
 type CartDraft = Omit<CartItem, 'id'>;
 export function useToppingCart(toppings: ToppingProduct[] | undefined, addItem: (item: CartDraft) => void, onAdded?: () => void) {
   const [pending, setPending] = useState<{ item: CartDraft; toppings: ToppingProduct[] } | null>(null);
-  function commit(items: CartDraft[]) {
-    for (const item of items) addItem(item);
+  function commit(item: CartDraft) {
+    addItem(item);
     setPending(null);
     onAdded?.();
   }
@@ -17,7 +17,7 @@ export function useToppingCart(toppings: ToppingProduct[] | undefined, addItem: 
     hasToppings: toppingOptions(toppings).length > 0,
     addWithToppings: (item: CartDraft) => {
       if (toppingOptions(toppings).length) setPending({ item, toppings: toppings! });
-      else commit([item]);
+      else commit(item);
     },
     toppingDialog: pending ? <ToppingsDialog item={pending.item} toppings={pending.toppings} onConfirm={commit} onClose={() => setPending(null)} /> : null,
   };

@@ -156,6 +156,7 @@ export interface OrderRow {
 }
 
 export interface OrderItemRow {
+  parentItemId?: string | null;
   id: string;
   orderId: string;
   productId: string;

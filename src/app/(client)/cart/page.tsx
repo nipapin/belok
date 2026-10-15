@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
+import CartToppings from '@/components/product/CartToppings';
 
 export default function CartPage() {
   const router = useRouter();
@@ -61,6 +62,7 @@ export default function CartPage() {
                       <Trash2 className="size-[15px]" strokeWidth={2} />
                     </button>
                   </div>
+                  <CartToppings toppings={item.toppings} quantity={item.quantity} />
                   {item.customizations.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {item.customizations.map((c, i) => (

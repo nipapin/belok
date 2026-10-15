@@ -1,5 +1,6 @@
 'use client';
 import ProductAccountingEditor from '@/components/admin/ProductAccountingEditor';
+import InlineToppingCreator from '@/components/admin/InlineToppingCreator';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ImagePlus, Plus, Save, Trash2, X } from 'lucide-react';
@@ -114,6 +115,7 @@ export default function AdminProductForm({ mode, productId, productsV2 = false }
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [creatingTopping, setCreatingTopping] = useState(false);
   const variantsRef = useRef(form.variants);
   useEffect(() => { variantsRef.current = form.variants; }, [form.variants]);
 
@@ -308,7 +310,7 @@ export default function AdminProductForm({ mode, productId, productsV2 = false }
   const goBack = () => router.push(productsV2 ? '/admin/products-v2' : '/admin/products');
 
   const title = mode === 'edit' ? 'Редактировать товар' : productsV2 ? 'Новый товар · 2.0' : 'Новый товар';
-  const saving = saveMutation.isPending;
+  const saving = saveMutation.isPending || creatingTopping;
   const canSave = Boolean(
     form.name &&
       form.price &&
@@ -642,6 +644,7 @@ export default function AdminProductForm({ mode, productId, productsV2 = false }
                 </label>)}
               </div>
             )}
+            <InlineToppingCreator disabled={saving} onBusyChange={setCreatingTopping} onCreated={(topping) => setForm((current) => ({ ...current, toppingIds: [...current.toppingIds, topping.id] }))} />
           </section>
 
           {product?.id && <section className="admin-form-section"><ProductAccountingEditor productId={product.id}/></section>}

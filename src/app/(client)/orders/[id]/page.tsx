@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import SbpPayPanel from '@/components/order/SbpPayPanel';
 import { formatDeliveryTime, fulfillmentLabel, orderTicket, paymentMethodLabel } from '@/lib/orderCustomer';
 import { formatVariantTitle } from '@/lib/productTitle';
+import { orderItemGroups } from '@/lib/orderItemGroups';
 
 const statusSteps = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'COMPLETED'];
 const statusLabels: Record<string, string> = {
@@ -25,6 +26,7 @@ const paymentLabel = (s: string) => {
 };
 
 interface OrderItem {
+  parentItemId?: string | null;
   id: string;
   quantity: number;
   unitPrice: number;
@@ -175,7 +177,7 @@ export default function OrderDetailPage() {
 
       <div className="glass-panel mb-4 p-4">
         <h2 className="mb-3 text-base font-semibold text-(--lg-text)">Состав заказа</h2>
-        {order.items.map((item) => (
+        {orderItemGroups(order.items).map(({ item, toppings }) => (
           <div
             key={item.id}
             className="flex justify-between gap-2 border-b border-[color-mix(in_srgb,var(--lg-text)_8%,transparent)] py-2 last:border-0"
@@ -189,9 +191,10 @@ export default function OrderDetailPage() {
                   {item.customizations.map((c) => (c.action === 'REMOVE' ? 'Без ' : '+ ') + c.ingredientId).join(', ')}
                 </p>
               )}
+              {toppings.map((topping) => <p key={topping.id} className="mt-1 border-l-2 border-emerald-600/30 pl-2 text-xs text-(--lg-text-muted)">+ {formatVariantTitle(topping.product.name,topping.variantName)} ×{topping.quantity}</p>)}
             </div>
             <p className="shrink-0 text-sm font-semibold tabular-nums text-(--lg-text)">
-              {item.unitPrice * item.quantity} ₽
+              {item.unitPrice * item.quantity + toppings.reduce((sum,topping) => sum + topping.unitPrice * topping.quantity,0)} ₽
             </p>
           </div>
         ))}

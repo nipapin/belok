@@ -5,6 +5,7 @@ import { requireBoardAccess } from '@/lib/orderBoardAccess';
 import type { OrderRow, OrderItemRow, OrderItemCustomizationRow } from '@/lib/types';
 import { KIOSK_COOKIE } from '@/lib/kioskCookie';
 import { formatVariantTitle } from '@/lib/productTitle';
+import { orderItemGroups } from '@/lib/orderItemGroups';
 
 export async function GET() {
   try {
@@ -23,7 +24,7 @@ export async function GET() {
     );
     const orderIds = orders.map((order) => order.id);
     const items = orderIds.length ? await query<OrderItemRow & { name: string; preparedQuantity: number }>(
-      `SELECT i.id, i."orderId", i.quantity, i."preparedQuantity", i."variantName", COALESCE(p.name, 'Блюдо удалено') AS name
+      `SELECT i.id, i."orderId", i."parentItemId", i.quantity, i."preparedQuantity", i."variantName", COALESCE(p.name, 'Блюдо удалено') AS name
        FROM "order_items" i LEFT JOIN "products" p ON p.id = i."productId"
        WHERE i."orderId" = ANY($1::text[]) ORDER BY i.id`, [orderIds]
     ) : [];
@@ -38,10 +39,10 @@ export async function GET() {
         total: access.canComplete ? order.total : undefined,
         paymentStatus: access.canComplete ? order.paymentStatus : undefined,
         paymentMethod: access.canComplete ? order.paymentMethod : undefined,
-        items: items.filter((item) => item.orderId === order.id).map((item) => ({
+        items: orderItemGroups(items.filter((item) => item.orderId === order.id)).map(({ item, toppings }) => ({
           id: item.id, name: formatVariantTitle(item.name, item.variantName), quantity: item.quantity, preparedQuantity: item.preparedQuantity,
-          customizations: customizations.filter((c) => c.orderItemId === item.id)
-            .map((c) => ({ id: c.id, action: c.action, name: c.name })),
+          customizations: [...customizations.filter((c) => c.orderItemId === item.id)
+            .map((c) => ({ id: c.id, action: c.action, name: c.name })), ...toppings.map((topping) => ({ id:topping.id,action:'ADD',name:formatVariantTitle(topping.name,topping.variantName) }))],
         })),
       })),
     }, { headers: { 'Cache-Control': 'private, no-store' } });

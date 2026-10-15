@@ -11,6 +11,7 @@ import KioskProductModal from '@/components/kiosk/KioskProductModal';
 import SbpPayPanel from '@/components/order/SbpPayPanel';
 import TerminalPayPanel, { KioskReceiptStatus } from '@/components/kiosk/TerminalPayPanel';
 import { useKioskCartStore } from '@/store/kioskCartStore';
+import CartToppings from '@/components/product/CartToppings';
 import type { Category, Product } from '@/types';
 import { fetchKioskCatalog, kioskCatalogRefresh } from '@/lib/kioskCatalog';
 import { buildVersion } from '@/lib/buildVersion';
@@ -464,6 +465,7 @@ export default function KioskApp() {
           paymentMethod: payableTotal > 0 ? paymentMethod : 'BONUS',
           bonusUsed,
           items: items.map((item) => ({
+            toppings: (item.toppings ?? []).map((topping) => ({ productId:topping.productId,variantId:topping.variantId ?? null })),
             productId: item.productId,
             variantId: item.variantId ?? null,
             quantity: item.quantity,
@@ -654,6 +656,7 @@ export default function KioskApp() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{item.name}</p>
+                  <CartToppings toppings={item.toppings} quantity={item.quantity} />
                   {item.customizations.length > 0 ? (
                     <p className="truncate text-xs text-(--lg-text-muted)">
                       {item.customizations

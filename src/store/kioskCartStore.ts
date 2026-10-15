@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { isSameCartLine, type CartItem, type CartItemCustomization } from '@/store/cartStore';
+import { cartItemPrice, isSameCartLine, type CartItem, type CartItemCustomization } from '@/store/cartStore';
 
 export type { CartItem, CartItemCustomization };
 
@@ -9,7 +9,7 @@ function isPlainLine(item: CartItem, productId: string, variantId?: string | nul
   return (
     item.productId === productId &&
     (item.variantId ?? null) === (variantId ?? null) &&
-    item.customizations.length === 0
+    item.customizations.length === 0 && !item.toppings?.length
   );
 }
 
@@ -61,10 +61,7 @@ export const useKioskCartStore = create<KioskCartState>()((set, get) => ({
 
   getTotalItems: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
 
-  getItemPrice: (item) => {
-    const extras = item.customizations.reduce((sum, c) => sum + c.priceDelta, 0);
-    return Math.round((item.basePrice + extras) * 100) * item.quantity / 100;
-  },
+  getItemPrice: cartItemPrice,
 
   getTotalPrice: () => {
     const { items, getItemPrice } = get();

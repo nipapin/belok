@@ -120,6 +120,7 @@ export async function GET() {
 }
 
 interface IncomingItem {
+  toppings?: { productId: string; variantId?: string | null }[];
   productId: string;
   variantId?: string | null;
   quantity: number;
@@ -256,13 +257,14 @@ export async function POST(request: NextRequest) {
         ]
       );
 
-      for (const item of stampedItems) {
-        const itemId = uuidv4();
+      const itemIds = stampedItems.map(() => uuidv4());
+      for (const [index, item] of stampedItems.entries()) {
+        const itemId = itemIds[index];
         await client.query(
           `INSERT INTO "order_items"
-             (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice")
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [itemId, orderId, item.productId, item.variantId, item.variantName, item.quantity, item.unitPrice]
+             (id, "orderId", "productId", "variantId", "variantName", quantity, "unitPrice", "parentItemId")
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [itemId, orderId, item.productId, item.variantId, item.variantName, item.quantity, item.unitPrice, item.parentLineIndex === undefined ? null : itemIds[item.parentLineIndex]]
         );
         for (const c of item.customizations || []) {
           await client.query(

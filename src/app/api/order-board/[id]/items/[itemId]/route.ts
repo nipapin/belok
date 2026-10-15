@@ -32,15 +32,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (!order.rowCount) return null;
       const item = await client.query<{ id: string; preparedQuantity: number }>(
         `UPDATE "order_items" SET "preparedQuantity" = "preparedQuantity" + $3
-          WHERE id = $1 AND "orderId" = $2 AND "preparedQuantity" = $4
+          WHERE id = $1 AND "orderId" = $2 AND "parentItemId" IS NULL AND "preparedQuantity" = $4
             AND "preparedQuantity" + $3 BETWEEN 0 AND quantity
           RETURNING id, "preparedQuantity"`, [itemId, id, delta, expected],
       );
       if (!item.rows[0]) return null;
+      await client.query('UPDATE order_items SET "preparedQuantity"=$3 WHERE "orderId"=$1 AND "parentItemId"=$2', [id,itemId,item.rows[0].preparedQuantity]);
       const current = order.rows[0];
       let status = current.status;
       if (delta === 1 && status !== 'READY') {
-        const unfinished = await client.query('SELECT id FROM "order_items" WHERE "orderId" = $1 AND "preparedQuantity" < quantity LIMIT 1', [id]);
+        const unfinished = await client.query('SELECT id FROM "order_items" WHERE "orderId" = $1 AND "parentItemId" IS NULL AND "preparedQuantity" < quantity LIMIT 1', [id]);
         if (!unfinished.rowCount) status = 'READY';
       } else if (delta === -1 && status === 'READY') {
         status = 'PREPARING';

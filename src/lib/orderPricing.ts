@@ -6,12 +6,14 @@ import { VariantOrderError } from '@/lib/productVariants';
 import type { ProductWithRelations } from '@/lib/types';
 
 export interface IncomingOrderItem {
+  toppings?: { productId: string; variantId?: string | null }[];
   productId: string;
   variantId?: string | null;
   quantity: number;
   customizations?: { ingredientId: string; action: 'ADD' | 'REMOVE'; priceDelta?: number }[];
 }
 export interface PricedOrderItem {
+  parentLineIndex?: number;
   productId: string;
   variantId: string | null;
   variantName: string | null;
@@ -57,14 +59,31 @@ export function priceOrderItem(item: IncomingOrderItem, product: ProductWithRela
 export async function priceOrderItems(items: IncomingOrderItem[]): Promise<PricedOrderItem[]> {
   if (!Array.isArray(items) || items.length === 0 || items.length > 100) throw new VariantOrderError('Некорректный состав заказа');
   const ids = new Set(items.map((item) => item?.productId));
+  for (const item of items) {
+    if (item?.toppings !== undefined && (!Array.isArray(item.toppings) || item.toppings.length > 100)) throw new VariantOrderError('Некорректный список топпингов');
+    for (const topping of item?.toppings ?? []) {
+      if (!topping || typeof topping.productId !== 'string' || !topping.productId) throw new VariantOrderError('Некорректный топпинг');
+      ids.add(topping.productId);
+    }
+  }
   if ([...ids].some((id) => typeof id !== 'string' || !id)) throw new VariantOrderError('Товар не найден');
   const products = await fetchProductsWithRelations({ productIds: [...ids], stockAvailability: true });
   const map = new Map(products.map((product) => [product.id, product]));
-  const priced = items.map((item) => {
+  const priced: PricedOrderItem[] = [];
+  for (const item of items) {
     const product = map.get(item.productId);
     if (!product) throw new VariantOrderError('Товар не найден');
-    return priceOrderItem(item, product);
-  });
+    const parentLineIndex = priced.length;
+    priced.push(priceOrderItem(item, product));
+    const seen = new Set<string>();
+    for (const choice of item.toppings ?? []) {
+      const key = JSON.stringify([choice.productId,choice.variantId ?? null]);
+      const topping = map.get(choice.productId);
+      if (seen.has(key) || !topping || !product.toppings?.some((entry) => entry.id === choice.productId && entry.categoryActive && entry.isAvailable)) throw new VariantOrderError('Топпинг недоступен для этого блюда');
+      seen.add(key);
+      priced.push({ ...priceOrderItem({ productId:choice.productId,variantId:choice.variantId,quantity:item.quantity },topping),parentLineIndex });
+    }
+  }
   const requirements = await loadStockRequirements([...ids]);
   if (requirements && cartStockAvailability(priced, requirements).state === 'STOP') throw new VariantOrderError('Недостаточно продуктов на складе для выбранного количества блюд');
   return priced;

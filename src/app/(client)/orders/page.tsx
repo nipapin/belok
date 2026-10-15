@@ -6,6 +6,7 @@ import { ArrowLeft, Receipt } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { orderTicket } from '@/lib/orderCustomer';
 import { formatVariantTitle } from '@/lib/productTitle';
+import { orderItemGroups } from '@/lib/orderItemGroups';
 
 const statusMap: Record<string, { label: string; className: string }> = {
   PENDING: {
@@ -42,7 +43,7 @@ interface Order {
   total: number;
   bonusEarned: number;
   createdAt: string;
-  items: { product: { name: string }; variantName?: string | null; quantity: number }[];
+  items: { id?:string; parentItemId?:string | null; product: { name: string }; variantName?: string | null; quantity: number }[];
 }
 
 export default function OrdersPage() {
@@ -104,8 +105,8 @@ export default function OrdersPage() {
                 </span>
               </div>
               <p className="line-clamp-2 text-xs text-(--lg-text-muted)">
-                {order.items
-                  .map((i) => `${formatVariantTitle(i.product.name, i.variantName)} ×${i.quantity}`)
+                {orderItemGroups(order.items)
+                  .map(({item:i,toppings}) => `${formatVariantTitle(i.product.name, i.variantName)}${toppings.length ? ` (${toppings.map((topping) => formatVariantTitle(topping.product.name,topping.variantName)).join(', ')})` : ''} ×${i.quantity}`)
                   .join(', ')}
               </p>
               <div className="mt-2 flex items-center justify-between">

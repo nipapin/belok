@@ -11,7 +11,7 @@ type CartDraft = Omit<CartItem, 'id'>;
 export default function ToppingsDialog({ item, toppings, onConfirm, onClose }: {
   item: CartDraft;
   toppings: ToppingProduct[];
-  onConfirm: (items: CartDraft[]) => void;
+  onConfirm: (item: CartDraft) => void;
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -19,8 +19,8 @@ export default function ToppingsDialog({ item, toppings, onConfirm, onClose }: {
   const titleId = useId();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const options = toppingOptions(toppings);
-  const extras = toppingCartItems(toppings, selected, item.quantity);
-  const total = (item.basePrice + item.customizations.reduce((sum, choice) => sum + choice.priceDelta, 0)) * item.quantity + extras.reduce((sum, extra) => sum + extra.basePrice * extra.quantity, 0);
+  const extras = toppingCartItems(toppings, selected);
+  const total = (item.basePrice + item.customizations.reduce((sum, choice) => sum + choice.priceDelta, 0) + extras.reduce((sum, extra) => sum + extra.basePrice, 0)) * item.quantity;
   const money = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function ToppingsDialog({ item, toppings, onConfirm, onClose }: {
   function confirm(withToppings: boolean) {
     if (confirmed.current) return;
     confirmed.current = true;
-    onConfirm([item, ...(withToppings ? extras : [])]);
+    onConfirm({ ...item, toppings: withToppings ? extras : [] });
   }
 
   if (typeof document === 'undefined') return null;
