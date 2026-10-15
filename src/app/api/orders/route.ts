@@ -3,7 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, withTransaction } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { notifyKitchenNewOrder } from '@/lib/orderNotify';
-import { attachVariantSnapshots, VariantOrderError } from '@/lib/productVariants';
+import { VariantOrderError } from '@/lib/productVariants';
+import { priceOrderItems } from '@/lib/orderPricing';
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import { isTbankConfigured, SBP_MIN_RUBLES, TbankError } from '@/lib/tbank';
 import { startTbankPayment } from '@/lib/tbankPayments';
@@ -158,25 +159,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Корзина пуста' }, { status: 400 });
     }
 
-    const productIds = items.map((i) => i.productId);
-    const products = await query<ProductRow>(
-      `SELECT * FROM "products" WHERE id = ANY($1::text[])`,
-      [productIds]
-    );
-    const productMap = new Map(products.map((p) => [p.id, p]));
-
-    let subtotal = 0;
-    const computedItems = items.map((item) => {
-      const product = productMap.get(item.productId);
-      if (!product) throw new Error(`Product ${item.productId} not found`);
-      const extras = (item.customizations || [])
-        .filter((c) => c.action === 'ADD')
-        .reduce((s, c) => s + (c.priceDelta || 0), 0);
-      const unitPrice = product.price + extras;
-      subtotal += unitPrice * item.quantity;
-      return { ...item, unitPrice };
-    });
-    const stampedItems = await attachVariantSnapshots(computedItems);
+    const stampedItems = await priceOrderItems(items);
+    const subtotal = stampedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
     const discountPercent = user.loyaltyLevel?.discountPercent || 0;
     const discountAmount = Math.round(subtotal * (discountPercent / 100));

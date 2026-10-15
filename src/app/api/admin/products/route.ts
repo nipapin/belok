@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { fetchProductById, fetchProductsWithRelations } from '@/lib/queries/products';
 import { replaceProductVariants, type VariantWrite } from '@/lib/productVariants';
 import { isSpicinessLevel } from '@/lib/productSpiciness';
+import { replaceProductToppings, ToppingValidationError } from '@/lib/productToppings.server';
 
 interface IngredientLink {
   ingredientId: string;
@@ -14,6 +15,7 @@ interface IngredientLink {
 }
 
 interface CreateProductBody {
+  toppingIds?: string[];
   name: string;
   description?: string | null;
   price: string | number;
@@ -111,11 +113,13 @@ export async function POST(request: NextRequest) {
       if (body.variants?.length) {
         await replaceProductVariants(client, id, body.variants);
       }
+      if (body.toppingIds !== undefined) await replaceProductToppings(client, id, body.toppingIds);
     });
 
     const product = await fetchProductById(id);
     return NextResponse.json({ product }, { status: 201 });
   } catch (e) {
+    if (e instanceof ToppingValidationError) return NextResponse.json({ error: e.message }, { status: 400 });
     if ((e as Error).message === 'UNAUTHORIZED')
       return NextResponse.json({ error: 'Нет доступа' }, { status: 403 });
     if ((e as Error).message === 'VARIANT_NAME') {

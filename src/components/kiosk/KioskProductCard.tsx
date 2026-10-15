@@ -6,6 +6,7 @@ import { formatVariantTitle } from '@/lib/productTitle';
 import { FoodCard, type FoodCardModel } from '@/components/product/FoodCard';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useKioskCartStore } from '@/store/kioskCartStore';
+import { useToppingCart } from '@/hooks/useToppingCart';
 
 type KioskProductCardProps = {
   product: FoodCardModel;
@@ -24,6 +25,7 @@ function sameCard(prev: KioskProductCardProps, next: KioskProductCardProps) {
     a.price === b.price &&
     a.isAvailable === b.isAvailable &&
     a.hasOptions === b.hasOptions &&
+    JSON.stringify(a.toppings) === JSON.stringify(b.toppings) &&
     JSON.stringify(a.variants) === JSON.stringify(b.variants) &&
     a.calories === b.calories &&
     a.proteins === b.proteins &&
@@ -56,6 +58,7 @@ export const KioskProductCard = memo(function KioskProductCard({
   const haptic = useHaptic();
   const [busy, setBusy] = useState(false);
   const busyTimer = useRef<number | undefined>(undefined);
+  const { addWithToppings, toppingDialog, hasToppings } = useToppingCart(product.toppings, addItem);
 
   useEffect(() => () => window.clearTimeout(busyTimer.current), []);
 
@@ -65,7 +68,7 @@ export const KioskProductCard = memo(function KioskProductCard({
     if (product.hasOptions) { onOpen(active?.id ?? null); return; }
     if (busy) return;
     setBusy(true);
-    addItem({
+    addWithToppings({
       productId: product.id,
       variantId: active?.id ?? null,
       variantName: active?.name ?? null,
@@ -83,6 +86,7 @@ export const KioskProductCard = memo(function KioskProductCard({
   function handleIncrement(e: React.MouseEvent) {
     e.stopPropagation();
     if (product.isAvailable === false) return;
+    if (hasToppings) { handleAdd(e); return; }
     if (plainLineId) {
       updateQuantity(plainLineId, quantity + 1);
       haptic('light');
@@ -105,7 +109,7 @@ export const KioskProductCard = memo(function KioskProductCard({
   }
 
   return (
-    <FoodCard
+    <><FoodCard
       product={{ ...display, image }}
       flavor={active?.name ?? null}
       quantity={quantity}
@@ -117,6 +121,6 @@ export const KioskProductCard = memo(function KioskProductCard({
       onDecrement={handleDecrement}
       onPrevFlavor={choosable ? () => setIndex((current) => (current - 1 + variants.length) % variants.length) : undefined}
       onNextFlavor={choosable ? () => setIndex((current) => (current + 1) % variants.length) : undefined}
-    />
+    />{toppingDialog}</>
   );
 }, sameCard);

@@ -125,6 +125,7 @@ export interface ProductIngredientWithIngredient extends ProductIngredientRow {
 }
 
 export interface ProductWithRelations extends ProductRow {
+  toppings?: import('@/lib/toppings').ToppingProduct[];
   category: CategoryRow;
   ingredients: ProductIngredientWithIngredient[];
   variants: ProductVariantRow[];

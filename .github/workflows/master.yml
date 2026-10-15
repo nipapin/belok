@@ -60,6 +60,7 @@ jobs:
         env:
           AQSI_TEST_DATABASE_URL: postgresql://aqsi_test:aqsi_test@127.0.0.1:5432/aqsi_test
       - run: npm run test:kiosk-control
+      - run: npm run test:toppings
       - run: npx eslint scripts/package-production-release.mjs
       - run: npm run build
       - run: node scripts/package-production-release.mjs

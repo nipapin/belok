@@ -7,6 +7,7 @@ import { fetchProductById } from '@/lib/queries/products';
 import { replaceProductVariants, type VariantWrite } from '@/lib/productVariants';
 import type { ProductRow } from '@/lib/types';
 import { isSpicinessLevel } from '@/lib/productSpiciness';
+import { replaceProductToppings, ToppingValidationError } from '@/lib/productToppings.server';
 
 interface IngredientLink {
   ingredientId: string;
@@ -16,6 +17,7 @@ interface IngredientLink {
 }
 
 interface UpdateProductBody {
+  toppingIds?: string[];
   name?: string;
   description?: string | null;
   price?: string | number;
@@ -136,6 +138,7 @@ export async function PUT(
           );
         }
       }
+      if (body.toppingIds !== undefined) await replaceProductToppings(client, id, body.toppingIds);
       if (body.variants) {
         return replaceProductVariants(client, id, body.variants);
       }
@@ -162,6 +165,7 @@ export async function PUT(
     if ((e as Error).message === 'VARIANT_NAME') {
       return NextResponse.json({ error: 'Укажите название каждого варианта' }, { status: 400 });
     }
+    if (e instanceof ToppingValidationError) return NextResponse.json({ error: e.message }, { status: 400 });
     console.error('Update product error:', e);
     return NextResponse.json({ error: 'Ошибка обновления' }, { status: 500 });
   }

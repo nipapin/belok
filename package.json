@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "test:toppings": "node --import tsx --test scripts/test-toppings.mts",
+    "test:toppings:api": "node scripts/test-toppings-api.mjs",
+    "test:toppings:browser": "node scripts/test-toppings-browser.mjs",
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",

@@ -133,6 +133,7 @@ function ProductsBlockView({
               categoryName: product.category?.name,
               createdAt: product.createdAt,
               variants: product.variants ?? [],
+              toppings: product.toppings,
             }}
           />
         );

@@ -23,6 +23,7 @@ export interface ProductVariant {
 }
 
 export interface Product {
+  toppings?: import('@/lib/toppings').ToppingProduct[];
   id: string;
   isAvailable?: boolean;
   name: string;

@@ -908,6 +908,7 @@ export default function KioskApp() {
               isAvailable: product.isAvailable,
                             variants: product.variants,
                             hasOptions: product.hasOptions,
+                            toppings: product.toppings,
                             name: product.name,
                             price: product.price,
                             image: product.image,

@@ -12,6 +12,7 @@ import { formatVariantTitle } from '@/lib/productTitle';
 import { NutritionChip } from '@/components/product/NutritionChip';
 import { isNewProduct } from '@/lib/productFlags';
 import { useKioskCartStore } from '@/store/kioskCartStore';
+import { useToppingCart } from '@/hooks/useToppingCart';
 import type { Product } from '@/types';
 import { fetchKioskCatalog, kioskCatalogRefresh } from '@/lib/kioskCatalog';
 import '@/components/product/food-card.css';
@@ -36,6 +37,7 @@ export default function KioskProductModal({ productId, variantId = null, onClose
   });
 
   const product = data?.product;
+  const { addWithToppings, toppingDialog } = useToppingCart(product?.toppings, addItem, onClose);
   const variant = product?.variants?.find((item) => item.id === pickedVariantId) ?? product?.variants?.[0] ?? null;
   const display = product ? resolveVariant(product, variant) : null;
   const displayName = product
@@ -50,7 +52,7 @@ export default function KioskProductModal({ productId, variantId = null, onClose
 
   function handleAdd() {
     if (!product || product.isAvailable === false) return;
-    addItem({
+    addWithToppings({
       productId: product.id,
       variantId: variant?.id ?? null,
       variantName: variant?.name ?? null,
@@ -60,11 +62,10 @@ export default function KioskProductModal({ productId, variantId = null, onClose
       quantity,
       customizations: getCustomizations(),
     });
-    onClose();
   }
 
   return (
-    <div className="fixed inset-0 z-[1400] flex items-end justify-center sm:items-center sm:p-6">
+    <><div className="fixed inset-0 z-[1400] flex items-end justify-center sm:items-center sm:p-6">
       <button type="button" className="absolute inset-0 bg-black/45 backdrop-blur-sm" aria-label="Закрыть" onClick={onClose} />
       <div
         role="dialog"
@@ -149,6 +150,6 @@ export default function KioskProductModal({ productId, variantId = null, onClose
           </div>
         ) : null}
       </div>
-    </div>
+    </div>{toppingDialog}</>
   );
 }

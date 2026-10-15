@@ -165,6 +165,7 @@ export function MenuPageInner() {
                         categoryName: category.name,
                         createdAt: product.createdAt,
                         variants: product.variants ?? [],
+                        toppings: product.toppings,
                       }}
                     />
                   </div>
@@ -196,6 +197,7 @@ export function MenuPageInner() {
                     categoryName: product.category?.name,
                     createdAt: product.createdAt,
                     variants: product.variants ?? [],
+                    toppings: product.toppings,
                   }}
                 />
               </div>

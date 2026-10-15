@@ -10,6 +10,7 @@ import SortableList from '@/components/admin/SortableList';
 import Switch from '@/components/ui/Switch';
 import { SpicinessBadge } from '@/components/product/SpicinessBadge';
 import { SPICINESS_LEVELS } from '@/lib/productSpiciness';
+import { isToppingsCategory, type ToppingProduct } from '@/lib/toppings';
 
 interface Ingredient {
   id: string;
@@ -52,6 +53,7 @@ function newVariantDraft(): VariantDraft {
 }
 
 export interface AdminProduct {
+  toppings?: ToppingProduct[];
   id: string;
   name: string;
   description: string | null;
@@ -93,6 +95,7 @@ const emptyForm = {
   spicinessLevel: 0,
   sortOrder: 0,
   ingredientIds: [] as string[],
+  toppingIds: [] as string[],
   variants: [] as VariantDraft[],
 };
 
@@ -136,6 +139,15 @@ export default function AdminProductForm({ mode, productId, productsV2 = false }
   });
 
   const product = productRes?.product ?? null;
+  const { data: toppingsData, isPending: toppingsLoading, isError: toppingsError } = useQuery({
+    queryKey: ['admin-products', 'toppings'],
+    queryFn: async () => {
+      const response = await fetch('/api/admin/products');
+      if (!response.ok) throw new Error('Не удалось загрузить топпинги');
+      return response.json() as Promise<{ products: AdminProduct[] }>;
+    },
+  });
+  const toppingProducts = (toppingsData?.products ?? []).filter((item) => item.id !== productId && isToppingsCategory(item.category.name));
   const categories: Category[] = categoriesData?.categories ?? [];
   const ingredients: Ingredient[] = ingredientsData?.ingredients ?? [];
 
@@ -159,6 +171,7 @@ export default function AdminProductForm({ mode, productId, productsV2 = false }
       spicinessLevel: product.spicinessLevel ?? 0,
       sortOrder: product.sortOrder,
       ingredientIds: product.ingredients.map((pi) => pi.ingredientId),
+      toppingIds: (product.toppings ?? []).map((topping) => topping.id),
       variants: (product.variants ?? []).map((variant) => ({
         id: variant.id,
         persisted: true,
@@ -259,6 +272,7 @@ export default function AdminProductForm({ mode, productId, productsV2 = false }
         weightGrams: data.weightGrams,
         spicinessLevel: data.spicinessLevel,
         sortOrder: data.sortOrder,
+        toppingIds: data.toppingIds,
         ingredients: data.ingredientIds.map((ingredientId: string) => ({
           ingredientId,
           isDefault: true,
@@ -615,6 +629,19 @@ export default function AdminProductForm({ mode, productId, productsV2 = false }
                 </label>
               ))}
             </div>
+          </section>
+
+          <section className="admin-form-section" aria-labelledby="product-toppings-title">
+            <h2 id="product-toppings-title" className="admin-form-eyebrow">Топпинги</h2>
+            <p className="admin-form-hint mt-1.5 mb-4">Предложить к блюду при добавлении в корзину. Гость может выбрать несколько или отказаться.</p>
+            {toppingsLoading ? <p className="text-sm text-(--lg-text-muted)">Загружаем топпинги…</p> : toppingsError ? <p role="alert" className="text-sm text-rose-600">Не удалось загрузить топпинги. Обновите страницу.</p> : toppingProducts.length === 0 ? <p className="text-sm text-(--lg-text-muted)">Добавьте товары в категорию «Топпинги», чтобы выбрать их здесь.</p> : (
+              <div className="max-h-72 overflow-y-auto space-y-1">
+                {toppingProducts.map((topping) => <label key={topping.id} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-(--lg-ring) px-3 py-3 text-sm">
+                  <input type="checkbox" className="size-5 shrink-0 accent-emerald-700" checked={form.toppingIds.includes(topping.id)} disabled={saving} onChange={() => setForm((current) => ({ ...current, toppingIds: current.toppingIds.includes(topping.id) ? current.toppingIds.filter((id) => id !== topping.id) : [...current.toppingIds, topping.id] }))} />
+                  <span className="min-w-0 flex-1">{topping.name}{!topping.isAvailable && <span className="block text-xs text-(--lg-text-muted)">Сейчас недоступен</span>}</span><span className="shrink-0 tabular-nums">{topping.price} ₽</span>
+                </label>)}
+              </div>
+            )}
           </section>
 
           {product?.id && <section className="admin-form-section"><ProductAccountingEditor productId={product.id}/></section>}

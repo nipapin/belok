@@ -1,0 +1,29 @@
+.toppings-dialog { --lg-text: #202b28; --lg-text-muted: #63726a; --lg-ring: #dce4df; --lg-fill: #fff; color-scheme: light; margin: auto; width: min(520px, calc(100vw - 28px)); max-height: calc(100dvh - 40px); padding: 0; border: 1px solid var(--lg-ring); border-radius: 24px; background: #fbfcfa; color: var(--lg-text); box-shadow: 0 24px 80px #14241b33; }
+.toppings-dialog[open] { display: flex; flex-direction: column; }
+.toppings-dialog::backdrop { background: #10251d70; backdrop-filter: blur(5px); }
+.toppings-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 24px 24px 18px; }
+.toppings-dialog-header h2 { margin: 6px 0 0; font-size: 23px; line-height: 1.2; font-weight: 650; letter-spacing: -.5px; }
+.toppings-dialog-eyebrow { margin: 0; font-size: 13px; color: var(--lg-text-muted); }
+.toppings-dialog-hint { margin: 8px 0 0; font-size: 13px; color: var(--lg-text-muted); }
+.toppings-dialog-options { min-height: 0; overflow-y: auto; padding: 0 24px 8px; }
+.topping-choice { display: flex; position: relative; align-items: center; gap: 12px; min-height: 72px; margin-bottom: 9px; padding: 12px; border: 1px solid var(--lg-ring); border-radius: 15px; cursor: pointer; background: #fff; }
+.topping-choice.is-selected { border-color: #276247; background: #eff7f0; box-shadow: inset 0 0 0 1px #276247; }
+.topping-choice:focus-within { outline: 2px solid #276247; outline-offset: 2px; }
+.topping-choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.topping-choice-image { width: 48px; height: 48px; flex-shrink: 0; object-fit: contain; border-radius: 9px; }
+.topping-choice-name { flex: 1; min-width: 0; font-size: 15px; font-weight: 550; overflow-wrap: anywhere; }
+.topping-choice-price { flex-shrink: 0; font-size: 14px; font-variant-numeric: tabular-nums; }
+.topping-choice-check { display: grid; place-items: center; width: 23px; height: 23px; flex-shrink: 0; border: 1px solid #ccd8ce; border-radius: 7px; color: #fff; }
+.is-selected .topping-choice-check { background: #276247; border-color: #276247; }
+.toppings-dialog-actions { display: grid; gap: 9px; padding: 16px 24px 20px; border-top: 1px solid var(--lg-ring); }
+.toppings-dialog-actions .btn-primary { width: 100%; min-height: 52px; }
+.toppings-dialog-skip { min-height: 48px; font-size: 15px; font-weight: 550; color: var(--lg-text-muted); border-radius: 12px; }
+.toppings-dialog-skip:hover { background: #edf2ee; color: var(--lg-text); }
+@media (max-width: 400px) {
+  .toppings-dialog-header { padding: 20px 16px 16px; }
+  .toppings-dialog-header h2 { font-size: 21px; }
+  .toppings-dialog-options { padding-inline: 16px; }
+  .toppings-dialog-actions { padding: 14px 16px 16px; }
+  .topping-choice { gap: 9px; padding: 10px; }
+  .topping-choice-image { width: 36px; height: 36px; }
+}

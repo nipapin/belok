@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { loadProductToppings } from '@/lib/productToppings.server';
 import { loadStockAvailability } from '@/lib/inventoryAvailability.server';
 import type {
   CategoryRow,
@@ -189,6 +190,9 @@ export async function fetchProductsWithRelations(
     if (!product) continue;
     product.variants.push(variant);
   }
+
+  const toppings = await loadProductToppings(ids, filter.stockAvailability);
+  for (const id of ids) productMap.get(id)!.toppings = toppings.get(id) ?? [];
 
   if (filter.stockAvailability) {
     const stock = await loadStockAvailability(ids);

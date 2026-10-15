@@ -10,6 +10,7 @@ import { formatVariantTitle } from "@/lib/productTitle";
 import { useCartStore, type CartItemCustomization } from "@/store/cartStore";
 import { Product } from "@/types";
 import { isNewProduct } from "@/lib/productFlags";
+import { useToppingCart } from '@/hooks/useToppingCart';
 
 function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
   return (
@@ -40,6 +41,7 @@ export default function ProductDetailPage() {
   });
 
   const product: Product | undefined = data?.product;
+  const { addWithToppings, toppingDialog } = useToppingCart(product?.toppings, addItem, () => router.push('/cart'));
 
   const toggleRemove = (ingredientId: string) => {
     setRemovedIngredients((prev) => {
@@ -105,7 +107,7 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!product || product.isAvailable === false) return;
-    addItem({
+    addWithToppings({
       productId: product.id,
       variantId: selectedVariant?.id ?? null,
       variantName: selectedVariant?.name ?? null,
@@ -115,7 +117,6 @@ export default function ProductDetailPage() {
       quantity,
       customizations: getCustomizations(),
     });
-    router.push("/cart");
   };
 
   if (isLoading) {
@@ -161,7 +162,7 @@ export default function ProductDetailPage() {
         ];
 
   return (
-    <div className="">
+    <><div className="">
       <div className="relative -mx-4 -mt-(--client-header-stack-height)">
         <ProductGallery
           slides={slides}
@@ -306,6 +307,6 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
-    </div>
+    </div>{toppingDialog}</>
   );
 }
