@@ -372,7 +372,7 @@ export default function AdminProductForm({ mode, productId, productsV2 = false }
 
   return (
     <>
-      <header className="admin-form-toolbar -mx-2 -mt-(--admin-main-toolbar-shift) mb-6 px-3 pt-4 pb-3 sm:mb-7 sm:px-4 md:-ml-[calc(260px+1rem)] md:-mr-8 md:px-6">
+      <header className="admin-form-toolbar -mx-4 -mt-(--admin-main-toolbar-shift) mb-6 px-4 pt-4 pb-3 max-[359px]:-mx-3 max-[359px]:px-3 sm:mb-7 lg:-mr-8 lg:pr-8">
         <div className="mx-auto flex w-full max-w-2xl min-w-0 items-end justify-between gap-4">
           <div className="min-w-0">
             <p className="admin-form-eyebrow mb-1.5">Каталог</p>
