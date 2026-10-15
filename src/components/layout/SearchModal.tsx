@@ -1,4 +1,5 @@
 "use client";
+import { productHref } from '@/lib/productHref';
 
 import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -7,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 interface Product {
+  slug?: string;
   id: string;
   name: string;
   description: string | null;
@@ -14,7 +16,7 @@ interface Product {
   image: string | null;
   calories: number | null;
   category: { id: string; name: string };
-  variants?: { id: string; name: string; image: string | null }[];
+  variants?: { id: string; slug?:string; name: string; image: string | null }[];
 }
 
 interface SearchModalProps {
@@ -81,8 +83,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     const variant = trimmed
       ? (product.variants ?? []).find((item) => item.name.toLowerCase().includes(trimmed))
       : undefined;
-    const query = variant ? `?v=${encodeURIComponent(variant.id)}` : "";
-    router.push(`/menu/${product.id}${query}`);
+    router.push(productHref(product,variant));
   }
 
   return createPortal(

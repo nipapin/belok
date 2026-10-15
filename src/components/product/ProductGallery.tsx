@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import './product-gallery.css';
 
 export type GallerySlide = {
   key: string;
@@ -89,7 +90,7 @@ export default function ProductGallery({ slides, index, onIndex }: ProductGaller
         <>
           <button
             type="button"
-            className="btn-icon glass-fx absolute top-1/2 left-4 z-10 -translate-y-1/2"
+            className="btn-icon glass-fx product-gallery-control absolute top-1/2 left-4 z-10 -translate-y-1/2"
             aria-label="Предыдущий вариант"
             onClick={() => step(-1)}
           >
@@ -97,7 +98,7 @@ export default function ProductGallery({ slides, index, onIndex }: ProductGaller
           </button>
           <button
             type="button"
-            className="btn-icon glass-fx absolute top-1/2 right-4 z-10 -translate-y-1/2"
+            className="btn-icon glass-fx product-gallery-control absolute top-1/2 right-4 z-10 -translate-y-1/2"
             aria-label="Следующий вариант"
             onClick={() => step(1)}
           >

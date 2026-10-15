@@ -1,0 +1,16 @@
+/* The image canvas is light in both themes, so its controls keep dark icons. */
+.product-gallery-control.btn-icon {
+  color: #26322c;
+  background: rgb(255 255 255 / 94%);
+  border: 1px solid rgb(38 50 44 / 14%);
+  box-shadow: 0 3px 12px rgb(18 37 26 / 12%);
+}
+.product-gallery-control.btn-icon:hover:not(:disabled) {
+  color: #17241d;
+  background: #fff;
+  border-color: rgb(38 50 44 / 28%);
+}
+.product-gallery-control.btn-icon:focus-visible {
+  outline: 2px solid #276247;
+  outline-offset: 3px;
+}

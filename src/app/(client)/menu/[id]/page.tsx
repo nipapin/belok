@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { useCartStore, type CartItemCustomization } from "@/store/cartStore";
 import { Product } from "@/types";
 import { isNewProduct } from "@/lib/productFlags";
 import { useToppingCart } from '@/hooks/useToppingCart';
+import { productHref } from '@/lib/productHref';
 
 function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
   return (
@@ -94,7 +95,7 @@ export default function ProductDetailPage() {
 
   const variants = product?.variants ?? [];
   const requestedIndex = requestedVariantId
-    ? variants.findIndex((variant) => variant.id === requestedVariantId)
+    ? variants.findIndex((variant) => variant.id === requestedVariantId || variant.slug === requestedVariantId)
     : -1;
   const variantIndex =
     product && variantPick?.productId === product.id
@@ -104,6 +105,16 @@ export default function ProductDetailPage() {
         : 0;
   const safeVariantIndex = variants.length === 0 ? 0 : Math.min(variantIndex, variants.length - 1);
   const selectedVariant = variants[safeVariantIndex] ?? null;
+
+  useEffect(() => {
+    if (!product?.slug) return;
+    const canonical = new URL(productHref(product,selectedVariant),window.location.origin);
+    const query = new URLSearchParams(searchParams.toString());
+    if (selectedVariant) query.set('v',selectedVariant.slug || selectedVariant.id);
+    else query.delete('v');
+    const target = canonical.pathname + (query.size ? `?${query}` : '') + window.location.hash;
+    if (window.location.pathname + window.location.search + window.location.hash !== target) window.history.replaceState(null,'',target);
+  },[product,selectedVariant,searchParams]);
 
   const handleAddToCart = () => {
     if (!product || product.isAvailable === false) return;
@@ -172,7 +183,7 @@ export default function ProductDetailPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="btn-icon absolute left-4 bottom-4 z-1200 glass-fx"
+          className="btn-icon product-gallery-control absolute left-4 bottom-4 z-1200 glass-fx"
           aria-label="Назад"
         >
           <ArrowLeft className="size-5" strokeWidth={1.75} />

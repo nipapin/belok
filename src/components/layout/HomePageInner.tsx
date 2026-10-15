@@ -120,6 +120,7 @@ function ProductsBlockView({
             eager={index < 4}
             product={{
               id: product.id,
+              slug: product.slug,
               isAvailable: product.isAvailable,
               name: product.name,
               price: product.price,

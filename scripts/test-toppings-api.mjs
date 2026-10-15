@@ -40,6 +40,12 @@ try {
   const created = await request('/api/admin/products', 'POST', { name:'Тест связей топпингов', price:100, categoryId:'toppings-local-breakfast', toppingIds:[original[0]],variants:[{name:'Рисовая'},{name:'Овсяная'}] });
   assert.equal(created.status, 201, JSON.stringify(created));
   createdId = created.data.product.id;
+  assert.match(created.data.product.slug,/^test-svyazei-toppingov(?:-\d+)?$/);
+  assert.deepEqual(created.data.product.variants.map((variant) => variant.slug),['risovaya','ovsyanaya']);
+  assert.equal((await request('/api/products/'+created.data.product.slug)).data.product.id,createdId);
+  assert.equal((await request('/api/products/'+createdId)).data.product.slug,created.data.product.slug);
+  const renamed = await request('/api/admin/products/'+createdId,'PUT',{name:'Новое название тестового блюда'});
+  assert.equal(renamed.data.product.slug,created.data.product.slug,'Renaming must preserve shared URLs');
   assert.equal(created.data.product.toppings[0].id, original[0]);
   const hiddenCategory = await request('/api/admin/categories','POST',{name:'Топпинги',isActive:false});
   hiddenCategoryId = hiddenCategory.data.category.id;

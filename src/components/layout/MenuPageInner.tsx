@@ -147,6 +147,7 @@ export function MenuPageInner() {
                       eager={categoryIndex === 0 && productIndex < 2}
                       product={{
                         id: product.id,
+                        slug: product.slug,
               isAvailable: product.isAvailable,
                         name: product.name,
                         price: product.price,

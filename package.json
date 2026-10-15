@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "test:toppings": "node --import tsx --test scripts/test-toppings.mts",
+    "test:product-href": "node --import tsx --test scripts/test-product-href.mts",
+    "test:product-slugs:db": "node --import tsx scripts/test-product-slugs.mts",
+    "test:product-urls:browser": "node scripts/test-product-urls-browser.mjs",
     "test:toppings:api": "node scripts/test-toppings-api.mjs",
     "test:toppings:browser": "node scripts/test-toppings-browser.mjs",
     "dev": "next dev",

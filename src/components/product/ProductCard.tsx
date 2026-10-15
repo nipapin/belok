@@ -7,6 +7,7 @@ import { useHaptic } from "@/hooks/useHaptic";
 import { formatVariantTitle } from "@/lib/productTitle";
 import { FoodCard, type FoodCardModel } from "./FoodCard";
 import { useToppingCart } from '@/hooks/useToppingCart';
+import { productHref } from '@/lib/productHref';
 
 export type ProductCardModel = FoodCardModel;
 
@@ -16,7 +17,7 @@ type ProductCardProps = {
 };
 
 function variantSignature(product: ProductCardModel) {
-  return (product.variants ?? []).map((variant) => `${variant.id}:${variant.name}:${variant.image ?? ""}`).join("|");
+  return (product.variants ?? []).map((variant) => `${variant.id}:${variant.slug ?? ''}:${variant.name}:${variant.image ?? ""}`).join("|");
 }
 
 function sameProductCard(prev: ProductCardProps, next: ProductCardProps) {
@@ -25,6 +26,7 @@ function sameProductCard(prev: ProductCardProps, next: ProductCardProps) {
   return (
     prev.eager === next.eager &&
     a.id === b.id &&
+    a.slug === b.slug &&
     a.image === b.image &&
     a.name === b.name &&
     a.price === b.price &&
@@ -116,8 +118,7 @@ export const ProductCard = memo(function ProductCard({ product, eager = false }:
       busy={busy}
       eager={eager}
       onOpen={() => {
-        const query = active ? `?v=${encodeURIComponent(active.id)}` : "";
-        router.push(`/menu/${product.id}${query}`);
+        router.push(productHref(product,active));
       }}
       onAdd={handleAdd}
       onIncrement={handleIncrement}

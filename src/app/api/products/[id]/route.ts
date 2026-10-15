@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchProductById } from '@/lib/queries/products';
+import { fetchProductByHandle } from '@/lib/queries/products';
 
 export async function GET(
   _request: NextRequest,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const product = await fetchProductById(id, true);
+    const product = await fetchProductByHandle(id);
     if (!product || !product.category.isActive) {
       return NextResponse.json({ error: 'Товар не найден' }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
     }

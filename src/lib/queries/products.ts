@@ -10,6 +10,7 @@ import type {
 } from '@/lib/types';
 
 export interface ProductFilter {
+  handle?: string;
   visibleCategoriesOnly?: boolean;
   categoryId?: string | null;
   onlyAvailable?: boolean;
@@ -59,6 +60,7 @@ function rowToCategory(row: ProductJoinedRow): CategoryRow {
 function rowToProduct(row: ProductJoinedRow): ProductWithRelations {
   return {
     id: row.id,
+    slug: row.slug,
     name: row.name,
     description: row.description,
     price: row.price,
@@ -88,6 +90,10 @@ export async function fetchProductsWithRelations(
   const params: unknown[] = [];
 
   if (filter.onlyAvailable) where.push(`p."isAvailable" = TRUE`);
+  if (filter.handle) {
+    params.push(filter.handle);
+    where.push(`(p.id = $${params.length} OR p.slug = $${params.length})`);
+  }
   if (filter.visibleCategoriesOnly) where.push(`c."isActive" = TRUE`);
   if (filter.categoryId) {
     params.push(filter.categoryId);
@@ -106,7 +112,7 @@ export async function fetchProductsWithRelations(
 
   const products = await query<ProductJoinedRow>(
     `SELECT
-       p."id", p."name", p."description", p."price", p."image", p."categoryId",
+       p."id", p.slug, p."name", p."description", p."price", p."image", p."categoryId",
        p."isAvailable", p."calories", p."proteins", p."fats", p."carbs", p."fiber",
        p."weightGrams", p."spicinessLevel",
        p."sortOrder", p."createdAt", p."updatedAt",
@@ -206,4 +212,9 @@ export async function fetchProductsWithRelations(
 export async function fetchProductById(id: string, stockAvailability = false): Promise<ProductWithRelations | null> {
   const list = await fetchProductsWithRelations({ productId: id, stockAvailability });
   return list[0] ?? null;
+}
+
+export async function fetchProductByHandle(handle: string): Promise<ProductWithRelations | null> {
+  const list = await fetchProductsWithRelations({ handle, stockAvailability:true });
+  return list.find((product) => product.id === handle) ?? list[0] ?? null;
 }

@@ -75,6 +75,7 @@ export interface IngredientRow {
 }
 
 export interface ProductRow {
+  slug?: string;
   id: string;
   name: string;
   description: string | null;
@@ -95,6 +96,7 @@ export interface ProductRow {
 }
 
 export interface ProductVariantRow {
+  slug?: string;
   price?: number | null;
   calories?: number | null;
   proteins?: number | null;

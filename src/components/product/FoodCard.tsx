@@ -23,6 +23,7 @@ export type FoodCardVariant = import("@/types").ProductVariant;
 
 
 export type FoodCardModel = {
+  slug?: string;
   toppings?: import('@/lib/toppings').ToppingProduct[];
   isAvailable?: boolean;
   id: string;

@@ -9,6 +9,7 @@ export enum MenuLabel {
 }
 
 export interface ProductVariant {
+  slug?: string;
   price?: number | null;
   calories?: number | null;
   proteins?: number | null;
@@ -23,6 +24,7 @@ export interface ProductVariant {
 }
 
 export interface Product {
+  slug?: string;
   toppings?: import('@/lib/toppings').ToppingProduct[];
   id: string;
   isAvailable?: boolean;
