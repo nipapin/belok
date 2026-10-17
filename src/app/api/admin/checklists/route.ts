@@ -35,7 +35,7 @@ export async function GET() {
   try {
     const user = await requireAdmin("checklists");
     const templates = await query('SELECT * FROM checklist_templates ORDER BY updated_at DESC');
-    const runs = await query('SELECT * FROM checklist_runs WHERE work_date >= CURRENT_DATE - 30 ORDER BY updated_at DESC LIMIT 500');
+    const runs = await query('SELECT * FROM checklist_runs WHERE work_date >= (now() AT TIME ZONE 'Europe/Kaliningrad')::date - 30 ORDER BY updated_at DESC LIMIT 500');
     return NextResponse.json({
       templates: templates.filter(t => canEdit(user) || canRun(user, t.role as string)),
       runs: runs.filter(r => canEdit(user) || r.actor_id === user.id),
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       const parsed = templateSchema.safeParse(body.template);
       if (!parsed.success) return invalid("Проверьте поля и пункты чек-листа");
       const t = parsed.data;
-      const id = typeof body.id === "string" ? body.id : uuid();
+      const id = typeof body.id === "string" && /^[0-9a-f-]{36}$/i.test(body.id) ? body.id : uuid();
       const result = await query(
         `INSERT INTO checklist_templates (id,title,description,role,schedule,active,items)
          VALUES ($1,$2,$3,$4,$5,$6,$7)
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       if (!canRun(user, template.role as string)) return deny();
       const run = await queryOne(
         `INSERT INTO checklist_runs(id,template_id,actor_id,work_date,title,items)
-         VALUES($1,$2,$3,CURRENT_DATE,$4,$5)
+         VALUES($1,$2,$3,(now() AT TIME ZONE 'Europe/Kaliningrad')::date,$4,$5)
          ON CONFLICT(template_id,actor_id,work_date) DO UPDATE SET updated_at=checklist_runs.updated_at
          RETURNING *`,
         [uuid(),template.id,user.id,template.title,JSON.stringify(template.items)]
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
             item.type === "number" && typeof value !== "number" ||
             item.type === "text" && typeof value !== "string") return invalid("Неверный тип ответа");
       }
-      if (body.complete === true && items.data.some(item => item.required && (answers[item.id] === undefined || answers[item.id] === ""))) {
+      if (body.complete === true && items.data.some(item => item.required && (answers[item.id] === undefined || answers[item.id] === "" || (item.type === "check" && answers[item.id] !== true)))) {
         return invalid("Заполните все обязательные пункты");
       }
       const updated = await queryOne(
@@ -106,6 +106,7 @@ export async function POST(request: NextRequest) {
          updated_at=now() WHERE id=$1 AND completed_at IS NULL RETURNING *`,
         [run.id,JSON.stringify(answers),body.complete === true]
       );
+      if (!updated) return invalid("Проверка уже завершена");
       return NextResponse.json({ run: updated });
     }
     return invalid("Неизвестное действие");
