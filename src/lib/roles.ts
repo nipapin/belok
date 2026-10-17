@@ -8,12 +8,12 @@ export const roleLabels: Record<string, string> = {
 };
 export type Permission = 'settings' | 'menu' | 'reports' | 'people' | 'orders' | 'refund'
   | 'cashier' | 'kitchen' | 'availability' | 'inventory' | 'inventory_catalog'
-  | 'inventory_stock' | 'inventory_produce' | 'inventory_access' | 'audit';
+  | 'inventory_stock' | 'inventory_produce' | 'inventory_access' | 'audit' | 'checklists';
 const grants: Record<string, readonly Permission[]> = {
-  MANAGER: ['menu', 'reports', 'people', 'orders', 'refund', 'cashier', 'kitchen', 'availability', 'inventory', 'inventory_catalog', 'inventory_stock', 'inventory_produce', 'audit'],
-  CASHIER: ['orders', 'cashier', 'kitchen'],
-  COOK: ['kitchen', 'availability'],
-  STOCKKEEPER: ['inventory', 'inventory_stock', 'inventory_produce'],
+  MANAGER: ['menu', 'reports', 'people', 'orders', 'refund', 'cashier', 'kitchen', 'availability', 'inventory', 'inventory_catalog', 'inventory_stock', 'inventory_produce', 'audit', 'checklists'],
+  CASHIER: ['orders', 'cashier', 'kitchen', 'checklists'],
+  COOK: ['kitchen', 'availability', 'checklists'],
+  STOCKKEEPER: ['inventory', 'inventory_stock', 'inventory_produce', 'checklists'],
   USER: [],
 };
 export function effectiveRoles(user: AccessUser | null | undefined): readonly string[] {
@@ -46,7 +46,7 @@ const pagePermissions: Record<string, Permission> = {
   '/admin/loyalty': 'cashier', '/admin/products': 'menu', '/admin/products-v2': 'menu', '/admin/categories': 'menu', '/admin/ingredients': 'menu',
   '/admin/inventory': 'inventory', '/admin/recipes': 'inventory', '/admin/kitchen': 'menu', '/kitchen': 'kitchen',
   '/order-board': 'kitchen', '/admin/hits': 'menu', '/admin/users': 'people', '/admin/employees': 'people',
-  '/admin/audit': 'audit', '/admin/availability': 'availability',
+  '/admin/audit': 'audit', '/admin/availability': 'availability', '/admin/checklists': 'checklists',
 };
 export function canAccessPage(user: AccessUser | null | undefined, path: string): boolean {
   const root = Object.keys(pagePermissions).filter(key => path === key || path.startsWith(`${key}/`)).sort((a, b) => b.length - a.length)[0];
