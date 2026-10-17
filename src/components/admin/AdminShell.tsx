@@ -46,6 +46,7 @@ const menuGroups = [
       { label: "Заказы", icon: Receipt, path: "/admin/orders" },
       { label: "Касса и лояльность", icon: ScanLine, path: "/admin/loyalty" },
       { label: "Стоп-лист", icon: UtensilsCrossed, path: "/admin/availability" },
+      { label: "Чек-листы", icon: ClipboardList, path: "/admin/checklists" },
     ],
   },
   {
