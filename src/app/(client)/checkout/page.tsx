@@ -12,6 +12,7 @@ import EffortSlider from '@/components/ui/EffortSlider';
 import PhoneField from '@/components/checkout/PhoneField';
 import DeliveryTimePicker, { ASAP_TIME } from '@/components/checkout/DeliveryTimePicker';
 import KaliningradAddressField from '@/components/checkout/KaliningradAddressField';
+import DeliveryFeeNotice from '@/components/checkout/DeliveryFeeNotice';
 import { formatRuPhoneMask } from '@/lib/phone';
 import { getClientOs } from '@/lib/clientPlatform';
 import type { OrderFulfillment, OrderPaymentMethod } from '@/lib/types';
@@ -24,6 +25,7 @@ export default function CheckoutPage() {
   const haptic = useHaptic();
 
   const [fulfillment, setFulfillment] = useState<OrderFulfillment>('PICKUP');
+  const [deliveryNoticeOpen, setDeliveryNoticeOpen] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryTime, setDeliveryTime] = useState(ASAP_TIME);
   const [pickupTime, setPickupTime] = useState(ASAP_TIME);
@@ -197,6 +199,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-md px-2 pt-2" style={{ paddingBottom: actionPad }}>
+      <DeliveryFeeNotice open={deliveryNoticeOpen} onClose={() => setDeliveryNoticeOpen(false)} />
       <h1 className="heading-section mb-6">Оформление заказа</h1>
 
       <div className="glass-panel mb-4 p-4">
@@ -268,6 +271,7 @@ export default function CheckoutPage() {
           <button type="button" className={choiceClass(fulfillment === 'DELIVERY')} onClick={() => {
             setFulfillment('DELIVERY');
             setPaymentMethod('SBP');
+            setDeliveryNoticeOpen(true);
           }}>
             <Bike className="size-5" strokeWidth={1.75} />
             Доставка
