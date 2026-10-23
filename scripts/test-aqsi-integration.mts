@@ -32,7 +32,7 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     await db.query(`INSERT INTO app_settings (key,value) VALUES ('aqsi',$1),('notification_settings',$2) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[
       JSON.stringify({enabled:true,deviceId:784146,receiptsEnabled:true,catalogEnabled:false,taxSystemCode:1,taxRateId:6,calculationTypeId:4,calculationSubjectId:1,cashierName:''}),JSON.stringify({adminNewOrdersPush:false,autoPushLoyalty:false})]);
     await db.query(`INSERT INTO categories (id,name) VALUES ('cat','Меню'); INSERT INTO products (id,name,price,"categoryId") VALUES ('p','Новое имя',10,'cat')`);
-    const {enqueueCard,processAqsiJobs,cancelAqsiCard,retryAqsiReceipt,reconcileAqsiCardNoCharge}=await import('../src/lib/aqsiJobs');
+    const {enqueueCard,processAqsiJobs,cancelAqsiCard,retryAqsiReceipt,reconcileAqsiCardNoCharge,releaseUncertainKioskCard,aqsiOrderState}=await import('../src/lib/aqsiJobs');
     const {applyTbankPaymentStatus}=await import('../src/lib/tbankPayments');
     const {processAqsiCatalog}=await import('../src/lib/aqsiCatalog');
     let ticket=0;
@@ -105,6 +105,9 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     loseStatus=true;await processAqsiJobs();loseStatus=false;
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cancel-connection-loss'`))?.paymentStatus,'PENDING');
     assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_jobs WHERE "orderId"='cancel-connection-loss'`))?.state,'PROCESSING');
+    const unresolved=await db.queryOne<{id:string}>(`SELECT id FROM aqsi_jobs WHERE "orderId"='cancel-connection-loss'`);assert.ok(unresolved);
+    await assert.rejects(()=>reconcileAqsiCardNoCharge(unresolved.id,'test-admin','Still pending on terminal; cannot claim no debit',false),
+      /aQsi не подтвердил окончание/);
     operations.set(disconnected.operationId,{type:'acquiring.purchase',status:'Canceled',result:null,isCancellationRequested:true});
     await processAqsiJobs();
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cancel-connection-loss'`))?.paymentStatus,'CANCELLED');
@@ -115,6 +118,11 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='uncertain'`)).length,0,'uncertain payment cannot become a payable deferred order');
     await order('next-card');await processAqsiJobs();assert.equal(posts,before+1,'unknown result must block next terminal payment');
     const unknownJob=await db.queryOne<{id:string}>(`SELECT id FROM aqsi_jobs WHERE "orderId"='uncertain'`);assert.ok(unknownJob);
+    await releaseUncertainKioskCard(unknownJob.id,'test-admin','No response; kiosk screen needed for cash customers');
+    await releaseUncertainKioskCard(unknownJob.id,'test-admin','Repeated client request must stay idempotent');
+    assert.equal((await aqsiOrderState('uncertain')).kioskReleased,true,'screen can be released without a false bank cancellation');
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='uncertain'`))?.paymentStatus,'PENDING','UI release does not cancel bank payment');
+    assert.equal((await db.query<{id:string}>(`SELECT id FROM aqsi_kiosk_releases WHERE "orderId"='uncertain'`)).length,1,'release is audited once');
     const existingOrders=(await db.query<{id:string}>(`SELECT id FROM orders`)).length;
     await reconcileAqsiCardNoCharge(unknownJob.id,'test-admin','aQsi history checked: no card transaction; cash paid at register',true);
     assert.equal((await db.queryOne<{paymentStatus:string;status:string}>(`SELECT "paymentStatus",status FROM orders WHERE id='uncertain'`))?.paymentStatus,'CANCELLED');
