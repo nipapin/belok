@@ -71,10 +71,10 @@ async function failCard(job: AqsiJob, error: string, cancellationRequested = fal
     )).rows[0];
     await client.query(`UPDATE aqsi_jobs SET state='FAILED',error=$2,"updatedAt"=NOW() WHERE id=$1`, [job.id,error]);
     if (!order || order.paymentStatus !== 'PENDING') return;
-    const abandon = job.cancelIntent === 'CANCEL' ||
-      (cancellationRequested && job.cancelIntent !== 'DEFER');
-    if (!abandon && order.status !== 'CANCELLED') {
-      // Failure and fallback commit together. Keep the order, number and spent bonuses.
+    // Do not create a second payable item at the till by default.
+    // Cash fallback is allowed only after an explicit DEFER intent AND a
+    // definitive aQsi no-charge result. Otherwise cancel the kiosk order.
+    if (job.cancelIntent === 'DEFER' && order.status !== 'CANCELLED') {
       await enqueueCashOrder(client,job.orderId,job.deviceId);
     } else {
       await client.query(`UPDATE orders SET status='CANCELLED' WHERE id=$1`, [job.orderId]);
