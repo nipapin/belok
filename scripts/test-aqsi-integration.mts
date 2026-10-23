@@ -128,6 +128,7 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     const next=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='next-card'`);assert.ok(next);
     await db.query(`INSERT INTO users (id,email,"passwordHash","bonusBalance") VALUES ('fallback-user','fallback@example.test','unused-test-hash',10)`);
     await db.query(`UPDATE orders SET "userId"='fallback-user',"bonusUsed"=3 WHERE id='next-card'`);
+    await cancelAqsiCard('next-card','DEFER');
     operations.set(next.operationId,{type:'acquiring.purchase',status:'Canceled',result:null});await processAqsiJobs();
     await processAqsiJobs();
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='next-card'`))?.paymentStatus,'PENDING');
@@ -247,8 +248,8 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     assert.equal(posts,cardPosts);
     await order('expired');await db.query(`UPDATE aqsi_jobs SET "createdAt"=NOW()-INTERVAL '3 minutes' WHERE "orderId"='expired'`);await processAqsiJobs();
     assert.equal(posts,cardPosts,'expired queued cards must never be submitted');
-    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='expired'`))?.paymentStatus,'PENDING');
-    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='expired'`)).length,1,'an unsent expired card can be paid at the cashier');
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='expired'`))?.paymentStatus,'CANCELLED');
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='expired'`)).length,0,'an unsent expired card cannot create a second payable till order');
     // Bulk upsert and verification, including disabling a deleted site product.
     await db.query(`UPDATE app_settings SET value=jsonb_set(value,'{catalogEnabled}','true') WHERE key='aqsi'`);
     let categories:Record<string,unknown>[]=[];
