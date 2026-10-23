@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { query, queryOne } from '@/lib/db';
 import { getAqsiConfig, fiscalConfigured } from '@/lib/aqsiConfig';
 import { setAppSetting } from '@/lib/appSettings';
-import { processAqsiJobs, retryAqsiReceipt, reconcileAqsiCardNoCharge, type AqsiJob } from '@/lib/aqsiJobs';
+import { processAqsiJobs, retryAqsiReceipt, reconcileAqsiCardNoCharge, releaseUncertainKioskCard, type AqsiJob } from '@/lib/aqsiJobs';
 import { processAqsiCatalog } from '@/lib/aqsiCatalog';
 import { aqsiRequest, type AqsiOperation } from '@/lib/aqsi';
 import { processAqsiCashOrders } from '@/lib/aqsiCashOrders';
@@ -23,7 +23,8 @@ export async function GET() {
     await requireAdmin();
     const [config,jobs,catalog]=await Promise.all([getAqsiConfig(),
       query(`SELECT j.*,o."dailyNumber",o."paymentStatus",o.status AS "orderStatus",
-          r.evidence AS "reconciliationNote",r."cashPaidElsewhere"
+          r.evidence AS "reconciliationNote",r."cashPaidElsewhere",
+          k.reason AS "kioskReleaseReason"
         FROM (
           SELECT id,"orderId",kind,state,"operationId"::text,error,payload,
             "submittedAt","createdAt","cancelIntent" FROM aqsi_jobs
@@ -31,6 +32,7 @@ export async function GET() {
             "submittedAt","createdAt",NULL::text AS "cancelIntent" FROM aqsi_cash_orders
         ) j LEFT JOIN orders o ON o.id=j."orderId"
         LEFT JOIN aqsi_card_reconciliations r ON r."jobId"=j.id
+        LEFT JOIN aqsi_kiosk_releases k ON k."jobId"=j.id
         ORDER BY j."createdAt" DESC LIMIT 50`),
       queryOne(`SELECT revision,"syncedRevision",phase,"taskId",error,"updatedAt" FROM aqsi_catalog_sync WHERE id=1`)]);
     return NextResponse.json({config,keyConfigured:Boolean(process.env.AQSI_API_KEY?.trim()),jobs,catalog},{headers:{'Cache-Control':'private, no-store'}});
@@ -66,6 +68,14 @@ export async function POST(request:NextRequest) {
       // Only definitive failures can be retried. UNKNOWN cannot be resubmitted.
       if(typeof body.jobId!=='string' || !/^[0-9a-f-]{36}$/i.test(body.jobId)) return NextResponse.json({error:'Некорректный ID чека'},{status:400});
       if(!await retryAqsiReceipt(body.jobId)) return NextResponse.json({error:'Повторно отправить можно только чек с подтверждённой ошибкой'},{status:409});
+    } else if(body.action==='releaseKiosk') {
+      const input=z.object({jobId:z.string().uuid(),reason:z.string().trim().min(12).max(500),
+        confirmedUnresolved:z.literal(true)}).safeParse(body);
+      if(!input.success) return NextResponse.json({error:'Укажите причину и подтвердите сохранение неопределённого банковского статуса'},{status:400});
+      try {
+        const result=await releaseUncertainKioskCard(input.data.jobId,String(actor.id),input.data.reason);
+        return NextResponse.json({ok:true,...result},{headers:{'Cache-Control':'private, no-store'}});
+      } catch(error) {return NextResponse.json({error:(error as Error).message || 'Не удалось освободить экран'},{status:409})}
     } else if(body.action==='reconcileCardNoCharge') {
       const input=z.object({
         jobId:z.string().uuid(),evidence:z.string().trim().min(12).max(500),
