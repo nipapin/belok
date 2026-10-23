@@ -170,6 +170,10 @@ export async function POST(request: NextRequest) {
     const needsTerminal = total > 0 && requestedMethod === 'CARD';
     const aqsi = await getAqsiConfig();
     const needsCashOrder=total>0 && requestedMethod==='CASH' && aqsiConfigured(aqsi) && aqsi.cashOrdersEnabled;
+    if (needsTerminal && await queryOne(`SELECT id FROM aqsi_jobs
+      WHERE kind='CARD' AND state IN ('SUBMITTING','PROCESSING','UNKNOWN') LIMIT 1`)) {
+      return NextResponse.json({error:'Карточный терминал ожидает сверку предыдущей операции. Обратитесь к сотруднику.',notCreated:true},{status:409});
+    }
     if (needsTerminal && (!aqsiConfigured(aqsi) || !aqsi.receiptsEnabled || !fiscalConfigured(aqsi))) {
       return NextResponse.json({error:'Оплата картой на терминале пока не настроена',notCreated:true},{status:503});
     }
