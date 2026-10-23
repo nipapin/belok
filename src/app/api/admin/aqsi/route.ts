@@ -93,11 +93,13 @@ export async function POST(request:NextRequest) {
       if(!job) return NextResponse.json({error:'Операция не требует сверки'},{status:409});
       if(job.operationId && job.operationId!==body.operationId) return NextResponse.json({error:'ID операции не совпадает с сохранённым. Проверьте в aQsi'},{status:409});
       const operation=await aqsiRequest<AqsiOperation & {createdAt?:string}>(`/v4/Operations/${body.operationId}`);
+      const submittedAt=job.submittedAt ? new Date(job.submittedAt).getTime() : NaN;
+      const operationCreatedAt=operation.createdAt ? Date.parse(operation.createdAt) : NaN;
       if(operation.operationId!==body.operationId || operation.deviceId!==job.deviceId ||
         operation.type!==(job.kind==='CARD' ? 'acquiring.purchase' : 'receipt.process') ||
-        (!job.operationId && (!operation.createdAt || !Number.isFinite(Date.parse(operation.createdAt)) ||
-        Date.parse(operation.createdAt)<new Date(job.createdAt).getTime()-5000)))
-        return NextResponse.json({error:'Эта операция не соответствует заказу'},{status:400});
+        (!job.operationId && (!Number.isFinite(submittedAt) || !Number.isFinite(operationCreatedAt) ||
+          operationCreatedAt<submittedAt-5000 || operationCreatedAt>submittedAt+180_000)))
+        return NextResponse.json({error:'Эта операция не соответствует времени отправки и устройству заказа'},{status:400});
       await query(`UPDATE aqsi_jobs SET state='PROCESSING',"operationId"=$2,error=NULL,"updatedAt"=NOW() WHERE id=$1 AND state='UNKNOWN'`,[job.id,operation.operationId]);
     } else if(body.action!=='process') return NextResponse.json({error:'Неизвестное действие'},{status:400});
     after(async()=>{await processAqsiJobs();await processAqsiCashOrders();await processAqsiCatalog()});
