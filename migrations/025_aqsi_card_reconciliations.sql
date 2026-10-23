@@ -10,3 +10,13 @@ CREATE TABLE IF NOT EXISTS aqsi_card_reconciliations (
   "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS aqsi_card_reconciliations_order ON aqsi_card_reconciliations ("orderId");
+
+-- A kiosk UI release is independent of the acquiring state. Do not turn
+-- UNKNOWN into CANCELLED merely to accept the next guest.
+CREATE TABLE IF NOT EXISTS aqsi_kiosk_releases (
+  "jobId" UUID PRIMARY KEY REFERENCES aqsi_jobs(id),
+  "orderId" TEXT NOT NULL REFERENCES orders(id),
+  "actorId" TEXT NOT NULL,
+  reason TEXT NOT NULL CHECK (char_length(reason) BETWEEN 12 AND 500),
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
