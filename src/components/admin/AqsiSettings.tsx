@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 
 interface Config { enabled:boolean;deviceId:number;receiptsEnabled:boolean;catalogEnabled:boolean;cashOrdersEnabled:boolean;taxSystemCode:number;taxRateId:number|null;calculationTypeId:number|null;calculationSubjectId:number;cashierName:string }
-interface Job {id:string;orderId:string;dailyNumber:number;kind:string;state:string;operationId:string|null;error:string|null;payload:Record<string,unknown>|null;submittedAt:string|null}
+interface Job {id:string;orderId:string;dailyNumber:number;kind:string;state:string;operationId:string|null;error:string|null;payload:Record<string,unknown>|null;submittedAt:string|null;createdAt:string;paymentStatus?:string;orderStatus?:string;cancelIntent?:string|null;reconciliationNote?:string|null;cashPaidElsewhere?:boolean|null;kioskReleaseReason?:string|null}
 interface Info {config:Config;keyConfigured:boolean;jobs:Job[];catalog:{phase:string;revision:string;syncedRevision:string;error:string|null}|null}
 const stateLabels:Record<string,string>={QUEUED:'В очереди',SUBMITTING:'Отправляем',PROCESSING:'Выполняется',SUCCEEDED:'Готово',FAILED:'Ошибка',UNKNOWN:'Требуется сверка',BLOCKED:'Ожидает настройки',WAITING:'На кассе, ожидает оплаты',CANCELLED:'Отменён на кассе'};
 export default function AqsiSettings() {
@@ -11,6 +11,11 @@ export default function AqsiSettings() {
   const [draft,setDraft]=useState<Config|null>(null);
   const [message,setMessage]=useState('');
   const [operations,setOperations]=useState<Record<string,string>>({});
+  const [notes,setNotes]=useState<Record<string,string>>({});
+  const [paidElsewhere,setPaidElsewhere]=useState<Record<string,boolean>>({});
+  const [verified,setVerified]=useState<Record<string,boolean>>({});
+  const [releaseNotes,setReleaseNotes]=useState<Record<string,string>>({});
+  const [releaseConfirmed,setReleaseConfirmed]=useState<Record<string,boolean>>({});
   const {data,isError}=useQuery({queryKey:['admin-aqsi'],queryFn:async()=>{
     const response=await fetch('/api/admin/aqsi');if(!response.ok)throw new Error();return response.json() as Promise<Info>;
   },refetchInterval:5000});
@@ -55,6 +60,9 @@ export default function AqsiSettings() {
       <p>Заказ #{job.dailyNumber} · {job.kind==='CARD' ? 'Карта' : job.kind==='CASH_ORDER' ? 'Отложенный заказ · оплата на кассе' : 'Чек'} · {job.kind==='CASH_ORDER' && job.state==='SUCCEEDED' ? 'Оплачен, чек оформлен на кассе' : stateLabels[job.state] ?? job.state}</p>
       {job.operationId ? <p className="break-all text-xs">{job.kind==='CASH_ORDER' ? 'ID aQsi' : 'Операция aQsi'}: {job.operationId}</p> : null}
       {job.error ? <p>{job.error}</p> : null}
+      {job.cancelIntent ? <p>Запрошено действие: {job.cancelIntent==='CANCEL' ? 'отмена карточной операции' : 'передача на кассу'}</p> : null}
+      {job.kioskReleaseReason ? <p className="mt-2 text-amber-600">Экран освобождён без изменения статуса оплаты: {job.kioskReleaseReason}. Карта остаётся заблокированной до сверки.</p> : null}
+      {job.reconciliationNote ? <p className="mt-2">Ручная сверка: {job.reconciliationNote}. {job.cashPaidElsewhere ? 'Наличные пробиты отдельно; продажу повторно не учитываем.' : 'Списание не обнаружено.'}</p> : null}
       {job.payload ? <details className="mt-3 rounded-lg border p-3">
         <summary className="cursor-pointer font-medium">{job.submittedAt || job.operationId ? 'Последний запрос в aQsi' : 'Подготовленный запрос (ещё не отправлен)'}</summary>
         <p className="mt-3 break-all font-mono text-xs">POST https://api.aqsi.ru/pub{job.kind==='CARD' ? '/v4/Slips/process/purchase' : job.kind==='CASH_ORDER' ? '/v2/Orders/simple' : '/v4/Receipts/process'}</p>
@@ -64,7 +72,23 @@ export default function AqsiSettings() {
       </details> : <p className="mt-2 text-xs text-(--lg-text-muted)">Запрос в aQsi ещё не сформирован.</p>}
       {job.kind==='CASH_ORDER' && job.state==='UNKNOWN' ? <p>Проверяем отложенный заказ автоматически. Проверьте заказ и чек на кассе; повторно заказ не отправляется.</p> : null}
       {job.state==='UNKNOWN' && job.kind!=='CASH_ORDER' ? <div className="mt-2 space-y-2"><p>Проверьте историю aQsi. Укажите ID соответствующей операции для сверки. Повторно оплачивать заказ нельзя.</p><input className="input-pill" placeholder="ID операции aQsi" value={operations[job.id] ?? ''} onChange={e=>setOperations({...operations,[job.id]:e.target.value})}/><button className="btn-outline" disabled={mutation.isPending} onClick={()=>mutation.mutate({method:'POST',body:{action:'reconcile',jobId:job.id,operationId:operations[job.id]}})}>Сверить операцию</button></div> : null}
-      {job.kind==='RECEIPT' && job.state==='FAILED' ? <div className="mt-2"><p>Проверьте историю кассы: повторная отправка допустима только если фискальный чек не создан.</p><button className="btn-outline mt-2" disabled={mutation.isPending || Boolean(draft)} onClick={()=>mutation.mutate({method:'POST',body:{action:'retryReceipt',jobId:job.id}})}>Чек не создан — отправить повторно</button></div> : null}
+      {job.kind==='CARD' && ['SUBMITTING','PROCESSING','UNKNOWN'].includes(job.state) && job.paymentStatus==='PENDING' && !job.kioskReleaseReason ? <div className="mt-3 space-y-2 rounded-xl border p-3">
+         <p className="font-medium">Восстановить работу киоска без отмены оплаты</p>
+         <p>Экран заказа освободится, но операция по карте останется в текущем статусе и заблокирует новые карточные платежи. СБП и наличные останутся доступны. Сверка в aQsi обязательна.</p>
+         <textarea className="input-pill w-full" rows={2} placeholder="Причина восстановления экрана для следующих покупателей" value={releaseNotes[job.id]??''} onChange={e=>setReleaseNotes(old=>({...old,[job.id]:e.target.value}))}/>
+         <label className="flex items-start gap-2"><input type="checkbox" checked={Boolean(releaseConfirmed[job.id])} onChange={e=>setReleaseConfirmed(old=>({...old,[job.id]:e.target.checked}))}/> Подтверждаю: банковский статус неизвестен, списание НЕ отменяется, операцию необходимо сверить отдельно</label>
+         <button className="btn-outline" disabled={mutation.isPending || !releaseConfirmed[job.id] || (releaseNotes[job.id]?.trim().length??0)<12} onClick={()=>mutation.mutate({method:'POST',body:{action:'releaseKiosk',jobId:job.id,reason:releaseNotes[job.id],confirmedUnresolved:true}})}>Освободить экран киоска · без финансовых действий</button>
+       </div> : null}
+       {job.kind==='CARD' && ['UNKNOWN','PROCESSING'].includes(job.state) && job.paymentStatus==='PENDING' ? <div className="mt-3 space-y-3 rounded-xl border border-amber-400/40 p-3">
+         <p className="font-medium">Ручная сверка оплаты · заказ #{job.dailyNumber}</p>
+         <p>Проверьте в aQsi операцию, банковское списание и историю кассы. Если операция выполняется, сперва завершите её на терминале и дождитесь окончательного статуса. Не создавайте и не пробивайте заказ повторно.</p>
+         <p className="text-xs text-(--lg-text-muted)">Ручное закрытие допускается после проверки отсутствия карточного списания. Исходный заказ будет отменён; при уже принятой наличной оплате новая продажа не создаётся.</p>
+         <textarea className="input-pill w-full" rows={2} placeholder="Когда и где проверили aQsi, ID операции, подтверждение отсутствия списания" value={notes[job.id]??''} onChange={e=>setNotes(old=>({...old,[job.id]:e.target.value}))}/>
+         <label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(paidElsewhere[job.id])} onChange={e=>setPaidElsewhere(old=>({...old,[job.id]:e.target.checked}))}/> Покупатель уже оплатил наличными на основной кассе</label>
+         <label className="flex items-start gap-2"><input type="checkbox" checked={Boolean(verified[job.id])} onChange={e=>setVerified(old=>({...old,[job.id]:e.target.checked}))}/> Я проверил историю aQsi и подтверждаю, что списания по карте нет</label>
+         <button className="btn-outline" disabled={mutation.isPending || !verified[job.id] || (notes[job.id]?.trim().length??0)<12} onClick={()=>mutation.mutate({method:'POST',body:{action:'reconcileCardNoCharge',jobId:job.id,evidence:notes[job.id],cashPaidElsewhere:Boolean(paidElsewhere[job.id]),confirmedNoCharge:true}})}>Завершить сверку и освободить киоск</button>
+       </div> : null}
+       {job.kind==='RECEIPT' && job.state==='FAILED' ? <div className="mt-2"><p>Проверьте историю кассы: повторная отправка допустима только если фискальный чек не создан.</p><button className="btn-outline mt-2" disabled={mutation.isPending || Boolean(draft)} onClick={()=>mutation.mutate({method:'POST',body:{action:'retryReceipt',jobId:job.id}})}>Чек не создан — отправить повторно</button></div> : null}
     </div>)}</div>
     </details>
   </section>;
