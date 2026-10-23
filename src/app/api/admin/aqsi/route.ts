@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { query, queryOne } from '@/lib/db';
 import { getAqsiConfig, fiscalConfigured } from '@/lib/aqsiConfig';
 import { setAppSetting } from '@/lib/appSettings';
-import { processAqsiJobs, retryAqsiReceipt, type AqsiJob } from '@/lib/aqsiJobs';
+import { processAqsiJobs, retryAqsiReceipt, reconcileAqsiCardNoCharge, type AqsiJob } from '@/lib/aqsiJobs';
 import { processAqsiCatalog } from '@/lib/aqsiCatalog';
 import { aqsiRequest, type AqsiOperation } from '@/lib/aqsi';
 import { processAqsiCashOrders } from '@/lib/aqsiCashOrders';
@@ -22,10 +22,16 @@ export async function GET() {
   try {
     await requireAdmin();
     const [config,jobs,catalog]=await Promise.all([getAqsiConfig(),
-      query(`SELECT j.*,o."dailyNumber" FROM (
-        SELECT id,"orderId",kind,state,"operationId"::text,error,payload,"submittedAt","createdAt" FROM aqsi_jobs
-        UNION ALL SELECT id,"orderId",'CASH_ORDER',state,"operationId",error,payload,"submittedAt","createdAt" FROM aqsi_cash_orders
-      ) j LEFT JOIN orders o ON o.id=j."orderId" ORDER BY j."createdAt" DESC LIMIT 50`),
+      query(`SELECT j.*,o."dailyNumber",o."paymentStatus",o.status AS "orderStatus",
+          r.evidence AS "reconciliationNote",r."cashPaidElsewhere"
+        FROM (
+          SELECT id,"orderId",kind,state,"operationId"::text,error,payload,
+            "submittedAt","createdAt","cancelIntent" FROM aqsi_jobs
+          UNION ALL SELECT id,"orderId",'CASH_ORDER',state,"operationId",error,payload,
+            "submittedAt","createdAt",NULL::text AS "cancelIntent" FROM aqsi_cash_orders
+        ) j LEFT JOIN orders o ON o.id=j."orderId"
+        LEFT JOIN aqsi_card_reconciliations r ON r."jobId"=j.id
+        ORDER BY j."createdAt" DESC LIMIT 50`),
       queryOne(`SELECT revision,"syncedRevision",phase,"taskId",error,"updatedAt" FROM aqsi_catalog_sync WHERE id=1`)]);
     return NextResponse.json({config,keyConfigured:Boolean(process.env.AQSI_API_KEY?.trim()),jobs,catalog},{headers:{'Cache-Control':'private, no-store'}});
   } catch(error) {return failure(error)}
@@ -52,7 +58,7 @@ export async function PUT(request:NextRequest) {
 }
 export async function POST(request:NextRequest) {
   try {
-    await requireAdmin();
+    const actor=await requireAdmin();
     const body=await request.json();
     if(body.action==='sync') {
       await query(`UPDATE aqsi_catalog_sync SET revision=revision+1 WHERE id=1`);
@@ -60,12 +66,28 @@ export async function POST(request:NextRequest) {
       // Only definitive failures can be retried. UNKNOWN cannot be resubmitted.
       if(typeof body.jobId!=='string' || !/^[0-9a-f-]{36}$/i.test(body.jobId)) return NextResponse.json({error:'Некорректный ID чека'},{status:400});
       if(!await retryAqsiReceipt(body.jobId)) return NextResponse.json({error:'Повторно отправить можно только чек с подтверждённой ошибкой'},{status:409});
+    } else if(body.action==='reconcileCardNoCharge') {
+      const input=z.object({
+        jobId:z.string().uuid(),evidence:z.string().trim().min(12).max(500),
+        cashPaidElsewhere:z.boolean(),confirmedNoCharge:z.literal(true),
+      }).safeParse(body);
+      if(!input.success) return NextResponse.json({error:'Подтвердите проверку отсутствия списания, укажите примечание и способ оплаты'},{status:400});
+      try {
+        const result=await reconcileAqsiCardNoCharge(input.data.jobId,String(actor.id),input.data.evidence,input.data.cashPaidElsewhere);
+        return NextResponse.json({ok:true,...result},{headers:{'Cache-Control':'private, no-store'}});
+      } catch(error) {
+        return NextResponse.json({error:(error as Error).message || 'Сверка невозможна'},{status:409});
+      }
     } else if(body.action==='reconcile' && typeof body.operationId==='string' && /^[0-9a-f-]{36}$/i.test(body.operationId)) {
       const job=await queryOne<AqsiJob>('SELECT * FROM aqsi_jobs WHERE id=$1 AND state=\'UNKNOWN\'',[body.jobId]);
       if(!job) return NextResponse.json({error:'Операция не требует сверки'},{status:409});
-      const operation=await aqsiRequest<AqsiOperation & {createdAt:string}>(`/v4/Operations/${body.operationId}`);
-      if(operation.deviceId!==job.deviceId || operation.type!==(job.kind==='CARD' ? 'acquiring.purchase' : 'receipt.process') ||
-        new Date(operation.createdAt).getTime()<new Date(job.createdAt).getTime()-5000) return NextResponse.json({error:'Эта операция не соответствует заказу'},{status:400});
+      if(job.operationId && job.operationId!==body.operationId) return NextResponse.json({error:'ID операции не совпадает с сохранённым. Проверьте в aQsi'},{status:409});
+      const operation=await aqsiRequest<AqsiOperation & {createdAt?:string}>(`/v4/Operations/${body.operationId}`);
+      if(operation.operationId!==body.operationId || operation.deviceId!==job.deviceId ||
+        operation.type!==(job.kind==='CARD' ? 'acquiring.purchase' : 'receipt.process') ||
+        (!job.operationId && (!operation.createdAt || !Number.isFinite(Date.parse(operation.createdAt)) ||
+        Date.parse(operation.createdAt)<new Date(job.createdAt).getTime()-5000)))
+        return NextResponse.json({error:'Эта операция не соответствует заказу'},{status:400});
       await query(`UPDATE aqsi_jobs SET state='PROCESSING',"operationId"=$2,error=NULL,"updatedAt"=NOW() WHERE id=$1 AND state='UNKNOWN'`,[job.id,operation.operationId]);
     } else if(body.action!=='process') return NextResponse.json({error:'Неизвестное действие'},{status:400});
     after(async()=>{await processAqsiJobs();await processAqsiCashOrders();await processAqsiCatalog()});
