@@ -17,6 +17,7 @@ export interface AqsiJob {
   cancelIntent: 'CANCEL' | 'DEFER' | null;
   submittedAt: Date | null;
   updatedAt: Date;
+  kioskReleased?: boolean;
 }
 
 export async function enqueueCard(client: PoolClient, orderId: string, total: number, deviceId: number) {
@@ -183,12 +184,15 @@ export async function processAqsiJobs() {
 }
 
 export async function aqsiOrderState(orderId: string) {
-  const jobs = await query<AqsiJob>(`SELECT * FROM aqsi_jobs WHERE "orderId"=$1`,[orderId]);
+  const jobs = await query<AqsiJob>(`SELECT j.*, (r."jobId" IS NOT NULL) AS "kioskReleased"
+    FROM aqsi_jobs j LEFT JOIN aqsi_kiosk_releases r ON r."jobId"=j.id
+    WHERE j."orderId"=$1`,[orderId]);
   const card = jobs.find(job => job.kind === 'CARD');
   const receipt = jobs.find(job => job.kind === 'RECEIPT');
   const deferred = await queryOne<{state:string}>(`SELECT state FROM aqsi_cash_orders WHERE "orderId"=$1`,[orderId]);
   return { terminalState:card?.state ?? null, deferredState:deferred?.state ?? null, cancelIntent:card?.cancelIntent ?? null,
     terminalStartedAt:card?.createdAt ?? null, cancelRequestedAt:card?.cancelIntent ? card.updatedAt : null,
+    kioskReleased:card?.kioskReleased ?? false,
     receiptState:deferred?.state === 'SUCCEEDED' ? 'SUCCEEDED' : receipt?.state ?? null,
     terminalMessage:card?.state === 'UNKNOWN' ? 'Результат оплаты неизвестен. Нужна сверка сотрудником в aQsi; не оплачивайте повторно.' : null };
 }
@@ -284,4 +288,24 @@ export async function reconcileAqsiCardNoCharge(
     try {await client.query('SELECT pg_advisory_unlock(784146,20)')}
     finally {client.release()}
   }
+}
+
+/**
+ * Releases ONLY the customer-facing screen. Bank state and terminal worker
+ * remain untouched; further card payments are blocked until reconciliation.
+ */
+export async function releaseUncertainKioskCard(jobId: string, actorId: string, reason: string) {
+  const note = reason.trim();
+  if (note.length < 12 || note.length > 500) throw new Error('Укажите причину разблокировки (12–500 символов)');
+  return withTransaction(async client => {
+    const job = (await client.query<AqsiJob>(`SELECT j.* FROM aqsi_jobs j
+      JOIN orders o ON o.id=j."orderId"
+      WHERE j.id=$1 AND j.kind='CARD' AND j.state IN ('SUBMITTING','PROCESSING','UNKNOWN')
+        AND o."paymentStatus"='PENDING' FOR UPDATE OF j`,[jobId])).rows[0];
+    if (!job) throw new Error('Операция уже завершена или не требует восстановления');
+    await client.query(`INSERT INTO aqsi_kiosk_releases
+      ("jobId","orderId","actorId",reason) VALUES ($1,$2,$3,$4)
+      ON CONFLICT ("jobId") DO NOTHING`,[job.id,job.orderId,actorId,note]);
+    return {orderId:job.orderId};
+  });
 }
