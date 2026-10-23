@@ -15,12 +15,14 @@ interface TerminalPaymentState {
   cancelRequestedAt?: string | null;
   deferredState?: string | null;
   cancelIntent?: 'CANCEL' | 'DEFER' | null;
+  kioskReleased?: boolean;
 }
 
-export default function TerminalPayPanel({orderId,onStatus,onDeferred}:{orderId:string;onStatus:(status:string)=>void;onDeferred:()=>void}) {
+export default function TerminalPayPanel({orderId,onStatus,onDeferred,onReleased}:{orderId:string;onStatus:(status:string)=>void;onDeferred:()=>void;onReleased:()=>void}) {
   const callback = useRef(onStatus);
   const deferredCallback = useRef(onDeferred);
-  useEffect(()=>{callback.current=onStatus;deferredCallback.current=onDeferred},[onStatus,onDeferred]);
+  const releasedCallback = useRef(onReleased);
+  useEffect(()=>{callback.current=onStatus;deferredCallback.current=onDeferred;releasedCallback.current=onReleased},[onStatus,onDeferred,onReleased]);
   const [cancellation,setCancellation]=useState<'CANCEL'|null>(null);
   const [error,setError]=useState('');
   const [now,setNow]=useState(0);
@@ -40,8 +42,9 @@ export default function TerminalPayPanel({orderId,onStatus,onDeferred}:{orderId:
   });
   useEffect(()=>{
     if (data?.paymentStatus === 'SUCCEEDED' || data?.paymentStatus === 'CANCELLED') callback.current(data.paymentStatus);
+    else if (data?.kioskReleased) releasedCallback.current();
     else if (data?.deferredState === 'WAITING') deferredCallback.current();
-  },[data?.paymentStatus,data?.deferredState]);
+  },[data?.paymentStatus,data?.deferredState,data?.kioskReleased]);
 
   async function cancel() {
     if(cancellation) return;
