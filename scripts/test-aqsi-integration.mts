@@ -122,7 +122,7 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     await releaseUncertainKioskCard(unknownJob.id,'test-admin','Repeated client request must stay idempotent');
     assert.equal((await aqsiOrderState('uncertain')).kioskReleased,true,'screen can be released without a false bank cancellation');
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='uncertain'`))?.paymentStatus,'PENDING','UI release does not cancel bank payment');
-    assert.equal((await db.query<{id:string}>(`SELECT id FROM aqsi_kiosk_releases WHERE "orderId"='uncertain'`)).length,1,'release is audited once');
+    assert.equal((await db.query<{id:string}>(`SELECT "jobId" FROM aqsi_kiosk_releases WHERE "orderId"='uncertain'`)).length,1,'release is audited once');
     const existingOrders=(await db.query<{id:string}>(`SELECT id FROM orders`)).length;
     await reconcileAqsiCardNoCharge(unknownJob.id,'test-admin','aQsi history checked: no card transaction; cash paid at register',true);
     assert.equal((await db.queryOne<{paymentStatus:string;status:string}>(`SELECT "paymentStatus",status FROM orders WHERE id='uncertain'`))?.paymentStatus,'CANCELLED');
