@@ -608,7 +608,7 @@ export default function KioskApp() {
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-4">
           <div className="mx-auto w-full max-w-md">
-            {payOrder.paymentMethod === 'CARD' ? <TerminalPayPanel orderId={payOrder.orderId} onStatus={handlePayStatus} onDeferred={handleDeferred} /> : <SbpPayPanel
+            {payOrder.paymentMethod === 'CARD' ? <TerminalPayPanel orderId={payOrder.orderId} onStatus={handlePayStatus} onDeferred={handleDeferred} onReleased={()=>{resetGuest();setSession(current=>current?{...current,cardEnabled:false}:current)}} /> : <SbpPayPanel
               orderId={payOrder.orderId}
               statusUrl={`/api/kiosk/orders/${payOrder.orderId}/payment`}
               initialPayload={payOrder.payload}
