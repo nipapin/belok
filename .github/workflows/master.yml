@@ -56,6 +56,7 @@ jobs:
         env:
           INVENTORY_TEST_PGLITE_MODULE: ${{ runner.temp }}/belok-test-db/node_modules/@electric-sql/pglite/dist/index.js
       - run: python3 scripts/deploy/test-production-deploy.py
+      - run: python3 deploy/test-firstvds-receiver.py
       - run: npm run test:aqsi:integration
         env:
           AQSI_TEST_DATABASE_URL: postgresql://aqsi_test:aqsi_test@127.0.0.1:5432/aqsi_test
@@ -72,14 +73,14 @@ jobs:
           retention-days: 7
           if-no-files-found: error
       - name: One-time production setup status
-        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && vars.PROD_DEPLOY_ENABLED != 'true'
-        run: echo 'Build is ready. Enable production delivery with scripts/deploy/setup-prod.py and PROD_DEPLOY_ENABLED=true; see docs/github-actions-production.md.'
+        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && vars.FIRSTVDS_DEPLOY_ENABLED != 'true'
+        run: echo 'Build is ready. Enable FIRSTVDS_DEPLOY_ENABLED after configuring FirstVDS; see deploy/FIRSTVDS.md.'
       - name: Deploy ready release to production
-        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && vars.PROD_DEPLOY_ENABLED == 'true'
+        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && vars.FIRSTVDS_DEPLOY_ENABLED == 'true'
         env:
-          DEPLOY_KEY: ${{ secrets.PROD_DEPLOY_SSH_KEY }}
-          DEPLOY_HOST: ${{ vars.PROD_DEPLOY_HOST }}
-          DEPLOY_HOST_KEY: ${{ vars.PROD_DEPLOY_HOST_KEY }}
+          DEPLOY_KEY: ${{ secrets.FIRSTVDS_DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ vars.FIRSTVDS_HOST }}
+          DEPLOY_HOST_KEY: ${{ vars.FIRSTVDS_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           test -n "$DEPLOY_KEY"
@@ -92,4 +93,4 @@ jobs:
           printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
           ssh -i ~/.ssh/belok-prod -o BatchMode=yes -o StrictHostKeyChecking=yes \
             -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
-            "root@$DEPLOY_HOST" "deploy $GITHUB_SHA" < output/belok-prod.tar.gz
+            "deployer@$DEPLOY_HOST" "deploy $GITHUB_SHA-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" < output/belok-prod.tar.gz
