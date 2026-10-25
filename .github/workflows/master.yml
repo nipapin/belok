@@ -50,6 +50,7 @@ jobs:
           node-version: '24.21.0'
           cache: npm
       - run: npm ci --no-fund --no-audit
+      - run: node --import tsx --test scripts/test-upload-storage.mts
       - name: Install isolated PostgreSQL for employee tests
         run: npm install --prefix "$RUNNER_TEMP/belok-test-db" --no-save --no-package-lock --no-fund --no-audit @electric-sql/pglite@0.5.8
       - run: npm run test:aqsi && npm run test:manager && npm run test:employees && npm run test:revenue && npm run test:weather && npm run test:roles && npm run test:inventory && npm run test:products-v2

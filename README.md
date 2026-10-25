@@ -269,6 +269,7 @@ SMTP_FROM="Belok <no-reply@belok.cafe>"
 | `ADMIN_BYPASS_EMAILS` | Email-адреса (через запятую), которые получают роль `ADMIN` при первом входе |
 | `NEXT_PUBLIC_APP_URL` | Публичный URL приложения |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Хранилище изображений |
+| `S3_DIRECTORY` | Необязательная папка проекта внутри бакета, например `belok`. Ссылки на ранее загруженные файлы при переносе обновляются отдельно |
 | `S3_REGION`, `S3_PUBLIC_BASE_URL`, `S3_FORCE_PATH_STYLE` | Доп. параметры S3 |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob — используется только если S3 не настроен |
 | `GOOGLE_WALLET_ISSUER_EMAIL`, `GOOGLE_WALLET_ISSUER_ID` | Google Wallet (опционально) |

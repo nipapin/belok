@@ -40,6 +40,14 @@ function getS3ForcePathStyle(): boolean {
   return true;
 }
 
+function objectKey(folder: string, filename: string): string {
+  const directory = (process.env.S3_DIRECTORY ?? '').replace(/^\/+|\/+$/g, '');
+  if (directory.split('/').some((part) => part === '.' || part === '..') || /[\\\x00-\x1f]/.test(directory)) {
+    throw new Error('Invalid S3_DIRECTORY');
+  }
+  return [directory, folder, filename].filter(Boolean).join('/');
+}
+
 function getS3Client(): S3Client {
   return new S3Client({
     region: getS3Region(),
@@ -87,7 +95,7 @@ export async function savePublicImage(
   const ext = file.name.split('.').pop()?.toLowerCase();
   const safeExt = ext && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
   const filename = `${uuidv4()}.${safeExt}`;
-  const key = `${folder}/${filename}`;
+  const key = objectKey(folder, filename);
 
   if (s3StorageConfigured()) {
     const body = Buffer.from(await file.arrayBuffer());
