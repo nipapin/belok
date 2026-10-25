@@ -4,6 +4,7 @@ GitHub Actions builds on Linux and streams a standalone release over SSH to
 `deployer@213.159.215.179`. Each repository has its own restricted SSH key.
 The receiver permits deployment only for that key's project; root SSH is disabled.
 Production secrets and uploaded files remain outside release archives.
+Builds stream directly to the VPS; they do not consume GitHub artifact storage.
 
 The receiver starts a candidate on a separate local port and checks readiness
 before switching this application's process. A failed activation restores its
