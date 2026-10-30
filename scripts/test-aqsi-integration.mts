@@ -32,7 +32,7 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     await db.query(`INSERT INTO app_settings (key,value) VALUES ('aqsi',$1),('notification_settings',$2) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,[
       JSON.stringify({enabled:true,deviceId:784146,receiptsEnabled:true,catalogEnabled:false,taxSystemCode:1,taxRateId:6,calculationTypeId:4,calculationSubjectId:1,cashierName:''}),JSON.stringify({adminNewOrdersPush:false,autoPushLoyalty:false})]);
     await db.query(`INSERT INTO categories (id,name) VALUES ('cat','Меню'); INSERT INTO products (id,name,price,"categoryId") VALUES ('p','Новое имя',10,'cat')`);
-    const {enqueueCard,processAqsiJobs,cancelAqsiCard,retryAqsiReceipt}=await import('../src/lib/aqsiJobs');
+    const {enqueueCard,processAqsiJobs,cancelAqsiCard,retryAqsiReceipt,reconcileAqsiCardNoCharge,releaseUncertainKioskCard,aqsiOrderState}=await import('../src/lib/aqsiJobs');
     const {applyTbankPaymentStatus}=await import('../src/lib/tbankPayments');
     const {processAqsiCatalog}=await import('../src/lib/aqsiCatalog');
     let ticket=0;
@@ -41,18 +41,19 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
       await db!.query(`INSERT INTO order_items (id,"orderId","productId",quantity,"unitPrice","fiscalName") VALUES ($1,$2,'p',1,10,'Сохранённое имя')`,[randomUUID(),id]);
       if(method==='CARD') await db!.withTransaction(client=>enqueueCard(client,id,10,784146));
     }
-    let posts=0;let fail=false;const operations=new Map<string,{type:string;status:string;result:string|null;message?:string;problems?:string;isCancellationRequested?:boolean}>();
+    let posts=0;let cancelPosts=0;let fail=false;let loseStatus=false;const operations=new Map<string,{type:string;status:string;result:string|null;message?:string;problems?:string;isCancellationRequested?:boolean}>();
     const payloads:Record<string,unknown>[]=[];
     globalThis.fetch=async(input,init)=>{
       const path=new URL(String(input)).pathname;
       if(init?.method==='POST') {
-        if(path.endsWith('/cancel')) return Response.json({operationId:path.split('/').at(-2)});
+        if(path.endsWith('/cancel')) {cancelPosts++;return Response.json({operationId:path.split('/').at(-2)});}
         posts++;if(fail)throw new Error('lost response');
         const payload=JSON.parse(String(init.body));payloads.push(payload);
         const id=randomUUID();const card=path.includes('purchase');
         operations.set(id,{type:card?'acquiring.purchase':'receipt.process',status:'Pending',result:null});
         return Response.json({operationId:id});
       }
+      if(loseStatus) throw new Error('lost GET connection');
       const op=operations.get(path.split('/').pop()!);assert.ok(op);
       return Response.json({operationId:path.split('/').pop(),deviceId:784146,...op});
     };
@@ -89,6 +90,8 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     operations.set(retried.operationId,{type:'receipt.process',status:'Completed',result:JSON.stringify({id:'sbp-receipt',isNonFiscal:false,info:{typeId:1,sum:1000,additionalAttribute:(payloads.at(-1)!.info as {additionalAttribute:string}).additionalAttribute}})});await processAqsiJobs();
     assert.equal(await retryAqsiReceipt(sbpReceipt.id),false,'successful receipt must never be submitted again');
     await order('cancel-race');await processAqsiJobs();await cancelAqsiCard('cancel-race');
+    await cancelAqsiCard('cancel-race');
+    assert.equal(cancelPosts,1,'repeated cancel action must never resend a financial POST');
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cancel-race'`))?.paymentStatus,'PENDING','requesting cancellation is not confirmation');
     const racing=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='cancel-race'`);assert.ok(racing);
     operations.set(racing.operationId,{type:'acquiring.purchase',status:'Completed',result:JSON.stringify({id:'racing-slip',content:{type:'purchase',amount:1000,responseCode:'000'}})});await processAqsiJobs();
@@ -96,18 +99,45 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     const racingReceipt=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='cancel-race' AND kind='RECEIPT'`);assert.ok(racingReceipt);
     const racingPayload=payloads.at(-1)!;
     operations.set(racingReceipt.operationId,{type:'receipt.process',status:'Completed',result:JSON.stringify({id:'racing-receipt',isNonFiscal:false,info:{typeId:1,sum:1000,additionalAttribute:(racingPayload.info as {additionalAttribute:string}).additionalAttribute}})});await processAqsiJobs();
+    await order('cancel-connection-loss');await processAqsiJobs();
+    const disconnected=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='cancel-connection-loss'`);assert.ok(disconnected);
+    await cancelAqsiCard('cancel-connection-loss');
+    loseStatus=true;await processAqsiJobs();loseStatus=false;
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cancel-connection-loss'`))?.paymentStatus,'PENDING');
+    assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_jobs WHERE "orderId"='cancel-connection-loss'`))?.state,'PROCESSING');
+    const unresolved=await db.queryOne<{id:string}>(`SELECT id FROM aqsi_jobs WHERE "orderId"='cancel-connection-loss'`);assert.ok(unresolved);
+    await assert.rejects(()=>reconcileAqsiCardNoCharge(unresolved.id,'test-admin','Still pending on terminal; cannot claim no debit',false),
+      /aQsi не подтвердил окончание/);
+    operations.set(disconnected.operationId,{type:'acquiring.purchase',status:'Canceled',result:null,isCancellationRequested:true});
+    await processAqsiJobs();
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cancel-connection-loss'`))?.paymentStatus,'CANCELLED');
     await order('uncertain');fail=true;const before=posts;
     await processAqsiJobs();await processAqsiJobs();assert.equal(posts,before+1);
     assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_jobs WHERE "orderId"='uncertain'`))?.state,'UNKNOWN');
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='uncertain'`))?.paymentStatus,'PENDING');
     assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='uncertain'`)).length,0,'uncertain payment cannot become a payable deferred order');
     await order('next-card');await processAqsiJobs();assert.equal(posts,before+1,'unknown result must block next terminal payment');
-    await db.query(`UPDATE aqsi_jobs SET state='FAILED' WHERE "orderId"='uncertain'`);fail=false;
+    const unknownJob=await db.queryOne<{id:string}>(`SELECT id FROM aqsi_jobs WHERE "orderId"='uncertain'`);assert.ok(unknownJob);
+    await releaseUncertainKioskCard(unknownJob.id,'test-admin','No response; kiosk screen needed for cash customers');
+    await releaseUncertainKioskCard(unknownJob.id,'test-admin','Repeated client request must stay idempotent');
+    assert.equal((await aqsiOrderState('uncertain')).kioskReleased,true,'screen can be released without a false bank cancellation');
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='uncertain'`))?.paymentStatus,'PENDING','UI release does not cancel bank payment');
+    assert.equal((await db.query<{id:string}>(`SELECT "jobId" FROM aqsi_kiosk_releases WHERE "orderId"='uncertain'`)).length,1,'release is audited once');
+    const existingOrders=(await db.query<{id:string}>(`SELECT id FROM orders`)).length;
+    await reconcileAqsiCardNoCharge(unknownJob.id,'test-admin','aQsi history checked: no card transaction; cash paid at register',true);
+    assert.equal((await db.queryOne<{paymentStatus:string;status:string}>(`SELECT "paymentStatus",status FROM orders WHERE id='uncertain'`))?.paymentStatus,'CANCELLED');
+    assert.equal((await db.queryOne<{status:string}>(`SELECT status FROM orders WHERE id='uncertain'`))?.status,'CANCELLED');
+    assert.equal((await db.query<{id:string}>(`SELECT id FROM orders`)).length,existingOrders,'cash settlement elsewhere does not create a duplicate sale');
+    assert.equal((await db.query<{id:string}>(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='uncertain'`)).length,0);
+    assert.equal((await db.queryOne<{cashPaidElsewhere:boolean}>(`SELECT "cashPaidElsewhere" FROM aqsi_card_reconciliations WHERE "orderId"='uncertain'`))?.cashPaidElsewhere,true);
+    await assert.rejects(()=>reconcileAqsiCardNoCharge(unknownJob.id,'test-admin','second closure should not succeed',true));
+    fail=false;
     await processAqsiJobs();assert.equal(posts,before+2);
     const next=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='next-card'`);assert.ok(next);
     await db.query(`INSERT INTO users (id,email,"passwordHash","bonusBalance") VALUES ('fallback-user','fallback@example.test','unused-test-hash',10)`);
     await db.query(`UPDATE orders SET "userId"='fallback-user',"bonusUsed"=3 WHERE id='next-card'`);
-    operations.set(next.operationId,{type:'acquiring.purchase',status:'Timeout',result:null});await processAqsiJobs();
+    await cancelAqsiCard('next-card','DEFER');
+    operations.set(next.operationId,{type:'acquiring.purchase',status:'Canceled',result:null});await processAqsiJobs();
     await processAqsiJobs();
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='next-card'`))?.paymentStatus,'PENDING');
     assert.equal((await db.queryOne<{status:string}>(`SELECT status FROM orders WHERE id='next-card'`))?.status,'PENDING');
@@ -141,6 +171,10 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     const cancelledTimeout=await db.queryOne<{operationId:string}>(`SELECT "operationId" FROM aqsi_jobs WHERE "orderId"='cancel-timeout' AND kind='CARD'`);assert.ok(cancelledTimeout);
     await cancelAqsiCard('cancel-timeout');
     operations.set(cancelledTimeout.operationId,{type:'acquiring.purchase',status:'Timeout',result:null,isCancellationRequested:true});await processAqsiJobs();
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cancel-timeout'`))?.paymentStatus,'PENDING','remote timeout is not proof of no card debit');
+    assert.equal((await db.queryOne<{state:string}>(`SELECT state FROM aqsi_jobs WHERE "orderId"='cancel-timeout'`))?.state,'UNKNOWN');
+    const timeoutJob=await db.queryOne<{id:string}>(`SELECT id FROM aqsi_jobs WHERE "orderId"='cancel-timeout'`);assert.ok(timeoutJob);
+    await reconcileAqsiCardNoCharge(timeoutJob.id,'test-admin','Checked terminal closure and aQsi history: no debit',false);
     assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='cancel-timeout'`))?.paymentStatus,'CANCELLED');
     assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='cancel-timeout'`)).length,0);
     await order('error-with-result');await processAqsiJobs();
@@ -222,8 +256,8 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
     assert.equal(posts,cardPosts);
     await order('expired');await db.query(`UPDATE aqsi_jobs SET "createdAt"=NOW()-INTERVAL '3 minutes' WHERE "orderId"='expired'`);await processAqsiJobs();
     assert.equal(posts,cardPosts,'expired queued cards must never be submitted');
-    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='expired'`))?.paymentStatus,'PENDING');
-    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='expired'`)).length,1,'an unsent expired card can be paid at the cashier');
+    assert.equal((await db.queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id='expired'`))?.paymentStatus,'CANCELLED');
+    assert.equal((await db.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"='expired'`)).length,0,'an unsent expired card cannot create a second payable till order');
     // Bulk upsert and verification, including disabling a deleted site product.
     await db.query(`UPDATE app_settings SET value=jsonb_set(value,'{catalogEnabled}','true') WHERE key='aqsi'`);
     let categories:Record<string,unknown>[]=[];

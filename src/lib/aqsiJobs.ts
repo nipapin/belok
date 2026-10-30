@@ -15,6 +15,9 @@ export interface AqsiJob {
   payload: Record<string, unknown> | null; operationId: string | null;
   result: Record<string, unknown> | null; error: string | null; createdAt: Date;
   cancelIntent: 'CANCEL' | 'DEFER' | null;
+  submittedAt: Date | null;
+  updatedAt: Date;
+  kioskReleased?: boolean;
 }
 
 export async function enqueueCard(client: PoolClient, orderId: string, total: number, deviceId: number) {
@@ -69,10 +72,10 @@ async function failCard(job: AqsiJob, error: string, cancellationRequested = fal
     )).rows[0];
     await client.query(`UPDATE aqsi_jobs SET state='FAILED',error=$2,"updatedAt"=NOW() WHERE id=$1`, [job.id,error]);
     if (!order || order.paymentStatus !== 'PENDING') return;
-    const abandon = job.cancelIntent === 'CANCEL' ||
-      (cancellationRequested && job.cancelIntent !== 'DEFER');
-    if (!abandon && order.status !== 'CANCELLED') {
-      // Failure and fallback commit together. Keep the order, number and spent bonuses.
+    // Do not create a second payable item at the till by default.
+    // Cash fallback is allowed only after an explicit DEFER intent AND a
+    // definitive aQsi no-charge result. Otherwise cancel the kiosk order.
+    if (job.cancelIntent === 'DEFER' && order.status !== 'CANCELLED') {
       await enqueueCashOrder(client,job.orderId,job.deviceId);
     } else {
       await client.query(`UPDATE orders SET status='CANCELLED' WHERE id=$1`, [job.orderId]);
@@ -103,14 +106,18 @@ async function applyOperation(job: AqsiJob, operation: AqsiOperation) {
     });
     if (paid) await notifyKitchenNewOrder(job.orderId).catch(() => console.error('Kitchen notify after aQsi payment failed'));
   } else if (['Canceled','Timeout','Error'].includes(operation.status)) {
-    if(operation.result) {
-      await setJob(job,'UNKNOWN','Операция завершилась с ошибкой и данными результата. Проверьте оплату/чек в aQsi.');
-      return;
-    }
     const details=[operation.problems,operation.message].filter(Boolean).join(': ').slice(0,300);
     const error = `aQsi: ${operation.status}${details ? ` (${details})` : ''}`;
+    // A terminal timeout or an error is not proof that the bank did not debit the
+    // card. Only a final Canceled response without a result clears a card charge.
     if (job.kind === 'CARD') {
-      await failCard(job,error,operation.isCancellationRequested);
+      if (operation.status === 'Canceled' && !operation.result) {
+        await failCard(job,error,operation.isCancellationRequested);
+      } else {
+        await setJob(job,'UNKNOWN',`${error}. Проверьте списание в aQsi; повторная оплата запрещена.`);
+      }
+    } else if (operation.result) {
+      await setJob(job,'UNKNOWN','Результат чека требует проверки в aQsi');
     } else await setJob(job,'FAILED',error);
   }
 }
@@ -177,13 +184,17 @@ export async function processAqsiJobs() {
 }
 
 export async function aqsiOrderState(orderId: string) {
-  const jobs = await query<AqsiJob>(`SELECT * FROM aqsi_jobs WHERE "orderId"=$1`,[orderId]);
+  const jobs = await query<AqsiJob>(`SELECT j.*, (r."jobId" IS NOT NULL) AS "kioskReleased"
+    FROM aqsi_jobs j LEFT JOIN aqsi_kiosk_releases r ON r."jobId"=j.id
+    WHERE j."orderId"=$1`,[orderId]);
   const card = jobs.find(job => job.kind === 'CARD');
   const receipt = jobs.find(job => job.kind === 'RECEIPT');
   const deferred = await queryOne<{state:string}>(`SELECT state FROM aqsi_cash_orders WHERE "orderId"=$1`,[orderId]);
   return { terminalState:card?.state ?? null, deferredState:deferred?.state ?? null, cancelIntent:card?.cancelIntent ?? null,
+    terminalStartedAt:card?.createdAt ?? null, cancelRequestedAt:card?.cancelIntent ? card.updatedAt : null,
+    kioskReleased:card?.kioskReleased ?? false,
     receiptState:deferred?.state === 'SUCCEEDED' ? 'SUCCEEDED' : receipt?.state ?? null,
-    terminalMessage:card?.state === 'UNKNOWN' ? 'Результат оплаты уточняется. Обратитесь к сотруднику; не оплачивайте повторно.' : null };
+    terminalMessage:card?.state === 'UNKNOWN' ? 'Результат оплаты неизвестен. Нужна сверка сотрудником в aQsi; не оплачивайте повторно.' : null };
 }
 
 export async function retryAqsiReceipt(jobId: string): Promise<boolean> {
@@ -205,6 +216,8 @@ export async function cancelAqsiCard(orderId: string, intent: 'CANCEL' | 'DEFER'
     const job = (await client.query<AqsiJob>(`SELECT * FROM aqsi_jobs WHERE "orderId"=$1 AND kind='CARD'`,[orderId])).rows[0];
     if (!job || ['FAILED','SUCCEEDED','UNKNOWN'].includes(job.state)) return;
     if (await queryOne(`SELECT id FROM aqsi_cash_orders WHERE "orderId"=$1`,[orderId])) return;
+    // Do not resend a cancellation POST when the first reply was lost.
+    if (job.cancelIntent) return;
     await query(`UPDATE aqsi_jobs SET "cancelIntent"=$2,"updatedAt"=NOW() WHERE id=$1`,[job.id,intent]);
     job.cancelIntent = intent;
     if (job.state === 'QUEUED' || job.state === 'BLOCKED') {
@@ -214,4 +227,85 @@ export async function cancelAqsiCard(orderId: string, intent: 'CANCEL' | 'DEFER'
       // Cancellation is a request, not proof of failure. Await final status.
     }
   } finally { try {await client.query('SELECT pg_advisory_unlock(784146,20)')} finally {client.release()} }
+}
+
+
+/**
+ * Staff-only reconciliation after checking the transaction history in aQsi.
+ * This never sends a purchase, refund, cancel or receipt POST. The original
+ * kiosk order is voided, not turned into another payable cash order.
+ */
+export async function reconcileAqsiCardNoCharge(
+  jobId: string, actorId: string, evidence: string, cashPaidElsewhere: boolean
+) {
+  const note = evidence.trim();
+  if (note.length < 12 || note.length > 500) throw new Error('Опишите проверку в aQsi (12–500 символов)');
+  const client = await pool.connect();
+  try {
+    await client.query('SELECT pg_advisory_lock(784146,20)');
+    const job = (await client.query<AqsiJob>(
+      `SELECT * FROM aqsi_jobs WHERE id=$1 AND kind='CARD'`,[jobId]
+    )).rows[0];
+    if (!job || !['UNKNOWN','PROCESSING'].includes(job.state)) throw new Error('Карточная операция уже завершена или не требует сверки');
+    let providerStatus = 'NO_OPERATION_ID';
+    if (job.operationId) {
+      // GET is read-only. A still-active payment, any result, or a mismatch
+      // must block staff closure until it is resolved at the terminal/bank.
+      const operation = await aqsiRequest<AqsiOperation>(`/v4/Operations/${job.operationId}`);
+      if (operation.operationId !== job.operationId || operation.deviceId !== job.deviceId ||
+        operation.type !== 'acquiring.purchase') throw new Error('Операция aQsi не соответствует заказу');
+      if (!['Canceled','Timeout','Error'].includes(operation.status) || operation.result) {
+        throw new Error('aQsi не подтвердил окончание операции без результата. Сначала проверьте её на терминале');
+      }
+      providerStatus = operation.status;
+    }
+    await client.query('BEGIN');
+    try {
+      const order = (await client.query<{paymentStatus:string;status:string}>(
+        `SELECT "paymentStatus",status FROM orders WHERE id=$1 FOR UPDATE`,[job.orderId]
+      )).rows[0];
+      const current = (await client.query<AqsiJob>(`SELECT * FROM aqsi_jobs WHERE id=$1 FOR UPDATE`,[job.id])).rows[0];
+      if (!order || order.paymentStatus !== 'PENDING' || order.status === 'COMPLETED' ||
+        !current || !['UNKNOWN','PROCESSING'].includes(current.state)) {
+        throw new Error('Статус заказа изменился. Обновите данные перед сверкой');
+      }
+      if ((await client.query(`SELECT id FROM aqsi_cash_orders WHERE "orderId"=$1`,[job.orderId])).rowCount) {
+        throw new Error('В aQsi уже есть отложенный заказ. Сверьте его отдельно');
+      }
+      await client.query(`INSERT INTO aqsi_card_reconciliations
+        ("jobId","orderId","actorId",evidence,"cashPaidElsewhere","providerStatus")
+        VALUES ($1,$2,$3,$4,$5,$6)`,[job.id,job.orderId,actorId,note,cashPaidElsewhere,providerStatus]);
+      await client.query(`UPDATE aqsi_jobs SET state='FAILED',error='Вручную сверено: списание не обнаружено',
+        "updatedAt"=NOW() WHERE id=$1`,[job.id]);
+      await client.query(`UPDATE orders SET status='CANCELLED' WHERE id=$1`,[job.orderId]);
+      await client.query('COMMIT');
+    } catch (error) {await client.query('ROLLBACK');throw error}
+    // Release loyalty reservations exactly once. This does not record another
+    // paid sale or enqueue a deferred order.
+    await settleOrderLoyalty(job.orderId,'CANCELLED');
+    return {orderId:job.orderId,providerStatus};
+  } finally {
+    try {await client.query('SELECT pg_advisory_unlock(784146,20)')}
+    finally {client.release()}
+  }
+}
+
+/**
+ * Releases ONLY the customer-facing screen. Bank state and terminal worker
+ * remain untouched; further card payments are blocked until reconciliation.
+ */
+export async function releaseUncertainKioskCard(jobId: string, actorId: string, reason: string) {
+  const note = reason.trim();
+  if (note.length < 12 || note.length > 500) throw new Error('Укажите причину разблокировки (12–500 символов)');
+  return withTransaction(async client => {
+    const job = (await client.query<AqsiJob>(`SELECT j.* FROM aqsi_jobs j
+      JOIN orders o ON o.id=j."orderId"
+      WHERE j.id=$1 AND j.kind='CARD' AND j.state IN ('SUBMITTING','PROCESSING','UNKNOWN')
+        AND o."paymentStatus"='PENDING' FOR UPDATE OF j`,[jobId])).rows[0];
+    if (!job) throw new Error('Операция уже завершена или не требует восстановления');
+    await client.query(`INSERT INTO aqsi_kiosk_releases
+      ("jobId","orderId","actorId",reason) VALUES ($1,$2,$3,$4)
+      ON CONFLICT ("jobId") DO NOTHING`,[job.id,job.orderId,actorId,note]);
+    return {orderId:job.orderId};
+  });
 }

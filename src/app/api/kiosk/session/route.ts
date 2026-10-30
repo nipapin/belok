@@ -1,4 +1,5 @@
 import { getCurrentUser } from '@/lib/auth';
+import { queryOne } from '@/lib/db';
 import { hasPermission, isStaff } from '@/lib/roles';
 import { NextResponse } from 'next/server';
 import { getKioskSettings, isKioskUnlocked } from '@/lib/kioskAuth';
@@ -15,7 +16,9 @@ export async function GET() {
     }
     const unlocked = staff ? staffUnlocked : await isKioskUnlocked();
     const aqsi = await getAqsiConfig();
-    return NextResponse.json({ configured: true, unlocked, cardEnabled:aqsiConfigured(aqsi) && aqsi.receiptsEnabled && fiscalConfigured(aqsi) });
+    const cardBusy = await queryOne(`SELECT id FROM aqsi_jobs
+      WHERE kind='CARD' AND state IN ('SUBMITTING','PROCESSING','UNKNOWN') LIMIT 1`);
+    return NextResponse.json({ configured: true, unlocked, cardEnabled:!cardBusy && aqsiConfigured(aqsi) && aqsi.receiptsEnabled && fiscalConfigured(aqsi) });
   } catch (error) {
     console.error('Kiosk session error:', error);
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });
