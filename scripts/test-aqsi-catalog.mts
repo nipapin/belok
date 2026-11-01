@@ -6,7 +6,7 @@ import type { Pool } from 'pg';
 // Isolated fake pool: never connects to PostgreSQL or a real aQsi account.
 const config={enabled:true,deviceId:784146,catalogEnabled:true,taxRateId:6,taxSystemCode:2,calculationTypeId:4,calculationSubjectId:1};
 const category=(id:string,name:string)=>({id,name,defaultTax:6,defaultSubject:1,defaultPaymentMethodType:4,defaultUnit:'шт.',defaultUnitCode:0});
-const good=(id:string,group_id:string)=>({id,group_id,name:id,price:200,nonTradable:false,tax:6,subject:1,paymentMethodType:4,type:'simple',unit:'шт.',unitCode:0});
+const good=(id:string,group_id:string)=>({id,group_id,name:id+' ',price:200,nonTradable:false,tax:6,subject:1,paymentMethodType:4,type:'simple',unit:'шт.',unitCode:0});
 const sync={phase:'CATEGORIES',revision:'4',syncedRevision:'0',submittedRevision:'4',taskId:'old-rejected-task' as string|null,
   pendingGoods:{categories:[category('belok:burger','Бургеры '),category('belok:breakfast','Завтраки')],goods:[good('belok:p','belok:burger')]},
   knownGoods:[],cursor:0,updatedAt:new Date(),error:null as string|null};
@@ -17,6 +17,7 @@ const fake={
     if(sql.startsWith('SELECT * FROM aqsi_catalog_sync'))return {rows:[structuredClone(sync)]};
     if(sql.includes('SET "pendingGoods"=$1')){sync.pendingGoods=JSON.parse(String(params[0]));sync.taskId=null;sync.error=null;}
     else if(sql.includes("SET phase='GOODS'")){sync.phase='GOODS';sync.taskId=String(params[0]);}
+    else if(sql.includes("SET phase='IDLE'")){sync.phase='IDLE';sync.syncedRevision=sync.submittedRevision;sync.error=null;}
     else if(sql.includes('SET "taskId"=$1'))sync.taskId=String(params[0]);
     else if(sql.includes('SET error=$1'))sync.error=String(params[0]);
     else throw new Error('Unexpected SQL: '+sql);
@@ -46,6 +47,7 @@ test('resume rejected category batch, upload only missing categories, then link 
   const original=globalThis.fetch;
   let remote=[category('remote-burger','Бургеры')];
   const posts:{path:string;payload:Record<string,unknown>[]}[]=[];
+  let rejected=true;
   globalThis.fetch=async(input,init)=>{
     const path=new URL(String(input)).pathname;
     if(init?.method==='POST'){
@@ -57,7 +59,8 @@ test('resume rejected category batch, upload only missing categories, then link 
       return Response.json({guid:'task-'+posts.length});
     }
     if(path.endsWith('/GoodsCategory/list'))return Response.json(remote);
-    if(path.endsWith('/ListGoods/task-2/status'))return Response.json({status:'error',errorText:'Тестовая ошибка товаров'});
+    if(path.endsWith('/ListGoods/task-2/status'))return Response.json(rejected ? {status:'error',errorText:'Тестовая ошибка товаров'} : {status:'success'});
+    if(path.includes('/Goods/'))return Response.json({...posts[1].payload[0],name:String(posts[1].payload[0].name).trim()});
     throw new Error('Unexpected API call: '+path);
   };
   try {
@@ -76,5 +79,10 @@ test('resume rejected category batch, upload only missing categories, then link 
     await processAqsiCatalog();
     assert.match(sync.error!,/Тестовая ошибка товаров/);
     assert.equal(posts.length,2,'a rejected batch must not be resubmitted indefinitely');
+    rejected=false;
+    await processAqsiCatalog();
+    assert.equal(sync.phase,'IDLE','provider-trimmed product names must confirm the existing snapshot');
+    assert.equal(sync.syncedRevision,sync.revision);
+    assert.equal(sync.error,null);
   } finally {globalThis.fetch=original;}
 });

@@ -61,7 +61,7 @@ async function catalog(): Promise<Catalog> {
       const available = p.isAvailable && categories.some(c => c.id===p.categoryId && c.isActive);
       const vs = variants.filter(v => v.productId===p.id);
       return (vs.length ? vs : [null]).map(v => ({id:`belok:${v?.id || p.id}`,group_id:`belok:${p.categoryId}`,
-        name:`${p.name}${v ? ` — ${v.name}` : ''}`.slice(0,128),price:Number(v?.price ?? p.price),nonTradable:!available,
+        name:`${p.name}${v ? ` — ${v.name}` : ''}`.trim().slice(0,128),price:Number(v?.price ?? p.price),nonTradable:!available,
         type:'simple',unit:'шт.',unitCode:0,tax:config.taxRateId!,subject:1,paymentMethodType:config.calculationTypeId!}));
     }),
   };
@@ -137,7 +137,8 @@ export async function processAqsiCatalog() {
         let cursor = sync.cursor;
         for (const wanted of pending.goods.slice(cursor,cursor+5)) {
           const remote = await aqsiRequest<Good>(`/v2/Goods/${encodeURIComponent(wanted.id)}`);
-          if (remote.name!==wanted.name || Math.round(Number(remote.price)*100)!==Math.round(wanted.price*100) ||
+          // aQsi trims product names, including already submitted snapshots.
+          if (remote.name?.trim()!==wanted.name.trim() || remote.group_id!==wanted.group_id || Math.round(Number(remote.price)*100)!==Math.round(wanted.price*100) ||
             remote.nonTradable!==wanted.nonTradable || Number(remote.tax)!==wanted.tax || Number(remote.paymentMethodType)!==wanted.paymentMethodType) {
             if (Date.now()-new Date(sync.updatedAt).getTime() > 120_000) {
               const id = await aqsiBulk('/v2/ListGoods',pending.goods);
