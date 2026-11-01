@@ -4,6 +4,7 @@ import { KioskUnauthorizedError } from '@/lib/kioskAuth';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 import { getPublicAppOrigin, tryNotifyUser } from '@/lib/push';
 import { requireBoardAccess } from '@/lib/orderBoardAccess';
+import { boardPaymentSql, boardTodaySql } from '@/lib/orderBoardQuery';
 import type { OrderStatus } from '@/lib/types';
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string; itemId: string }> }) {
@@ -23,10 +24,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       const order = await client.query<{ id: string; status: OrderStatus; userId: string | null }>(
         `SELECT id, status, "userId" FROM "orders" WHERE id = $1
           AND status IN ('CONFIRMED', 'PREPARING', 'READY')
-          AND (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Kaliningrad')::date
-              = (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Kaliningrad')::date
-          AND ("paymentStatus" = 'SUCCEEDED' OR ("paymentStatus" = 'PENDING'
-               AND ("paymentMethod" IN ('CASH', 'BONUS') OR "paymentMethod" IS NULL)))
+          AND ${boardTodaySql}
+          AND ${boardPaymentSql}
           FOR UPDATE`, [id],
       );
       if (!order.rowCount) return null;

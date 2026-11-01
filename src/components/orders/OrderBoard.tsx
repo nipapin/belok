@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, Check, CheckCheck, ChefHat, Clock3, Expand, Loader2, LockKeyhole, Moon, Radio, Sun, Undo2, Volume2, VolumeX } from 'lucide-react';
 import KioskPinPad from '@/components/kiosk/KioskPinPad';
 import { fulfillmentLabel, orderTicket, paymentMethodLabel } from '@/lib/orderCustomer';
@@ -90,6 +90,10 @@ function OrderCard({ order, fresh, now, acknowledge, advance, markItem, busy, ca
 export default function OrderBoard() {
   const [session, setSession] = useState<{ configured: boolean; unlocked: boolean; canComplete?: boolean; staff?: boolean; canAvailability?: boolean } | null>(null);
   const [orders, setOrders] = useState<BoardOrder[]>([]);
+  const groupedOrders = useMemo(() => columns.map(column => orders
+    .filter(order => column.statuses.includes(order.status))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      || (b.dailyNumber ?? 0) - (a.dailyNumber ?? 0) || b.id.localeCompare(a.id))), [orders]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [lastSync, setLastSync] = useState<number | null>(null);
@@ -359,7 +363,7 @@ export default function OrderBoard() {
     const warnings = new Set<string>();
     try {
       // Use the same dispatch transition as the individual "Выдан" button.
-      // Issuing an order does not require or imply successful payment.
+      // The server rechecks payment for each order before issuing it.
       for (const order of ready) {
         const result = await advanceOrder(order, 'COMPLETED', true);
         if (result.ok) completed++;
@@ -411,10 +415,8 @@ export default function OrderBoard() {
     {message && <div className="board-notice" role="status">{message}<button onClick={() => setMessage('')}>Закрыть</button></div>}
     {error && <div className="board-notice board-notice-error" role="alert">{error}</div>}
     <div className="board-columns">
-      {columns.map((column) => {
-        const group = orders.filter((order) => column.statuses.includes(order.status))
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            || (b.dailyNumber ?? 0) - (a.dailyNumber ?? 0) || b.id.localeCompare(a.id));
+      {columns.map((column, index) => {
+        const group = groupedOrders[index];
         const Icon = column.icon;
         return <section key={column.id} className={`board-column board-column-${column.id}`}>
           <div className="board-column-heading"><Icon size={19} /><h2>{column.title}</h2>

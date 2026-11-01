@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import { NextRequest, NextResponse } from 'next/server';
 import * as roles from '../src/lib/roles';
+import * as boardQuery from '../src/lib/orderBoardQuery';
 
 type RouteContext = {params:Promise<{id:string}>};
 type TestExports = {
@@ -109,7 +110,8 @@ test('kitchen status API rejects dispatch before mutation but accepts cooking tr
  let canComplete=false;let mutations=0;
  class KioskUnauthorizedError extends Error {}
  const route=await load('src/app/api/order-board/[id]/status/route.ts',{
-  'next/server':{NextResponse,after:()=>{}},'@/lib/db':{query:async()=>{mutations++;return [{id:'order',status:'PREPARING',userId:null,paymentStatus:'PENDING'}]},queryOne:async()=>null},
+  'next/server':{NextResponse,after:()=>{}},'@/lib/db':{query:async()=>{mutations++;return [{id:'order',status:'PREPARING',userId:null,paymentStatus:'SUCCEEDED'}]},queryOne:async()=>null},
+  '@/lib/orderBoardQuery':boardQuery,
   '@/lib/orderBoardAccess':{requireBoardAccess:async()=>({canComplete})},'@/lib/kioskAuth':{KioskUnauthorizedError},
   '@/lib/orderLoyalty':{settleOrderLoyalty:async()=>{}},'@/lib/notificationSettings':{},'@/lib/push':{},
  });

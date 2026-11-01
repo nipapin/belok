@@ -5,21 +5,20 @@ import { requireBoardAccess } from '@/lib/orderBoardAccess';
 import type { OrderRow, OrderItemRow, OrderItemCustomizationRow } from '@/lib/types';
 import { KIOSK_COOKIE } from '@/lib/kioskCookie';
 import { formatVariantTitle } from '@/lib/productTitle';
+import { boardPaymentSql, boardTodaySql } from '@/lib/orderBoardQuery';
 import { orderItemGroups } from '@/lib/orderItemGroups';
 
 export async function GET() {
   try {
     const access = await requireBoardAccess();
-    // Online orders enter the kitchen only after payment; cash can be prepared immediately.
+    // Every payment method enters the queue only after confirmed payment.
     const orders = await query<OrderRow>(
       `SELECT id, "dailyNumber", status, source, fulfillment, "paymentMethod",
               "paymentStatus", total, comment, "deliveryAddress", "deliveryTime", "createdAt"
        FROM "orders"
        WHERE status IN ('PENDING', 'CONFIRMED', 'PREPARING', 'READY')
-         AND (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Kaliningrad')::date
-             = (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Kaliningrad')::date
-         AND (status = 'READY' OR "paymentStatus" = 'SUCCEEDED'
-              OR ("paymentStatus" = 'PENDING' AND ("paymentMethod" IN ('CASH', 'BONUS') OR "paymentMethod" IS NULL)))
+         AND ${boardTodaySql}
+         AND ${boardPaymentSql}
        ORDER BY "createdAt" DESC, "dailyNumber" DESC NULLS LAST, id DESC`
     );
     const orderIds = orders.map((order) => order.id);
@@ -33,15 +32,27 @@ export async function GET() {
        FROM "order_item_customizations" c LEFT JOIN "ingredients" i ON i.id = c."ingredientId"
        WHERE c."orderItemId" = ANY($1::text[]) ORDER BY c.id`, [items.map((item) => item.id)]
     ) : [];
+    // Index children once rather than rescanning the entire day's payload for
+    // each order and each dish on every poll.
+    const itemsByOrder = new Map<string, typeof items>();
+    for (const item of items) {
+      const bucket = itemsByOrder.get(item.orderId) ?? [];
+      bucket.push(item); itemsByOrder.set(item.orderId, bucket);
+    }
+    const customizationsByItem = new Map<string, typeof customizations>();
+    for (const customization of customizations) {
+      const bucket = customizationsByItem.get(customization.orderItemId) ?? [];
+      bucket.push(customization); customizationsByItem.set(customization.orderItemId, bucket);
+    }
     return NextResponse.json({
       orders: orders.map((order) => ({
         ...order,
         total: access.canComplete ? order.total : undefined,
         paymentStatus: access.canComplete ? order.paymentStatus : undefined,
         paymentMethod: access.canComplete ? order.paymentMethod : undefined,
-        items: orderItemGroups(items.filter((item) => item.orderId === order.id)).map(({ item, toppings }) => ({
+        items: orderItemGroups(itemsByOrder.get(order.id) ?? []).map(({ item, toppings }) => ({
           id: item.id, name: formatVariantTitle(item.name, item.variantName), quantity: item.quantity, preparedQuantity: item.preparedQuantity,
-          customizations: [...customizations.filter((c) => c.orderItemId === item.id)
+          customizations: [...(customizationsByItem.get(item.id) ?? [])
             .map((c) => ({ id: c.id, action: c.action, name: c.name })), ...toppings.map((topping) => ({ id:topping.id,action:'ADD',name:formatVariantTitle(topping.name,topping.variantName) }))],
         })),
       })),
