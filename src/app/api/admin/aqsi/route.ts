@@ -18,9 +18,25 @@ function failure(error:unknown) {
   return NextResponse.json({error:(error as Error).message==='UNAUTHORIZED' ? 'Нет доступа' : 'Не удалось выполнить действие aQsi'},
     {status:(error as Error).message==='UNAUTHORIZED' ? 403 : 500});
 }
-export async function GET() {
+export async function GET(request:NextRequest) {
   try {
     await requireAdmin();
+    if(request.nextUrl.searchParams.get('catalogDiagnostic')==='1') {
+      const sync=await queryOne<{phase:string;cursor:number;taskId:string|null;error:string|null;pendingGoods:{goods:Record<string,unknown>[]} | null}>(
+        `SELECT phase,cursor,"taskId",error,"pendingGoods" FROM aqsi_catalog_sync WHERE id=1`);
+      const wanted=sync?.pendingGoods?.goods[sync.cursor];
+      const fields=['id','name','price','group_id','nonTradable','tax','paymentMethodType'];
+      const pick=(item:Record<string,unknown>)=>Object.fromEntries(fields.map(key=>[key,item[key] ?? null]));
+      let remote:Record<string,unknown>|null=null;
+      let lookupError:string|null=null;
+      if(sync?.phase==='GOODS' && typeof wanted?.id==='string') {
+        try { remote=await aqsiRequest<Record<string,unknown>>(`/v2/Goods/${encodeURIComponent(wanted.id)}`); }
+        catch { lookupError='Не удалось прочитать товар из aQsi'; }
+      }
+      return NextResponse.json({phase:sync?.phase,cursor:sync?.cursor,total:sync?.pendingGoods?.goods.length ?? 0,
+        error:sync?.error,expected:wanted ? pick(wanted) : null,actual:remote ? pick(remote) : null,lookupError},
+        {headers:{'Cache-Control':'private, no-store'}});
+    }
     const [config,jobs,catalog]=await Promise.all([getAqsiConfig(),
       query(`SELECT j.*,o."dailyNumber" FROM (
         SELECT id,"orderId",kind,state,"operationId"::text,error,payload,"submittedAt","createdAt" FROM aqsi_jobs

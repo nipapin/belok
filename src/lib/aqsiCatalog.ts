@@ -138,7 +138,7 @@ export async function processAqsiCatalog() {
         for (const wanted of pending.goods.slice(cursor,cursor+5)) {
           const remote = await aqsiRequest<Good>(`/v2/Goods/${encodeURIComponent(wanted.id)}`);
           // aQsi trims product names, including already submitted snapshots.
-          if (remote.name?.trim()!==wanted.name.trim() || remote.group_id!==wanted.group_id || Math.round(Number(remote.price)*100)!==Math.round(wanted.price*100) ||
+          if (remote.name?.trim()!==wanted.name.trim() || Math.round(Number(remote.price)*100)!==Math.round(wanted.price*100) ||
             remote.nonTradable!==wanted.nonTradable || Number(remote.tax)!==wanted.tax || Number(remote.paymentMethodType)!==wanted.paymentMethodType) {
             if (Date.now()-new Date(sync.updatedAt).getTime() > 120_000) {
               const id = await aqsiBulk('/v2/ListGoods',pending.goods);
