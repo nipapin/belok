@@ -45,11 +45,13 @@ function timeLabel(value: string) {
 function OrderCard({ order, fresh, now, acknowledge, advance, markItem, busy, canComplete }: { order: BoardOrder; fresh: boolean; now: number; acknowledge: () => void; advance: (status: 'PREPARING' | 'READY' | 'COMPLETED') => void; markItem: (item: BoardOrder['items'][number], action: 'prepare' | 'undo') => void; busy: boolean; canComplete: boolean }) {
   const minutes = Math.max(0, Math.floor((now - new Date(order.createdAt).getTime()) / 60_000));
   const ageLabel = minutes < 60 ? `${minutes} мин` : `${Math.floor(minutes / 60)} ч ${minutes % 60} мин`;
+  const waitingPayment = order.awaitingPayment === true;
+  const cashPending = order.requiresCashConfirmation === true;
   const action = (order.status !== 'READY' || canComplete) && order.status in actions ? actions[order.status as keyof typeof actions] : null;
-  if (order.status === 'PENDING') return <article data-order-id={order.id} className={`board-card board-new-card ${fresh ? 'board-card-fresh' : ''}`}>
-    <button className="board-order-action board-accept" type="button" disabled={busy} onClick={() => advance('PREPARING')}>
+  if (order.status === 'PENDING' || waitingPayment) return <article data-order-id={order.id} className={`board-card board-new-card ${fresh ? 'board-card-fresh' : ''}`}>
+    <button className="board-order-action board-accept" type="button" disabled={busy || (waitingPayment && (!cashPending || !canComplete))} onClick={() => advance('PREPARING')}>
       <strong className="board-ticket">Заказ {orderTicket(order).replace('#', '№')}</strong>
-      <span>{busy ? <Loader2 size={18} className="animate-spin" /> : 'Принять'}</span>
+      <span>{waitingPayment && <small className="board-cash-amount">{paymentMethodLabel(order.pendingPaymentMethod ?? null) ?? 'Оплата'}{canComplete && <> · {order.total} ₽</>}</small>}{busy ? <Loader2 size={18} className="animate-spin" /> : cashPending ? (canComplete ? 'Наличные получены — принять' : 'Ожидает кассира') : waitingPayment ? 'Ожидает оплаты' : 'Принять'}</span>
     </button>
   </article>;
   return (
@@ -91,7 +93,7 @@ export default function OrderBoard() {
   const [session, setSession] = useState<{ configured: boolean; unlocked: boolean; canComplete?: boolean; staff?: boolean; canAvailability?: boolean } | null>(null);
   const [orders, setOrders] = useState<BoardOrder[]>([]);
   const groupedOrders = useMemo(() => columns.map(column => orders
-    .filter(order => column.statuses.includes(order.status))
+    .filter(order => order.awaitingPayment ? column.id === 'new' : column.statuses.includes(order.status))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       || (b.dailyNumber ?? 0) - (a.dailyNumber ?? 0) || b.id.localeCompare(a.id))), [orders]);
   const [error, setError] = useState('');
@@ -202,8 +204,8 @@ export default function OrderBoard() {
         const data = await response.json() as { orders: BoardOrder[] };
         if (stopped || revision !== mutationRevision.current || updating.current.size) return;
         const incoming = data.orders;
-        const needsAttention = incoming.filter((order) => order.status === 'PENDING' && !acknowledged.current.has(order.id));
-        const pending = incoming.filter((order) => order.status === 'PENDING');
+        const needsAttention = incoming.filter((order) => (order.status === 'PENDING' || order.requiresCashConfirmation) && (!order.awaitingPayment || order.requiresCashConfirmation) && !acknowledged.current.has(order.id));
+        const pending = incoming.filter((order) => (order.status === 'PENDING' || order.requiresCashConfirmation) && (!order.awaitingPayment || order.requiresCashConfirmation));
         const queueWasEmpty = newQueue.current.size === 0;
         const firstLoad = seen.current === null;
         if (!seen.current) seen.current = new Set();
@@ -309,8 +311,8 @@ export default function OrderBoard() {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 12_000);
     try {
-      const response = await fetch(`/api/order-board/${order.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }), signal: controller.signal });
-      const data = await response.json() as { error?: string; warning?: string };
+      const response = await fetch(`/api/order-board/${order.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, ...(order.requiresCashConfirmation ? { confirmCash: true } : {}) }), signal: controller.signal });
+      const data = await response.json() as { error?: string; warning?: string; order?: { paymentStatus?: BoardOrder['paymentStatus'] } };
       if (!response.ok) {
         if (response.status === 401) { attention.current.clear(); newQueue.current.clear(); playback.current?.stop(); soundConfig.current.enabled = false; setSoundEnabled(false); setSession({ configured: true, unlocked: false }); setOrders([]); }
         throw new Error(data.error || 'Не удалось изменить статус');
@@ -318,7 +320,7 @@ export default function OrderBoard() {
       acknowledge([order.id]);
       newQueue.current.delete(order.id);
       if (!newQueue.current.size && playback.current?.alarm) playback.current.stop();
-      setOrders((current) => status === 'COMPLETED' ? current.filter((item) => item.id !== order.id) : current.map((item) => item.id === order.id ? { ...item, status } : item));
+      setOrders((current) => status === 'COMPLETED' ? current.filter((item) => item.id !== order.id) : current.map((item) => item.id === order.id ? { ...item, status, paymentStatus: data.order?.paymentStatus ?? item.paymentStatus, requiresCashConfirmation: false, awaitingPayment: false } : item));
       if (!silent) setMessage(data.warning || '');
       return { ok: true, message: data.warning };
     } catch (error) {

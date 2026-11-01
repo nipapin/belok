@@ -9,3 +9,9 @@ export const boardTodaySql = `
 // Apply to both reads and mutations: an unpaid/refunded/cancelled payment must
 // not be prepared or issued through an old card on another screen.
 export const boardPaymentSql = `"paymentStatus" = 'SUCCEEDED'`;
+
+
+// New cash/card/SBP orders are visible while awaiting payment. Preparation
+// still requires payment; only cash can be confirmed explicitly by staff.
+export const boardQueuePaymentSql = `(${boardPaymentSql} OR
+  ("paymentMethod" IN ('CASH', 'CARD', 'SBP') AND "paymentStatus" = 'PENDING' AND status IN ('PENDING', 'CONFIRMED')))`;

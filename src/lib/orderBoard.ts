@@ -8,6 +8,9 @@ export interface BoardOrder {
   fulfillment: OrderFulfillment;
   paymentMethod: OrderPaymentMethod | null;
   paymentStatus: PaymentStatus;
+  requiresCashConfirmation?: boolean;
+  awaitingPayment?: boolean;
+  pendingPaymentMethod?: OrderPaymentMethod | null;
   total: number;
   comment: string | null;
   deliveryAddress: string | null;

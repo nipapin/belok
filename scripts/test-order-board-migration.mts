@@ -30,7 +30,7 @@ test('board migration applies once, verifies all indexes, and rolls back failure
   assert.ok(modulePath,'Embedded PostgreSQL is required; production DB is never accessed');
   const {PGlite}=await import(pathToFileURL(modulePath).href);const db=new PGlite();
   try {
-    await db.exec(`CREATE TABLE orders(id text,"createdAt" timestamp,"dailyNumber" int,"paymentStatus" text,status text);
+    await db.exec(`CREATE TABLE orders(id text,"createdAt" timestamp,"dailyNumber" int,"paymentStatus" text,"paymentMethod" text,status text);
       CREATE TABLE order_items(id text,"orderId" text);
       CREATE TABLE order_item_customizations(id text,"orderItemId" text);`);
     const runner=await load('src/lib/orderBoardMigration.ts',{
@@ -38,10 +38,10 @@ test('board migration applies once, verifies all indexes, and rolls back failure
       '@/lib/db':{withTransaction:(fn: (client: unknown)=>unknown)=>db.transaction(fn)},
     });
     await runner.applyOrderBoardIndexes();await runner.applyOrderBoardIndexes();
-    assert.equal((await db.query('SELECT count(*)::int AS count FROM _migrations')).rows[0].count,1);
-    assert.equal((await db.query("SELECT count(*)::int AS count FROM pg_indexes WHERE schemaname='public'")).rows[0].count,4);
+    assert.equal((await db.query('SELECT count(*)::int AS count FROM _migrations')).rows[0].count,2);
+    assert.equal((await db.query("SELECT count(*)::int AS count FROM pg_indexes WHERE schemaname='public'")).rows[0].count,5);
     await db.exec(`DELETE FROM _migrations;
-      DROP INDEX "orders_board_paid_createdAt_idx";DROP INDEX "order_items_orderId_id_idx";DROP INDEX "order_item_customizations_orderItemId_id_idx";
+      DROP INDEX "orders_board_pending_payment_createdAt_idx";DROP INDEX "orders_board_paid_createdAt_idx";DROP INDEX "order_items_orderId_id_idx";DROP INDEX "order_item_customizations_orderItemId_id_idx";
       ALTER TABLE order_item_customizations RENAME TO unavailable;`);
     await assert.rejects(runner.applyOrderBoardIndexes,/does not exist/);
     assert.equal((await db.query('SELECT count(*)::int AS count FROM _migrations')).rows[0].count,0);

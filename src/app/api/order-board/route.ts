@@ -5,20 +5,20 @@ import { requireBoardAccess } from '@/lib/orderBoardAccess';
 import type { OrderRow, OrderItemRow, OrderItemCustomizationRow } from '@/lib/types';
 import { KIOSK_COOKIE } from '@/lib/kioskCookie';
 import { formatVariantTitle } from '@/lib/productTitle';
-import { boardPaymentSql, boardTodaySql } from '@/lib/orderBoardQuery';
+import { boardQueuePaymentSql, boardTodaySql } from '@/lib/orderBoardQuery';
 import { orderItemGroups } from '@/lib/orderItemGroups';
 
 export async function GET() {
   try {
     const access = await requireBoardAccess();
-    // Every payment method enters the queue only after confirmed payment.
+    // Pending payments appear immediately, with their payment state shown.
     const orders = await query<OrderRow>(
       `SELECT id, "dailyNumber", status, source, fulfillment, "paymentMethod",
               "paymentStatus", total, comment, "deliveryAddress", "deliveryTime", "createdAt"
        FROM "orders"
        WHERE status IN ('PENDING', 'CONFIRMED', 'PREPARING', 'READY')
          AND ${boardTodaySql}
-         AND ${boardPaymentSql}
+         AND ${boardQueuePaymentSql}
        ORDER BY "createdAt" DESC, "dailyNumber" DESC NULLS LAST, id DESC`
     );
     const orderIds = orders.map((order) => order.id);
@@ -47,6 +47,9 @@ export async function GET() {
     return NextResponse.json({
       orders: orders.map((order) => ({
         ...order,
+        awaitingPayment: order.paymentStatus === 'PENDING',
+        pendingPaymentMethod: order.paymentStatus === 'PENDING' ? order.paymentMethod : undefined,
+        requiresCashConfirmation: order.paymentMethod === 'CASH' && order.paymentStatus === 'PENDING',
         total: access.canComplete ? order.total : undefined,
         paymentStatus: access.canComplete ? order.paymentStatus : undefined,
         paymentMethod: access.canComplete ? order.paymentMethod : undefined,

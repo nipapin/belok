@@ -39,13 +39,13 @@ try {
     for (const order of boardOrders) {
       assert.equal(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kaliningrad' }).format(new Date(order.createdAt)), today, 'Historical unfinished orders must not appear on today’s board');
       assert.ok(!['COMPLETED', 'CANCELLED'].includes(order.status));
-      assert.ok(order.paymentStatus === 'SUCCEEDED');
+      assert.ok(order.paymentStatus === 'SUCCEEDED' || order.awaitingPayment && ['PENDING','CONFIRMED'].includes(order.status) && ['CASH','CARD','SBP'].includes(order.paymentMethod));
       assert.equal('userId' in order, false);
       assert.equal('tbankPaymentId' in order, false);
     }
     const expected = await pool.query(`SELECT id FROM "orders"
       WHERE status IN ('PENDING', 'CONFIRMED', 'PREPARING', 'READY')
-        AND "paymentStatus" = 'SUCCEEDED'
+        AND ("paymentStatus" = 'SUCCEEDED' OR ("paymentStatus"='PENDING' AND "paymentMethod" IN ('CASH','CARD','SBP') AND status IN ('PENDING','CONFIRMED')))
         AND (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Kaliningrad')::date = $1::date`, [today]);
     assert.deepEqual(boardOrders.map((order) => order.id).sort(), expected.rows.map((order) => order.id).sort(), 'Include all eligible orders for the current Kaliningrad day');
     console.log(`PASS: today’s board contains ${boardOrders.length} eligible orders; historical orders excluded`);

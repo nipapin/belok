@@ -77,7 +77,7 @@
 .board-card.board-new-card { padding: 0; overflow: hidden; }
 .board-accept { margin-top: 0; min-height: 56px; padding: 12px 14px; justify-content: space-between; gap: 12px; border-radius: 11px; }
 .board-accept .board-ticket { font-size: 22px; letter-spacing: -.4px; }
-.board-accept > span { flex-shrink: 0; color: #b8ed6e; }
+.board-accept > span { text-align: right; overflow-wrap: anywhere; min-width: 0; color: #b8ed6e; }
 .board-empty { display: flex; align-items: center; justify-content: center; flex-direction: column; min-height: 200px; height: 100%; color: #728578; gap: 15px; font-size: 14px; }
 .board-login { align-items: center; padding-top: 45px; }
 .board-login .board-brand { text-align: center; }
@@ -112,3 +112,5 @@
 @media (min-width: 1800px) { .board-item { font-size: 32px; } .board-customization { font-size: 20px; } .board-comment { font-size: 22px; } .board-card { padding: 24px; } }
 @media (max-width: 1000px) { .order-board { padding: 12px 16px; } .board-header { gap: 12px; } .board-connection { display: none; } .board-columns { gap: 10px; } .board-column-heading { padding: 9px 12px; gap: 8px; } .board-column-heading h2 { font-size: 17px; } .board-card { padding: 12px; } .board-age { font-size: 10px; } }
 @media (max-width: 700px) { .order-board { overflow-y: auto; } .board-header { flex-shrink: 0; } .board-brand { font-size: 24px; } .board-clock { margin-left: auto; } .board-header .board-controls { order: 3; width: 100%; margin-left: 0; } .board-controls :is(button, a) { padding: 7px 8px; gap: 4px; } .board-columns { display: flex; flex-direction: column; flex: none; } .board-column { min-height: 180px; flex-shrink: 0; } .board-column-scroll { overflow: visible; } .board-login { overflow-y: auto; } }
+
+.board-cash-amount { display: block; font-size: 13px; margin-bottom: 4px; color: inherit; }
