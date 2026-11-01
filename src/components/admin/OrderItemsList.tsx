@@ -42,7 +42,7 @@ export function OrderItemsList({ items }: { items: OrderItemView[] }) {
             <span className="font-medium text-(--lg-text)">
               {formatVariantTitle(item.product?.name ?? 'Товар', item.variantName)} ×{item.quantity}
             </span>
-            <span className="ml-1 tabular-nums">· {item.unitPrice + toppings.reduce((sum, topping) => sum + topping.unitPrice,0)} ₽</span>
+            <span className="ml-1 tabular-nums">· {item.unitPrice * item.quantity + toppings.reduce((sum, topping) => sum + topping.unitPrice * topping.quantity, 0)} ₽</span>
             {toppings.map((topping,j) => <span key={`t-${j}`} className="mt-0.5 block pl-2 text-emerald-700">+ {formatVariantTitle(topping.product?.name ?? 'Топпинг',topping.variantName)} ×{topping.quantity}</span>)}
             {adds.map((c, j) => (
               <span key={`a-${j}`} className="mt-0.5 block text-emerald-700">
