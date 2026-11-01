@@ -1,6 +1,6 @@
 export const paymentLabels: Record<string, string> = { CARD: 'Карта', CASH: 'Наличные', SBP: 'СБП', BONUS: 'Бонусы' };
 export type ReportRow = {
-  id: string; orderId: string; dailyNumber: number | null; createdAt: string;
+  isWriteOff?: boolean; id: string; orderId: string; dailyNumber: number | null; createdAt: string;
   productName: string; variantName: string | null; quantity: number;
   unitPrice: number; orderTotal: number; paymentMethod: string | null;
   paymentStatus: string; status: string; comment: string | null;
@@ -8,7 +8,7 @@ export type ReportRow = {
 export type ManagerReport = {
   rows: ReportRow[]; page: number; count: number;
   summary: { orders: number; quantity: number; total: number; paid: number;
-    cashTotal: number; cashPaid: number; nonCashTotal: number; nonCashPaid: number; otherTotal: number; otherPaid: number };
+    writeOffTotal: number; writeOffCount: number; cashTotal: number; cashPaid: number; nonCashTotal: number; nonCashPaid: number; otherTotal: number; otherPaid: number };
 };
 
 export function reportPeriod(from: string, to: string) {
@@ -32,7 +32,7 @@ export function reportCsv(rows: ReportRow[]) {
   const date = new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Kaliningrad', dateStyle: 'short', timeStyle: 'medium' });
   const lines = rows.map(r => [r.orderId, r.dailyNumber, date.format(new Date(r.createdAt)), r.productName,
     r.variantName, r.quantity, r.unitPrice, Number(r.unitPrice) * r.quantity, r.orderTotal,
-    paymentLabels[r.paymentMethod ?? ''] ?? r.paymentMethod ?? 'Не указан', r.paymentStatus, r.status, r.comment]);
-  return '\uFEFF' + [['ID заказа', 'Номер', 'Дата и время (Калининград)', 'Блюдо', 'Вариант', 'Количество', 'Цена', 'Сумма позиции', 'Сумма заказа', 'Тип оплаты', 'Статус оплаты', 'Статус заказа', 'Комментарий'], ...lines]
+    paymentLabels[r.paymentMethod ?? ''] ?? r.paymentMethod ?? 'Не указан', r.paymentStatus, r.status, r.comment, r.isWriteOff ? 'Списание' : 'Продажа']);
+  return '\uFEFF' + [['ID заказа', 'Номер', 'Дата и время (Калининград)', 'Блюдо', 'Вариант', 'Количество', 'Цена', 'Сумма позиции', 'Сумма заказа', 'Тип оплаты', 'Статус оплаты', 'Статус заказа', 'Комментарий', 'Тип заказа'], ...lines]
     .map(line => line.map(cell).join(';')).join('\r\n');
 }
