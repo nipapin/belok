@@ -39,13 +39,13 @@ try {
     for (const order of boardOrders) {
       assert.equal(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kaliningrad' }).format(new Date(order.createdAt)), today, 'Historical unfinished orders must not appear on today’s board');
       assert.ok(!['COMPLETED', 'CANCELLED'].includes(order.status));
-      assert.ok(order.status === 'READY' || order.paymentStatus === 'SUCCEEDED' || ['CASH', 'BONUS', null].includes(order.paymentMethod));
+      assert.ok(order.paymentStatus === 'SUCCEEDED');
       assert.equal('userId' in order, false);
       assert.equal('tbankPaymentId' in order, false);
     }
     const expected = await pool.query(`SELECT id FROM "orders"
       WHERE status IN ('PENDING', 'CONFIRMED', 'PREPARING', 'READY')
-        AND (status = 'READY' OR "paymentStatus" = 'SUCCEEDED' OR ("paymentStatus" = 'PENDING' AND ("paymentMethod" IN ('CASH', 'BONUS') OR "paymentMethod" IS NULL)))
+        AND "paymentStatus" = 'SUCCEEDED'
         AND (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Kaliningrad')::date = $1::date`, [today]);
     assert.deepEqual(boardOrders.map((order) => order.id).sort(), expected.rows.map((order) => order.id).sort(), 'Include all eligible orders for the current Kaliningrad day');
     console.log(`PASS: today’s board contains ${boardOrders.length} eligible orders; historical orders excluded`);
@@ -57,7 +57,7 @@ try {
       const product = (await pool.query('SELECT id FROM products LIMIT 1')).rows[0];
       assert.ok(product, 'A product is needed for the isolated progress fixture');
       try {
-        await pool.query(`INSERT INTO orders (id, total, source, "paymentMethod") VALUES ($1, 0, 'KIOSK', 'CASH'), ($2, 0, 'KIOSK', 'CASH')`, [orderId, otherOrderId]);
+        await pool.query(`INSERT INTO orders (id, total, source, "paymentMethod", "paymentStatus") VALUES ($1, 0, 'KIOSK', 'CASH', 'SUCCEEDED'), ($2, 0, 'KIOSK', 'CASH', 'SUCCEEDED')`, [orderId, otherOrderId]);
         await pool.query(`INSERT INTO order_items (id, "orderId", "productId", quantity, "unitPrice") VALUES ($1, $2, $3, 2, 0)`, [itemId, orderId, product.id]);
         await pool.query(`INSERT INTO order_items (id, "orderId", "productId", quantity, "unitPrice") VALUES ($1, $2, $3, 1, 0)`, [secondItemId, orderId, product.id]);
         const mark = (action, preparedQuantity, targetOrderId = orderId, targetItemId = itemId) => fetch(`${base}/api/order-board/${targetOrderId}/items/${targetItemId}`, {
@@ -102,7 +102,7 @@ try {
         }
         await pool.query(`UPDATE orders SET status='PREPARING', "createdAt"=(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '2 days' WHERE id=$1`, [orderId]);
         assert.equal((await mark('prepare', 0)).status, 409, 'Historical orders cannot be marked');
-        await pool.query(`UPDATE orders SET "createdAt"=CURRENT_TIMESTAMP AT TIME ZONE 'UTC', "paymentMethod"='CARD' WHERE id=$1`, [orderId]);
+        await pool.query(`UPDATE orders SET "createdAt"=CURRENT_TIMESTAMP AT TIME ZONE 'UTC', "paymentMethod"='CARD', "paymentStatus"='PENDING' WHERE id=$1`, [orderId]);
         assert.equal((await mark('prepare', 0)).status, 409, 'Unpaid online orders cannot be marked');
         console.log('PASS: real item API enforces PIN, ownership, concurrency, bounds and kitchen eligibility; counts persist');
       } finally {
@@ -115,7 +115,7 @@ try {
 
 const fixture = (id, status = 'PENDING') => ({
   id, dailyNumber: Number(id), status, source: 'APP', fulfillment: 'PICKUP',
-  paymentMethod: 'CASH', paymentStatus: 'PENDING', total: 690,
+  paymentMethod: 'CASH', paymentStatus: 'SUCCEEDED', total: 690,
   comment: 'Соус отдельно', deliveryAddress: null, deliveryTime: null,
   createdAt: new Date(Date.now() - 5 * 60_000).toISOString(),
   items: [{ id: `item-${id}`, name: 'Боул с курицей', quantity: 2, preparedQuantity: 0,
@@ -144,7 +144,7 @@ try {
   page.on('request', (request) => {
     const path = new URL(request.url()).pathname;
     const respond = (body, status = 200) => request.respond({ status, contentType: 'application/json', body: JSON.stringify(body) });
-    if (path === '/api/kiosk/session') return void respond({ configured: true, unlocked });
+    if (path === '/api/order-board/session' || path === '/api/kiosk/session') return void respond({ configured: true, unlocked, canComplete: true });
     if (path === '/api/kiosk/unlock') {
       unlocked = JSON.parse(request.postData()).pin === '1234';
       return void respond(unlocked ? { unlocked: true } : { error: 'Неверный PIN' }, unlocked ? 200 : 401);

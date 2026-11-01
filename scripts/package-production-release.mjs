@@ -12,7 +12,8 @@ const filter = source => !basename(source).startsWith('.env');
 cpSync('.next/standalone', release, { recursive: true, filter });
 cpSync('.next/static', join(release, '.next/static'), { recursive: true });
 cpSync('public', join(release, 'public'), { recursive: true, filter });
-// Schemas stay available for a separate migration operation; deployment does not modify the DB.
+// Runtime startup applies only the approved board-index migration 029. Other
+// schemas stay available for a separate migration operation.
 cpSync('migrations', join(release, 'migrations'), { recursive: true });
 writeFileSync(join(release, 'REVISION'), `${revision}\n`);
 function check(directory) {

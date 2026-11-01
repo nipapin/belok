@@ -64,19 +64,19 @@ export default function ReportsPage() {
     <p className="manager-caption">Показан период: {filters.from} — {filters.to}. Сумма заказов учитывает каждый заказ один раз. При поиске блюда это полная сумма заказов, в которых оно встречается; количество относится к найденным позициям.</p>
     {report.isError && <div role="alert" className="manager-note">{report.error.message}. <button onClick={() => void report.refetch()}>Повторить</button>{data && ' Показаны последние загруженные данные.'}</div>}
     <div className="manager-stats" aria-busy={report.isPending}>
-      {[['Сумма заказов', data ? money(data.summary.total) : '—'], ['Оплачено', data ? money(data.summary.paid) : '—'], ['Заказов', data?.summary.orders ?? '—'], ['Количество блюд', data?.summary.quantity ?? '—']].map(([label, value], index) => <div className="manager-stat" key={label}><span>{label}</span><strong>{value}</strong>{index < 2 && data && <dl className="manager-payment-breakdown">
+      {[['Сумма заказов', data ? money(data.summary.total) : '—'], ['Оплачено', data ? money(data.summary.paid) : '—'], ['Списания', data ? `${money(data.summary.writeOffTotal)} · ${data.summary.writeOffCount} шт.` : '—'], ['Заказов', data?.summary.orders ?? '—'], ['Количество блюд', data?.summary.quantity ?? '—']].map(([label, value], index) => <div className="manager-stat" key={label}><span>{label}</span><strong>{value}</strong>{index < 2 && data && <dl className="manager-payment-breakdown">
         <div><dt>Наличные</dt><dd>{money((index === 0 ? data.summary.cashTotal : data.summary.cashPaid) ?? 0)}</dd></div>
         <div><dt>Безналичные</dt><dd>{money((index === 0 ? data.summary.nonCashTotal : data.summary.nonCashPaid) ?? 0)}</dd></div>
         {(index === 0 ? data.summary.otherTotal : data.summary.otherPaid) > 0 && <div><dt>Бонусы / тип не указан</dt><dd>{money(index === 0 ? data.summary.otherTotal : data.summary.otherPaid)}</dd></div>}
       </dl>}</div>)}
     </div>
-    <p className="manager-caption">Безналичный расчет — карта и СБП. Бонусы и заказы без типа оплаты показаны отдельно, если есть за выбранный период.</p>
+    <p className="manager-caption">Списания — стоимость заказов сотрудников по почте, без отменённых. Они исключены из оплаченной суммы и разбивки по способам оплаты. Безналичный расчет — карта и СБП. Бонусы и заказы без типа оплаты показаны отдельно, если есть за выбранный период.</p>
     <section className="manager-panel">
       <div className="manager-heading mb-5"><h2>Позиции заказов</h2><div className="flex gap-2"><button className="manager-button" onClick={() => void report.refetch()} disabled={report.isFetching} aria-label="Обновить отчет"><RefreshCw size={17} /></button><button className="manager-button" onClick={() => void download()} disabled={exporting || !data?.count}><Download size={17} />{exporting ? 'Выгружаем…' : 'CSV за весь период'}</button></div></div>
       {exportError && <p role="alert" className="mb-4 text-red-700">{exportError}</p>}
       {report.isPending ? <p role="status">Формируем отчет…</p> : data?.rows.length ? <>
         <div className="manager-table-scroll"><table className="manager-table"><thead><tr>{['Заказ / время', 'Блюдо', 'Кол-во', 'Сумма позиции', 'Сумма заказа', 'Тип оплаты', 'Комментарий'].map(h => <th scope="col" key={h}>{h}</th>)}</tr></thead><tbody>{data.rows.map(row => <tr key={row.id}>
-          <td><Link href={`/admin/orders/${row.orderId}`}>#{row.dailyNumber ?? row.orderId.slice(-6)}</Link><small>{date(row.createdAt)}</small><small>{ORDER_STATUS_LABELS[row.status]?.label ?? row.status}</small></td>
+          <td><Link href={`/admin/orders/${row.orderId}`}>#{row.dailyNumber ?? row.orderId.slice(-6)}</Link><small>{date(row.createdAt)}</small>{row.isWriteOff && <small>Списание</small>}<small>{ORDER_STATUS_LABELS[row.status]?.label ?? row.status}</small></td>
           <td><strong>{row.productName}</strong>{row.variantName && <small>{row.variantName}</small>}</td><td>{row.quantity}</td>
           <td className="manager-money">{money(row.unitPrice * row.quantity)}</td><td className="manager-money">{money(row.orderTotal)}</td>
           <td>{paymentLabels[row.paymentMethod ?? ''] ?? row.paymentMethod ?? 'Не указан'}<small>{row.paymentStatus === 'SUCCEEDED' ? 'Оплачено' : row.paymentStatus === 'CANCELLED' ? 'Отменено' : 'Ожидает оплаты'}</small></td><td>{row.comment || '—'}</td>

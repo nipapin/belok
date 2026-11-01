@@ -2,13 +2,15 @@ import { query } from '@/lib/db';
 
 // Use the same effective-role partition as the Employees section, including
 // manual assignments which override legacy roles.
-export async function employeeEmailSet(): Promise<Set<string>> {
-  const employees = await query<{ email: string }>(`
+export const employeeEmailsSql = `
     SELECT u.email FROM users u
     LEFT JOIN app_settings a ON a.key = 'employee_roles:' || u.id
     WHERE u.email IS NOT NULL
       AND COALESCE(a.value->'roles', jsonb_build_array(u.role::text)) <> '["USER"]'::jsonb
-  `);
+  `;
+
+export async function employeeEmailSet(): Promise<Set<string>> {
+  const employees = await query<{ email: string }>(employeeEmailsSql);
   return new Set(employees.map(({ email }) => email.trim().toLowerCase()));
 }
 

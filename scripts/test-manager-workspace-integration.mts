@@ -32,6 +32,9 @@ test('real report, recipe list and availability SQL work against PostgreSQL', as
         ('a','before','dish',NULL,1,100),('b','first','dish',NULL,2,200),('c','first','drink',NULL,1,100),
         ('d','last','drink',NULL,1,150),('e','after','dish',NULL,1,100),('f','cancelled','dish',NULL,1,999);`);
     for (const name of ['zz_inventory_mvp.sql', 'zz_inventory_recipes.sql', 'zz_inventory_product_links.sql', 'zz_inventory_recipe_instructions.sql']) await db.exec(await readFile(new URL('../migrations/' + name, import.meta.url), 'utf8'));
+    await db.exec(`ALTER TABLE users ADD COLUMN email text, ADD COLUMN role text;
+      CREATE TABLE app_settings(key text PRIMARY KEY,value jsonb);
+      ALTER TABLE orders ADD COLUMN "userId" text, ADD COLUMN "guestEmail" text;`);
     let authorized = true;
     const query = async (sql: string, params?: unknown[]) => (await db.query(sql, params)).rows;
     const dependencies: Record<string, unknown> = {
@@ -50,6 +53,7 @@ test('real report, recipe list and availability SQL work against PostgreSQL', as
       vm.runInNewContext(code, { exports, require: (name: string) => { assert.ok(name in dependencies, `Unexpected import: ${name}`); return dependencies[name]; }, console, URL, Date, Map });
       return exports;
     }
+    dependencies['@/lib/orderWriteOff'] = await load('src/lib/orderWriteOff.ts');
     const route = await load('src/app/api/admin/reports/route.ts');
     const call = async (extra = '') => await route.GET(new Request('http://test/api/admin/reports?from=2026-10-11&to=2026-10-11' + extra)) as Response;
     const report = await (await call()).json();
@@ -71,6 +75,31 @@ test('real report, recipe list and availability SQL work against PostgreSQL', as
     assert.equal((await call('&payment=INVALID')).status, 400);
     assert.equal((await call('&page=0')).status, 400);
     const csv = await call('&format=csv'); assert.ok(csv.headers.get('content-type')?.includes('text/csv')); assert.ok((await csv.text()).includes('Без лука'));
+    await db.exec(`INSERT INTO users VALUES('cook',' Cook@Cafe.ru ','USER'),('owner','owner@cafe.ru','ADMIN'),('former','former@cafe.ru','ADMIN');
+      INSERT INTO app_settings VALUES('employee_roles:cook','{"roles":["COOK"]}'),('employee_roles:former','{"roles":["USER"]}');
+      INSERT INTO orders(id,"createdAt","dailyNumber",total,"paymentMethod","paymentStatus",status,"userId","guestEmail") VALUES
+        ('staff-guest','2026-10-11 10:00:00',6,300,'CASH','SUCCEEDED','COMPLETED',NULL,' COOK@CAFE.RU '),
+        ('staff-user','2026-10-11 10:00:00',7,400,'CARD','PENDING','PENDING','owner',NULL),
+        ('staff-cancel','2026-10-11 10:00:00',8,900,'CASH','SUCCEEDED','CANCELLED','owner',NULL),
+        ('former','2026-10-11 10:00:00',9,50,'CARD','SUCCEEDED','COMPLETED',NULL,'former@cafe.ru');
+      INSERT INTO order_items VALUES('sg1','staff-guest','dish',NULL,1,200),('sg2','staff-guest','drink',NULL,1,100),
+        ('su','staff-user','dish',NULL,2,200),('sc','staff-cancel','dish',NULL,1,900),('fo','former','drink',NULL,1,50);`);
+    const staffReport = await (await call()).json();
+    assert.equal(staffReport.summary.writeOffTotal, 700, 'Employee orders counted once, including pending, excluding cancelled');
+    assert.equal(staffReport.summary.writeOffCount, 2);
+    assert.equal(staffReport.summary.total, 1400);
+    assert.equal(staffReport.summary.paid, 550, 'Employee payments do not inflate revenue');
+    assert.equal(staffReport.summary.cashTotal, 500);
+    assert.equal(staffReport.summary.nonCashTotal, 200);
+    assert.equal(staffReport.rows.filter((r: reports.ReportRow) => r.isWriteOff).length, 3);
+    assert.equal(staffReport.rows.find((r: reports.ReportRow) => r.orderId === 'former').isWriteOff, false);
+    const cashStaff = await (await call('&payment=CASH')).json();
+    assert.equal(cashStaff.summary.writeOffTotal, 300);
+    const allStaff = await (await call('&cancelled=true')).json();
+    assert.equal(allStaff.summary.writeOffTotal, 700);
+    const searchedStaff = await (await call('&search=' + encodeURIComponent('Боул'))).json();
+    assert.equal(searchedStaff.summary.writeOffTotal, 700);
+    assert.ok((await (await call('&format=csv')).text()).includes('"Списание"'));
     const itemId = '00000000-0000-4000-8000-000000000001';
     await db.exec(`INSERT INTO inventory_items(id,name,kind,unit,quantity) VALUES('${itemId}','Мука','RAW','g',100);
       INSERT INTO inventory_recipes(id,owner_kind,owner_id,output_quantity,output_unit) VALUES('00000000-0000-4000-8000-000000000002','PRODUCT','dish',2,'pcs');
