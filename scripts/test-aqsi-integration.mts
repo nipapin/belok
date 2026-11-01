@@ -242,13 +242,14 @@ test('durable aQsi queue, parallel workers, receipts and uncertain submissions',
         return Response.json({guid:randomUUID()});
       }
       if(path.endsWith('GoodsCategory/list')) return Response.json(categories);
+      if(path.endsWith('/status')) return Response.json({status:'success'});
       const good=goods.get(decodeURIComponent(path.split('/').pop()!));assert.ok(good);return Response.json(good);
     };
-    await processAqsiCatalog();await processAqsiCatalog();await processAqsiCatalog();
+    await processAqsiCatalog();await processAqsiCatalog();await processAqsiCatalog();await processAqsiCatalog();
     assert.equal(uploads,2);assert.equal(goods.get('belok:p')?.price,11);
     assert.equal((await db.queryOne<{phase:string}>('SELECT phase FROM aqsi_catalog_sync'))?.phase,'IDLE');
     await db.query(`DELETE FROM order_items; DELETE FROM products WHERE id='p'`);
-    await processAqsiCatalog();await processAqsiCatalog();await processAqsiCatalog();
+    await processAqsiCatalog();await processAqsiCatalog();await processAqsiCatalog();await processAqsiCatalog();
     assert.equal(goods.get('belok:p')?.nonTradable,true);
     const {requestKioskRefresh,reportKioskClient,listKioskClients,kioskRefreshCommand}=await import('../src/lib/kioskControl');
     const {setAppSetting}=await import('../src/lib/appSettings');
