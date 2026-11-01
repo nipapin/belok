@@ -11,8 +11,8 @@ before switching this application's process. A failed activation restores its
 previous process. Database migrations, when present, require backward-compatible
 changes and are not automatically reversed.
 
-Belok startup verifies migrations `029_order_board_indexes.sql` and `030_order_board_pending_payment_index.sql` when `RELEASE_ID`
-identifies a FirstVDS release. Only these four additive indexes are applied;
+Belok startup verifies migrations `029_order_board_indexes.sql`, `030_order_board_pending_payment_index.sql`, and `031_aqsi_cash_cancellation.sql` when `RELEASE_ID`
+identifies a FirstVDS release. Only these four additive indexes and the durable aQsi cancellation flag are applied;
 other pending migrations are not run. Application startup waits for completion
 before readiness, with a transaction, advisory lock, lock/statement timeouts,
 index validity checks, and an `_migrations` record. A failure rolls back these

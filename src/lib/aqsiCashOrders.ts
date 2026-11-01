@@ -8,7 +8,7 @@ import { receiptPositions, receiptOrderReference, type FiscalItem } from '@/lib/
 import { settleOrderLoyalty } from '@/lib/orderLoyalty';
 import { notifyKitchenNewOrder } from '@/lib/orderNotify';
 
-interface CashJob { id:string;orderId:string;deviceId:number;state:string;payload:Record<string,unknown>|null;operationId:string|null }
+interface CashJob { id:string;orderId:string;deviceId:number;state:string;payload:Record<string,unknown>|null;operationId:string|null;cancelRequested?:boolean }
 interface RemoteOrder {
   device:number;status:string;content:{additionalAttribute?:string};
   receipts?:{id:string;orderId?:string;isNonFiscal:boolean;amount:number;fp?:string;documentNumber?:number;content:{type:number;additionalAttribute?:string}}[];
@@ -41,11 +41,11 @@ async function setState(job:CashJob,state:string,error:string|null=null) {
   await query(`UPDATE aqsi_cash_orders SET state=$2,error=$3,"updatedAt"=NOW() WHERE id=$1`,[job.id,state,error]);
 }
 
-async function reconcile(job:CashJob) {
+async function reconcile(job:CashJob,sendCancellation=true):Promise<'review'|void> {
   const remote=await aqsiRequest<RemoteOrder>(`/v2/Orders/simple/${encodeURIComponent(`belok:${job.orderId}`)}`);
   const marker=receiptOrderReference(job.orderId);
   if(Number(remote.device)!==job.deviceId || remote.content?.additionalAttribute!==marker) {
-    await setState(job,'UNKNOWN','Заказ aQsi не соответствует заказу сайта');return;
+    await setState(job,'UNKNOWN','Заказ aQsi не соответствует заказу сайта');return 'review';
   }
   const receipts=remote.receipts ?? [];
   if(remote.status==='Оплачен') {
@@ -53,7 +53,7 @@ async function reconcile(job:CashJob) {
     const receipt=receipts.length===1 ? receipts[0] : null;
     if(!order || !receipt || receipt.isNonFiscal!==false || !receipt.fp || !receipt.documentNumber || receipt.content?.type!==1 ||
       Math.round(receipt.amount*100)!==Math.round(order.total*100) || receipt.content.additionalAttribute!==marker) {
-      await setState(job,'UNKNOWN','Оплата отмечена на кассе, но фискальный чек требует проверки');return;
+      await setState(job,'UNKNOWN','Оплата отмечена на кассе, но фискальный чек требует проверки');return 'review';
     }
     const paid = await withTransaction(async client=>{
       const updated = await client.query<{paymentMethod:string;status:string}>(`UPDATE orders SET "paymentStatus"='SUCCEEDED'
@@ -69,10 +69,30 @@ async function reconcile(job:CashJob) {
     const cancelled = await withTransaction(async client=>{
       return (await client.query(`UPDATE orders SET status='CANCELLED' WHERE id=$1 AND "paymentStatus"='PENDING' RETURNING id`,[job.orderId])).rowCount === 1;
     });
-    if (cancelled) await settleOrderLoyalty(job.orderId,'CANCELLED');
-    await setState(job,'CANCELLED');
-  } else if(remote.status==='Отложен' && receipts.length===0) await setState(job,'WAITING');
-  else await setState(job,'UNKNOWN','Статус или частичная оплата заказа требуют проверки на кассе');
+    if (cancelled) {
+      await setState(job,'CANCELLED');
+      await settleOrderLoyalty(job.orderId,'CANCELLED');
+    } else {
+      await setState(job,'UNKNOWN','Оплата заказа уже изменилась. Проверьте заказ на кассе');return 'review';
+    }
+  } else if(remote.status==='Отложен' && receipts.length===0) {
+    if(job.cancelRequested && sendCancellation) {
+      const current=await queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id=$1`,[job.orderId]);
+      if(current?.paymentStatus!=='PENDING') {
+        await setState(job,'UNKNOWN','Оплата заказа уже изменилась. Проверьте заказ на кассе');return 'review';
+      }
+      // Orders V2 upserts by our stable external ID. Read before every retry:
+      // never replace a paid/part-paid order or recreate an absent one.
+      if(!job.payload) {await setState(job,'UNKNOWN','Нет сохранённого заказа для отмены aQsi');return 'review';}
+      await aqsiRequest('/v2/Orders/simple','POST',{
+        ...job.payload,id:`belok:${job.orderId}`,device:String(job.deviceId),
+        status:'Отменен',cancellationReason:'Отменён сотрудником в админке',
+      });
+      // A successful command response is not confirmation of cancellation.
+      return reconcile(job,false);
+    } else await setState(job,'WAITING',job.cancelRequested ? 'Отмена отправлена. Ожидаем подтверждения aQsi' : null);
+  }
+  else {await setState(job,'UNKNOWN','Статус или частичная оплата заказа требуют проверки на кассе');return 'review';}
 }
 
 export async function processAqsiCashOrders() {
@@ -85,7 +105,9 @@ export async function processAqsiCashOrders() {
       const active=await query<CashJob>(`SELECT * FROM aqsi_cash_orders WHERE state IN ('WAITING','UNKNOWN') AND ("checkedAt" IS NULL OR "checkedAt"<NOW()-INTERVAL '10 seconds') ORDER BY "checkedAt" NULLS FIRST LIMIT 10`);
       for(const job of active) {
         await query(`UPDATE aqsi_cash_orders SET "checkedAt"=NOW() WHERE id=$1`,[job.id]);
-        try {await reconcile(job)} catch { /* Read-only retry; never recreate an uncertain order. */ }
+        try {await reconcile(job)} catch(error) {
+          if(job.cancelRequested) await setState(job,'UNKNOWN',error instanceof AqsiRequestError ? error.message : 'Не удалось подтвердить отмену aQsi');
+        }
       }
       const config=await getAqsiConfig();
       if(!aqsiConfigured(config) || !config.cashOrdersEnabled) return;
@@ -104,6 +126,40 @@ export async function processAqsiCashOrders() {
       }
     } finally {await client.query('SELECT pg_advisory_unlock(784146,22)')}
   } finally {client.release()}
+}
+
+/** Serialized with deferred-order submission and reconciliation on every server. */
+export async function cancelAqsiCashOrder(orderId:string):Promise<'none'|'cancelled'|'pending'|'blocked'|'review'> {
+  const client=await pool.connect();
+  try {
+    await client.query('SELECT pg_advisory_lock(784146,22)');
+    const job=(await client.query<CashJob>(`SELECT * FROM aqsi_cash_orders WHERE "orderId"=$1`,[orderId])).rows[0];
+    if(!job) return 'none';
+    const order=await queryOne<{paymentStatus:string}>(`SELECT "paymentStatus" FROM orders WHERE id=$1`,[orderId]);
+    if(order?.paymentStatus!=='PENDING' || job.state==='SUCCEEDED') return 'blocked';
+    if(['QUEUED','BLOCKED','FAILED','CANCELLED'].includes(job.state)) {
+      const cancelled=await withTransaction(async transaction=>{
+        const updated=await transaction.query(`UPDATE orders SET status='CANCELLED' WHERE id=$1 AND "paymentStatus"='PENDING' RETURNING id`,[orderId]);
+        if(!updated.rowCount) return false;
+        await transaction.query(`UPDATE aqsi_cash_orders SET state='CANCELLED',error=NULL,"updatedAt"=NOW() WHERE id=$1`,[job.id]);
+        return true;
+      });
+      if(!cancelled) return 'blocked';
+      await settleOrderLoyalty(orderId,'CANCELLED');
+      return 'cancelled';
+    }
+    // Persist before calling the network. The worker resumes after a crash,
+    // timeout or lost response and checks the remote order before resending.
+    await query(`UPDATE aqsi_cash_orders SET "cancelRequested"=TRUE,"checkedAt"=NULL,"updatedAt"=NOW() WHERE id=$1`,[job.id]);
+    job.cancelRequested=true;
+    let review=false;
+    try {review=await reconcile(job)==='review'} catch(error) {
+      await setState(job,'UNKNOWN',error instanceof AqsiRequestError ? error.message : 'Не удалось подтвердить отмену aQsi');
+    }
+    const after=await queryOne<{state:string}>(`SELECT state FROM aqsi_cash_orders WHERE id=$1`,[job.id]);
+    if(review) return 'review';
+    return after?.state==='CANCELLED' ? 'cancelled' : after?.state==='SUCCEEDED' ? 'blocked' : 'pending';
+  } finally {try {await client.query('SELECT pg_advisory_unlock(784146,22)')} finally {client.release()}}
 }
 
 // Cancel on the terminal first: a website cancellation must not leave a payable order on aQsi.

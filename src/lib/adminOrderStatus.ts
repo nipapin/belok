@@ -1,4 +1,4 @@
-export async function updateAdminOrderStatus<T>(id: string, status: string): Promise<{ order: T }> {
+export async function updateAdminOrderStatus<T>(id: string, status: string): Promise<{ order: T; notice?: string }> {
   const response = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

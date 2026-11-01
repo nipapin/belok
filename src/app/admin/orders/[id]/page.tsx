@@ -226,6 +226,7 @@ export default function AdminOrderDetailPage() {
           ))}
         </select>
         {updateStatus.isError && <p role="alert" className="text-sm text-rose-700">{updateStatus.error.message}</p>}
+        {updateStatus.isSuccess && updateStatus.data.notice && <p role="status" className="text-sm text-amber-800">{updateStatus.data.notice}</p>}
       </section>
     </div>
   );

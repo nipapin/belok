@@ -111,6 +111,11 @@ export default function AdminOrdersPage() {
   return (
     <div>
       <h1 className="heading-section mb-6">Заказы</h1>
+      {updateStatus.isSuccess && updateStatus.data.notice ? (
+        <p role="status" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+          {updateStatus.data.notice}
+        </p>
+      ) : null}
       {updateStatus.isError ? (
         <p role="alert" className="mb-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
           {updateStatus.error.message}

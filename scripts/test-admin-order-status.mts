@@ -31,3 +31,9 @@ test('successful mutation sends selected status and returns server-confirmed ord
   });
   assert.deepEqual(await updateAdminOrderStatus('order-1', 'READY'), { order });
 });
+
+test('accepted terminal cancellation preserves pending notice without pretending the order is cancelled', async (t) => {
+  const data={order:{id:'order-1',status:'PENDING'},notice:'Ожидаем подтверждения aQsi'};
+  t.mock.method(globalThis,'fetch',async()=>Response.json(data,{status:202}));
+  assert.deepEqual(await updateAdminOrderStatus('order-1','CANCELLED'),data);
+});
