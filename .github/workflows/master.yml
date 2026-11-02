@@ -61,6 +61,7 @@ jobs:
       - run: npm run test:aqsi:integration
         env:
           AQSI_TEST_DATABASE_URL: postgresql://aqsi_test:aqsi_test@127.0.0.1:5432/aqsi_test
+          AQSI_CATALOG_SYNC_ENABLED: 'true'
       - run: npm run test:kiosk-control
       - run: npm run test:toppings
       - run: npm run test:product-href
