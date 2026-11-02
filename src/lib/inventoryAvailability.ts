@@ -1,3 +1,8 @@
+// Automatic inventory stops are opt-in until the initial stocktaking is reconciled.
+export function inventoryAutoStopEnabled(value: string | undefined): boolean {
+  return value === 'true';
+}
+
 export type StockRequirement = {
   itemId: string; name: string; unit: string; required: string | null;
   quantity: string; active: boolean; stockKnown?: boolean;

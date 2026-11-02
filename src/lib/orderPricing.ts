@@ -1,5 +1,5 @@
-import { loadStockRequirements } from '@/lib/inventoryAvailability.server';
-import { cartStockAvailability } from '@/lib/inventoryAvailability';
+import { isInventoryAutoStopEnabled, loadStockRequirements } from '@/lib/inventoryAvailability.server';
+import { calculateAvailability, cartStockAvailability } from '@/lib/inventoryAvailability';
 import { fetchProductsWithRelations } from '@/lib/queries/products';
 import { optionCustomizations, resolveVariant, type OptionCustomization } from '@/lib/productOptions';
 import { VariantOrderError } from '@/lib/productVariants';
@@ -24,7 +24,8 @@ export interface PricedOrderItem {
 
 export function priceOrderItem(item: IncomingOrderItem, product: ProductWithRelations, linkedTopping = false): PricedOrderItem {
   const fail = (message: string): never => { throw new VariantOrderError(message); };
-  if (!product.isAvailable || (!product.category.isActive && !linkedTopping)) fail('Товар недоступен для заказа');
+  if (!product.isAvailable) fail(`Товар «${product.name}» отключён в стоп-листе`);
+  if (!product.category.isActive && !linkedTopping) fail(`Категория товара «${product.name}» отключена`);
   if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100) fail('Некорректное количество товара');
   const variant = product.variants.find((entry) => entry.id === item.variantId);
   if (product.variants.length && !variant) fail('Выберите доступный вариант товара');
@@ -67,7 +68,14 @@ export async function priceOrderItems(items: IncomingOrderItem[]): Promise<Price
     }
   }
   if ([...ids].some((id) => typeof id !== 'string' || !id)) throw new VariantOrderError('Товар не найден');
-  const products = await fetchProductsWithRelations({ productIds: [...ids], stockAvailability: true });
+  // Preserve the manual menu state instead of merging it with the inventory STOP flag.
+  const products = await fetchProductsWithRelations({ productIds: [...ids] });
+  const requirements = isInventoryAutoStopEnabled() ? await loadStockRequirements([...ids]) : null;
+  const checkStock = (product: ProductWithRelations) => {
+    if (!requirements) return;
+    const stock = calculateAvailability(requirements.get(product.id) ?? []);
+    if (stock.state === 'STOP') throw new VariantOrderError(`Товар «${product.name}» недоступен по складу: ${stock.reasons.join('; ')}`);
+  };
   const map = new Map(products.map((product) => [product.id, product]));
   const priced: PricedOrderItem[] = [];
   for (const item of items) {
@@ -75,16 +83,21 @@ export async function priceOrderItems(items: IncomingOrderItem[]): Promise<Price
     if (!product) throw new VariantOrderError('Товар не найден');
     const parentLineIndex = priced.length;
     priced.push(priceOrderItem(item, product));
+    checkStock(product);
     const seen = new Set<string>();
     for (const choice of item.toppings ?? []) {
       const key = JSON.stringify([choice.productId,choice.variantId ?? null]);
       const topping = map.get(choice.productId);
       if (seen.has(key) || !topping || !product.toppings?.some((entry) => entry.id === choice.productId && entry.isAvailable)) throw new VariantOrderError('Топпинг недоступен для этого блюда');
       seen.add(key);
-      priced.push({ ...priceOrderItem({ productId:choice.productId,variantId:choice.variantId,quantity:item.quantity },topping,true),parentLineIndex });
+      const pricedTopping = priceOrderItem({ productId:choice.productId,variantId:choice.variantId,quantity:item.quantity },topping,true);
+      checkStock(topping);
+      priced.push({ ...pricedTopping, parentLineIndex });
     }
   }
-  const requirements = await loadStockRequirements([...ids]);
-  if (requirements && cartStockAvailability(priced, requirements).state === 'STOP') throw new VariantOrderError('Недостаточно продуктов на складе для выбранного количества блюд');
+  if (requirements) {
+    const stock = cartStockAvailability(priced, requirements);
+    if (stock.state === 'STOP') throw new VariantOrderError(`Недостаточно продуктов на складе для заказа: ${stock.reasons.join('; ')}`);
+  }
   return priced;
 }

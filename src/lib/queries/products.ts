@@ -1,6 +1,6 @@
 import { query } from '@/lib/db';
 import { loadProductToppings } from '@/lib/productToppings.server';
-import { loadStockAvailability } from '@/lib/inventoryAvailability.server';
+import { isInventoryAutoStopEnabled, loadStockAvailability } from '@/lib/inventoryAvailability.server';
 import type {
   CategoryRow,
   IngredientRow,
@@ -202,7 +202,7 @@ export async function fetchProductsWithRelations(
   const toppings = await loadProductToppings(ids, filter.stockAvailability);
   for (const id of ids) productMap.get(id)!.toppings = toppings.get(id) ?? [];
 
-  if (filter.stockAvailability) {
+  if (filter.stockAvailability && isInventoryAutoStopEnabled()) {
     const stock = await loadStockAvailability(ids);
     for (const id of ids) { const item = productMap.get(id)!; item.isAvailable = item.isAvailable && stock.get(id)?.state !== 'STOP'; }
   }

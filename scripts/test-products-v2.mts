@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {parseRecipeDraft, recipeDraftInput} from '../src/lib/recipeDraft';
 import {validateRecipe} from '../src/lib/inventoryRecipes';
-import {calculateAvailability,cartStockAvailability,type StockRequirement} from '../src/lib/inventoryAvailability';
+import {calculateAvailability,cartStockAvailability,inventoryAutoStopEnabled,type StockRequirement} from '../src/lib/inventoryAvailability';
 
 test('unfinished recipes survive draft recovery without becoming usable production recipes',()=>{
   const draft={outputQuantity:'20',outputUnit:'pcs' as const,instructions:'Выпекать 15 минут',lines:[{itemId:'flour',quantity:''}]};
@@ -21,6 +21,11 @@ test('comma quantities and precise thousandths can be saved as a finished recipe
   assert.throws(()=>recipeDraftInput({outputQuantity:'1',outputUnit:'pcs',instructions:'',lines:[{itemId:'a',quantity:'0.0001'}]}));
 });
 const line=(stockKnown:boolean,quantity='0'):StockRequirement=>({itemId:'bun',name:'Булочка',unit:'pcs',required:'1',quantity,active:true,stockKnown});
+test('inventory automatic stop is disabled until production explicitly opts in',()=>{
+  assert.equal(inventoryAutoStopEnabled(undefined),false);
+  assert.equal(inventoryAutoStopEnabled('false'),false);
+  assert.equal(inventoryAutoStopEnabled('true'),true);
+});
 test('creating catalog entries does not put existing menu into automatic stop before stocktaking',()=>{
   assert.equal(calculateAvailability([line(false)]).state,'UNCONFIGURED');
   assert.equal(calculateAvailability([line(true)]).state,'STOP');

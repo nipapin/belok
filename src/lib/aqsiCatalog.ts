@@ -72,6 +72,9 @@ async function catalog(): Promise<Catalog> {
 // Verify actual entities through documented GET methods rather than guessing
 // the undocumented response format of bulk-task status endpoints.
 export async function processAqsiCatalog() {
+  // Emergency freeze: catalog writes must be explicitly re-enabled on the VPS.
+  // Acquiring, deferred orders and fiscal receipts are not affected.
+  if (process.env.AQSI_CATALOG_SYNC_ENABLED !== 'true') return;
   const config = await getAqsiConfig();
   if (!aqsiConfigured(config) || !config.catalogEnabled || !fiscalConfigured(config)) return;
   const client = await pool.connect();

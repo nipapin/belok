@@ -1,5 +1,11 @@
 import { query, queryOne } from '@/lib/db';
-import { calculateAvailability, type StockAvailability, type StockRequirement } from './inventoryAvailability';
+import { calculateAvailability, inventoryAutoStopEnabled, type StockAvailability, type StockRequirement } from './inventoryAvailability';
+
+// Temporary production guard: require an explicit opt-in after stocktaking.
+// Manual menu availability remains authoritative regardless of this flag.
+export function isInventoryAutoStopEnabled(): boolean {
+  return inventoryAutoStopEnabled(process.env.INVENTORY_AUTO_STOP_ENABLED);
+}
 
 type RequirementRow = StockRequirement & { productId: string };
 export async function loadStockAvailability(ids: string[]): Promise<Map<string, StockAvailability>> {
