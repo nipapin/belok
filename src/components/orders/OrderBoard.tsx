@@ -60,7 +60,7 @@ function OrderCard({ order, fresh, now, acknowledge, advance, markItem, busy, ca
         <strong className="board-ticket">{orderTicket(order)}</strong>
         <span className={`board-age ${minutes >= 20 && order.status !== 'READY' ? 'board-age-late' : ''}`}><Clock3 size={16} />{ageLabel}</span>
       </div>
-      <div className="board-tags"><span>{order.source === 'KIOSK' ? 'Касса' : 'Сайт'}</span><span>{fulfillmentLabel(order.fulfillment) ?? 'Самовывоз'}</span><span>{timeLabel(order.createdAt)}</span></div>
+      <div className="board-tags"><span>{order.source === 'KIOSK' ? 'Касса' : order.source === 'TELEGRAM' ? 'Telegram' : 'Сайт'}</span><span>{fulfillmentLabel(order.fulfillment) ?? 'Самовывоз'}</span><span>{timeLabel(order.createdAt)}</span></div>
       <ul className="board-items">
         {order.items.map((item) => {
           const prepared = item.preparedQuantity ?? 0;

@@ -10,7 +10,7 @@ export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'CANCELLED';
 export type BonusType = 'EARNED' | 'SPENT' | 'EXPIRED' | 'MANUAL';
 export type IngredientAction = 'ADD' | 'REMOVE';
 export type VerificationPurpose = 'REGISTER' | 'LOGIN' | 'PASSWORD_RESET';
-export type OrderSource = 'APP' | 'KIOSK';
+export type OrderSource = 'APP' | 'KIOSK' | 'TELEGRAM';
 export type OrderFulfillment = 'DELIVERY' | 'PICKUP' | 'DINE_IN';
 export type OrderPaymentMethod = 'CARD' | 'CASH' | 'SBP' | 'BONUS';
 

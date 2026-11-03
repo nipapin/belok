@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, withTransaction } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, SESSION_COOKIE, readSessionIdFromCookie } from '@/lib/auth';
+import { ensureTelegramSchema } from '@/lib/telegramSchema';
 import { notifyKitchenNewOrder } from '@/lib/orderNotify';
 import { VariantOrderError } from '@/lib/productVariants';
 import { priceOrderItems } from '@/lib/orderPricing';
@@ -233,6 +234,16 @@ export async function POST(request: NextRequest) {
 
     const orderId = uuidv4();
 
+    let telegramId: string | null = null;
+    if (process.env.TELEGRAM_BOT_TOKEN?.trim()) {
+      await ensureTelegramSchema();
+      const sessionId = readSessionIdFromCookie(request.cookies.get(SESSION_COOKIE)?.value);
+      const account = await queryOne<{ telegramId: string }>(
+        `SELECT t."telegramId" FROM telegram_sessions t JOIN sessions s ON s.id=t."sessionId"
+         WHERE t."sessionId"=$1 AND s."userId"=$2 AND s."revokedAt" IS NULL`, [sessionId, user.id]);
+      telegramId = account?.telegramId ?? null;
+    }
+
     const dailyNumber = await withTransaction(async (client) => {
       const ticket = await allocateOrderNumber(client);
       await client.query(
@@ -256,6 +267,11 @@ export async function POST(request: NextRequest) {
           fulfillmentValue === 'PICKUP' ? pickupTime : null,
         ]
       );
+
+      if (telegramId) {
+        await client.query(`UPDATE orders SET source='TELEGRAM' WHERE id=$1`, [orderId]);
+        await client.query('INSERT INTO telegram_orders("orderId","telegramId") VALUES($1,$2)', [orderId, telegramId]);
+      }
 
       const itemIds = stampedItems.map(() => uuidv4());
       for (const [index, item] of stampedItems.entries()) {

@@ -39,7 +39,8 @@
     "test:roles": "node --import tsx --test scripts/test-roles.mts scripts/test-admin-update.mts",
     "test:weather": "node --import tsx --test scripts/test-weather.mts scripts/test-weather-server.mts",
     "weather:sync": "node --import tsx scripts/sync-weather.ts",
-    "test:products-v2": "node --import tsx --test scripts/test-products-v2.mts"
+    "test:products-v2": "node --import tsx --test scripts/test-products-v2.mts",
+    "test:telegram": "node --import tsx --test scripts/test-telegram.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1104.0",
