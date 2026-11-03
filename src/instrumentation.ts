@@ -11,4 +11,9 @@ export async function register() {
     const {startAqsiWorker}=await import('@/lib/aqsiWorker');
     startAqsiWorker();
   }
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.TELEGRAM_BOT_TOKEN?.trim() && process.env.NEXT_PHASE !== 'phase-production-build') {
+    const { startTelegramWorker } = await import('@/lib/telegramWorker');
+    startTelegramWorker();
+  }
+
 }

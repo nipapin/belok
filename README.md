@@ -340,3 +340,8 @@ pm2 save
 ## Лицензия
 
 Приватный проект (`"private": true` в `package.json`). Условия распространения задайте при необходимости отдельно.
+
+### Telegram заказы
+
+Бот: [@belok_chat_bot](https://t.me/belok_chat_bot). Настройка токена на сервере,
+перезапуск и проверка: [docs/telegram-orders.md](docs/telegram-orders.md).
