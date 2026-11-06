@@ -22,15 +22,13 @@ const withPWA = withPWAInit({
   // that exact URL they failed with "no-response" instead of a page.
   cacheStartUrl: false,
   dynamicStartUrl: false,
-  extendDefaultRuntimeCaching: true,
+  reloadOnOnline: false,
+  extendDefaultRuntimeCaching: false,
   workboxOptions: {
-    // Wait for the user to confirm the update via UpdateToast.
-    // The user clicks "Обновить" → we postMessage SKIP_WAITING to the
-    // waiting SW → it activates → workbox-window fires `controlling` → we reload.
-    skipWaiting: false,
+    // Activate fresh caching rules promptly; page reloads remain coordinated.
+    skipWaiting: true,
     clientsClaim: true,
-    // Entries below replace the default ones with the same cacheName; the
-    // default static-asset caches (JS, CSS, images, fonts) stay untouched.
+    // Explicit rules keep HTML, RSC and API replies out of old runtime caches.
     // `src/app/~offline/page.tsx` is auto-detected as the document fallback, so
     // a navigation that cannot reach the network renders that page.
     runtimeCaching: [
@@ -58,6 +56,11 @@ const withPWA = withPWAInit({
         handler: "NetworkOnly",
         options: { cacheName: "apis" },
       },
+      {
+        urlPattern: ({ request, sameOrigin }) => sameOrigin && ['script', 'style', 'font', 'image'].includes(request.destination),
+        handler: 'CacheFirst',
+        options: { cacheName: 'belok-static-assets', expiration: { maxEntries: 256, maxAgeSeconds: 30 * 86400 } },
+      },
     ],
   },
 });
@@ -65,6 +68,12 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   output: "standalone",
   generateBuildId: async () => process.env.GITHUB_SHA || null,
+  async headers() {
+    return ['/sw.js', '/manifest.json'].map(source => ({
+      source,
+      headers: [{ key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }],
+    }));
+  },
   env: {
     NEXT_PUBLIC_BUILD_REVISION: buildRevision(),
     NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),

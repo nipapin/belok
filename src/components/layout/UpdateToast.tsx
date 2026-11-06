@@ -6,8 +6,8 @@ import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useHaptic } from "@/hooks/useHaptic";
 
 export default function UpdateToast() {
-  const { updateAvailable, reloading, applyUpdate, dismiss } =
-    useServiceWorkerUpdate();
+  const { updateAvailable, reloading, error, applyUpdate, dismiss } =
+    useServiceWorkerUpdate({ autoUpdate: true });
   const haptic = useHaptic();
 
   // One subtle tick when the toast first appears.
@@ -19,7 +19,7 @@ export default function UpdateToast() {
 
   const onApply = () => {
     haptic("medium");
-    applyUpdate();
+    void applyUpdate();
   };
 
   const onDismiss = () => {
@@ -48,7 +48,7 @@ export default function UpdateToast() {
             Доступно обновление
           </p>
           <p className="mt-0.5 text-xs leading-snug text-(--lg-text-muted)">
-            Перезагрузим, чтобы получить новую версию
+            {error || 'Корзина и вход сохранятся. Переустанавливать приложение не нужно.'}
           </p>
         </div>
         <button

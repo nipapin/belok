@@ -14,6 +14,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
+import { refreshApplicationIfUpdated } from '@/lib/applicationUpdate';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const fetchUser = useAuthStore((s) => s.fetchUser);
@@ -25,6 +26,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }, [fetchUser]);
 
   const handleRefresh = useCallback(async () => {
+    if (document.querySelector('[data-app-update-blocked="true"]')) return;
+    if (await refreshApplicationIfUpdated().catch(() => false)) return;
+    if (document.querySelector('[data-app-update-blocked="true"]')) return;
     await Promise.all([queryClient.invalidateQueries(), fetchUser()]);
     router.refresh();
   }, [queryClient, fetchUser, router]);

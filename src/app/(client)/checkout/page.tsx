@@ -14,6 +14,7 @@ import DeliveryTimePicker, { ASAP_TIME } from '@/components/checkout/DeliveryTim
 import KaliningradAddressField from '@/components/checkout/KaliningradAddressField';
 import { formatRuPhoneMask } from '@/lib/phone';
 import { getClientOs } from '@/lib/clientPlatform';
+import { BEFORE_APP_UPDATE } from '@/lib/applicationUpdate';
 import type { OrderFulfillment, OrderPaymentMethod } from '@/lib/types';
 
 export default function CheckoutPage() {
@@ -36,6 +37,40 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const actionRef = useRef<HTMLDivElement>(null);
   const [actionPad, setActionPad] = useState(76);
+  const draftRestored = useRef(false);
+  const cartKey = JSON.stringify(items.map(item => [item.id, item.quantity]));
+
+  useEffect(() => {
+    if (!items.length || draftRestored.current) return;
+    draftRestored.current = true;
+    try {
+      const saved = sessionStorage.getItem('belok:checkout:update-draft');
+      if (!saved) return;
+      const draft = JSON.parse(saved);
+      sessionStorage.removeItem('belok:checkout:update-draft');
+      if (draft.cartKey !== cartKey || !Number.isFinite(draft.savedAt) || Date.now() - draft.savedAt > 10 * 60_000) return;
+      if (draft.fulfillment === 'PICKUP' || draft.fulfillment === 'DELIVERY') setFulfillment(draft.fulfillment);
+      if (typeof draft.deliveryAddress === 'string') setDeliveryAddress(draft.deliveryAddress);
+      if (typeof draft.deliveryTime === 'string') setDeliveryTime(draft.deliveryTime);
+      if (typeof draft.pickupTime === 'string') setPickupTime(draft.pickupTime);
+      if (typeof draft.contactPhone === 'string') setContactPhone(draft.contactPhone);
+      if (draft.paymentMethod === 'CASH' || draft.paymentMethod === 'SBP') setPaymentMethod(draft.fulfillment === 'DELIVERY' ? 'SBP' : draft.paymentMethod);
+      if (Number.isFinite(draft.bonusUsed) && draft.bonusUsed >= 0) setBonusUsed(draft.bonusUsed);
+      if (typeof draft.comment === 'string') setComment(draft.comment);
+    } catch { /* A missing draft must not prevent ordering. */ }
+  }, [items.length, cartKey]);
+
+  useEffect(() => {
+    const saveDraft = (event: Event) => {
+      if (loading) { event.preventDefault(); return; }
+      try {
+        sessionStorage.setItem('belok:checkout:update-draft', JSON.stringify({ savedAt: Date.now(), cartKey,
+          fulfillment, deliveryAddress, deliveryTime, pickupTime, contactPhone, paymentMethod, bonusUsed, comment }));
+      } catch { event.preventDefault(); }
+    };
+    window.addEventListener(BEFORE_APP_UPDATE, saveDraft);
+    return () => window.removeEventListener(BEFORE_APP_UPDATE, saveDraft);
+  }, [loading, cartKey, fulfillment, deliveryAddress, deliveryTime, pickupTime, contactPhone, paymentMethod, bonusUsed, comment]);
 
   const subtotal = getTotalPrice();
   const discountPercent = user?.loyaltyLevel?.discountPercent || 0;
@@ -196,7 +231,7 @@ export default function CheckoutPage() {
     `${active ? 'btn-primary' : 'btn-outline'} flex-1 flex-col !rounded-[calc(1.75rem/1.618)] py-3.5`;
 
   return (
-    <div className="mx-auto max-w-md px-2 pt-2" style={{ paddingBottom: actionPad }}>
+    <div className="mx-auto max-w-md px-2 pt-2" style={{ paddingBottom: actionPad }} data-app-update-blocked={loading ? 'true' : undefined}>
       <h1 className="heading-section mb-6">Оформление заказа</h1>
 
       <div className="glass-panel mb-4 p-4">
