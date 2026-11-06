@@ -275,6 +275,12 @@ export default function CheckoutPage() {
         </div>
         {fulfillment === 'DELIVERY' && (
           <div className="mt-4 space-y-3">
+            <div role="status" className="rounded-2xl border border-(--lg-ring) bg-(--lg-fill) px-4 py-3 text-sm">
+              <p className="font-semibold text-(--lg-text)">Доставка оплачивается отдельно</p>
+              <p className="mt-1 leading-relaxed text-(--lg-text-muted)">
+                Стоимость доставки не включена в сумму заказа. Мы уточним её и сообщим вам по телефону.
+              </p>
+            </div>
             <KaliningradAddressField value={deliveryAddress} onChange={setDeliveryAddress} />
             <DeliveryTimePicker label="Время доставки" value={deliveryTime} onChange={setDeliveryTime} />
             <PhoneField value={contactPhone} onChange={setContactPhone} />
