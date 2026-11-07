@@ -22,7 +22,7 @@
     "test:checkout": "node scripts/test-checkout-api.mjs",
     "test:checkout:browser": "node scripts/test-checkout-browser.mjs",
     "aqsi:worker": "node --conditions=react-server --import tsx scripts/aqsi-worker.ts",
-    "test:aqsi": "node --import tsx --test scripts/test-aqsi.mts",
+    "test:aqsi": "node --import tsx --test scripts/test-aqsi.mts scripts/test-aqsi-cancellation.mts scripts/test-admin-order-status.mts",
     "test:aqsi:integration": "node --conditions=react-server --import tsx --test scripts/test-aqsi-integration.mts",
     "test:order-board": "node --import tsx --test scripts/test-order-board-integration.mts scripts/test-order-board-migration.mts scripts/test-order-board-ui.mts",
     "test:kiosk-control": "node --import tsx --test scripts/test-kiosk-control.mts",

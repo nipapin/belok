@@ -2,6 +2,7 @@
 
 import { useAuthStore } from '@/store/authStore';
 import { canSetOrderStatus } from '@/lib/roles';
+import { updateAdminOrderStatus } from '@/lib/adminOrderStatus';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -77,12 +78,11 @@ export default function AdminOrderDetailPage() {
 
   const updateStatus = useMutation({
     mutationFn: (status: string) =>
-      fetch(`/api/admin/orders/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      }).then(async (r) => {const data = await r.json();if(!r.ok)throw Error(data.error??'Не удалось изменить статус');return data;}),
-    onSuccess: () => {
+      updateAdminOrderStatus<AdminOrder>(id, status),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['admin-order', id], data);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-order', id] });
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
     },
@@ -226,6 +226,7 @@ export default function AdminOrderDetailPage() {
           ))}
         </select>
         {updateStatus.isError && <p role="alert" className="text-sm text-rose-700">{updateStatus.error.message}</p>}
+        {updateStatus.isSuccess && updateStatus.data.notice && <p role="status" className="text-sm text-amber-800">{updateStatus.data.notice}</p>}
       </section>
     </div>
   );

@@ -15,7 +15,8 @@ async function load(path: string, modules: Record<string, unknown>, env: Record<
 
 test('release startup waits for approved migration; build, development and unrelated migrations are excluded',async()=>{
   let calls = 0; let fail = false;
-  const modules = {'@/lib/orderBoardMigration':{applyOrderBoardIndexes:async()=>{calls++;if(fail)throw Error('index failure');}}};
+  const modules = {'@/lib/orderBoardMigration':{applyOrderBoardIndexes:async()=>{calls++;if(fail)throw Error('index failure');}},
+    '@/lib/aqsiCancellationMigration':{applyAqsiCancellationMigration:async()=>{}}};
   const env={NEXT_RUNTIME:'nodejs',NODE_ENV:'production',RELEASE_ID:'a'.repeat(40)+'-40-1'};
   await (await load('src/instrumentation.ts',modules,env)).register(); assert.equal(calls,1);
   for(const override of [{NEXT_PHASE:'phase-production-build'},{NODE_ENV:'development'},{NEXT_RUNTIME:'edge'},{RELEASE_ID:''}]) {

@@ -9,7 +9,7 @@ import { isTbankAlreadyVoided, tbankCancel, TbankError } from '@/lib/tbank';
 import type { OrderStatus, PaymentStatus } from '@/lib/types';
 import { hasPermission, canSetOrderStatus } from '@/lib/roles';
 import { cancelAqsiCard } from '@/lib/aqsiJobs';
-import { cashOrderCancellationBlocked } from '@/lib/aqsiCashOrders';
+import { cancelAqsiCashOrder, cashOrderCancellationBlocked } from '@/lib/aqsiCashOrders';
 
 // Texts shown to the customer when their order changes status.
 // Map only the events that are interesting to the user — PENDING is the
@@ -98,8 +98,18 @@ export async function PUT(
     if (!before) return NextResponse.json({error:'Заказ не найден'},{status:404});
     if (!canSetOrderStatus(actor, before, status)) return NextResponse.json({error:status === 'CANCELLED' ? 'Возврат доступен владельцу и управляющему' : 'Недопустимый переход статуса'},{status:403});
 
-    if(before?.source==='KIOSK' && before.paymentMethod==='CASH' && (status==='CANCELLED' || (status==='COMPLETED' && before.paymentStatus!=='SUCCEEDED')) && await cashOrderCancellationBlocked(id,status==='CANCELLED')) {
-      return NextResponse.json({error:status==='CANCELLED' ? 'Сначала отмените неоплаченный заказ на aQsi. Для оплаченного заказа оформите возврат на кассе.' : 'Дождитесь наличной оплаты и подтверждения чека от aQsi'},{status:409});
+    if(before.source==='KIOSK' && status==='CANCELLED' && ['CASH','CARD'].includes(before.paymentMethod ?? '')) {
+      // Deferred orders include failed card payments transferred to the cashier.
+      const cancellation=await cancelAqsiCashOrder(id);
+      if(cancellation==='blocked') return NextResponse.json({error:'Заказ оплачен на aQsi. Оформите возврат на кассе.'},{status:409});
+      if(cancellation==='review') return NextResponse.json({error:'Отмена требует проверки заказа на aQsi: возможна оплата или несовпадение данных. Проверьте заказ и чек на кассе.'},{status:409});
+      if(cancellation==='pending' || cancellation==='cancelled') {
+        const order=await fetchAdminOrderById(id);
+        return NextResponse.json({order,...(cancellation==='pending' ? {notice:'Запрос отмены сохранён. Ожидаем подтверждения aQsi; статус обновится автоматически.'} : {})},{status:cancellation==='pending' ? 202 : 200});
+      }
+    }
+    if(before.source==='KIOSK' && before.paymentMethod==='CASH' && status==='COMPLETED' && before.paymentStatus!=='SUCCEEDED' && await cashOrderCancellationBlocked(id)) {
+      return NextResponse.json({error:'Дождитесь наличной оплаты и подтверждения чека от aQsi'},{status:409});
     }
     if (before?.source==='KIOSK' && before.paymentMethod==='CARD') {
       if (before.paymentStatus==='PENDING') {

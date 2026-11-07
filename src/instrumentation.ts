@@ -6,6 +6,8 @@ export async function register() {
       && /^[a-f0-9]{40}-\d+-\d+$/.test(process.env.RELEASE_ID ?? '')) {
     const { applyOrderBoardIndexes } = await import('@/lib/orderBoardMigration');
     await applyOrderBoardIndexes();
+    const { applyAqsiCancellationMigration } = await import('@/lib/aqsiCancellationMigration');
+    await applyAqsiCancellationMigration();
   }
   if (process.env.NEXT_RUNTIME==='nodejs' && process.env.AQSI_WORKER_ENABLED==='true' && process.env.NEXT_PHASE!=='phase-production-build') {
     const {startAqsiWorker}=await import('@/lib/aqsiWorker');

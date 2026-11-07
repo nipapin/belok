@@ -13,6 +13,7 @@ import {
 } from '@/components/admin/OrderItemsList';
 import { fulfillmentLabel, isKioskSource, orderCustomerLabel, orderTicket } from '@/lib/orderCustomer';
 import { fetchAdminJson } from '@/lib/adminDashboard';
+import { updateAdminOrderStatus } from '@/lib/adminOrderStatus';
 
 interface Order {
   id: string;
@@ -94,12 +95,14 @@ export default function AdminOrdersPage() {
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
-      fetch(`/api/admin/orders/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      }).then((r) => r.json()),
-    onSuccess: () => {
+      updateAdminOrderStatus<Order>(id, status),
+    onSuccess: ({ order }) => {
+      queryClient.setQueryData<{ orders: Order[] }>(['admin-orders'], (previous) => previous && ({
+        ...previous,
+        orders: previous.orders.map((item) => item.id === order.id ? order : item),
+      }));
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       queryClient.invalidateQueries({ queryKey: ['admin-order'] });
     },
@@ -108,6 +111,16 @@ export default function AdminOrdersPage() {
   return (
     <div>
       <h1 className="heading-section mb-6">Заказы</h1>
+      {updateStatus.isSuccess && updateStatus.data.notice ? (
+        <p role="status" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+          {updateStatus.data.notice}
+        </p>
+      ) : null}
+      {updateStatus.isError ? (
+        <p role="alert" className="mb-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
+          {updateStatus.error.message}
+        </p>
+      ) : null}
       {push.status === 'not-subscribed' || push.status === 'ios-needs-install' || push.status === 'denied' ? (
         <div className="mb-4 rounded-2xl border border-(--lg-ring) bg-(--lg-fill) px-4 py-3 text-sm text-(--lg-text)">
           <p className="font-medium">Push-уведомления о заказах выключены</p>
@@ -222,6 +235,7 @@ export default function AdminOrdersPage() {
                     <select
                       className="select-pill max-w-[160px] py-2 text-xs font-medium"
                       value={order.status}
+                      disabled={updateStatus.isPending}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => updateStatus.mutate({ id: order.id, status: e.target.value })}
                       aria-label="Статус заказа"
@@ -295,6 +309,7 @@ export default function AdminOrdersPage() {
               <select
                 className="select-pill mt-1 w-full py-2.5 text-sm font-medium"
                 value={order.status}
+                disabled={updateStatus.isPending}
                 onChange={(e) => updateStatus.mutate({ id: order.id, status: e.target.value })}
                 aria-label="Статус заказа"
               >
